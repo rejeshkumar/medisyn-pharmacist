@@ -10,6 +10,12 @@
   padding: 0;
 }
 
+:root {
+  --color-primary: #00475a;
+  --color-primary-light: #00758f;
+  --color-primary-dark: #003344;
+}
+
 body {
   font-family: 'Inter', sans-serif;
   background-color: #f9fafb;

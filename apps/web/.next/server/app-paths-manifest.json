@@ -1,6 +1,11 @@
 {
-  "/(auth)/login/page": "app/(auth)/login/page.js",
+  "/vip-register/page": "app/vip-register/page.js",
+  "/(dashboard)/medicines/page": "app/(dashboard)/medicines/page.js",
+  "/(dashboard)/billing/page": "app/(dashboard)/billing/page.js",
+  "/(dashboard)/dispensing/page": "app/(dashboard)/dispensing/page.js",
+  "/(dashboard)/stock/page": "app/(dashboard)/stock/page.js",
+  "/(dashboard)/users/page": "app/(dashboard)/users/page.js",
   "/(dashboard)/patients/page": "app/(dashboard)/patients/page.js",
   "/(dashboard)/dashboard/page": "app/(dashboard)/dashboard/page.js",
-  "/(dashboard)/billing/page": "app/(dashboard)/billing/page.js"
+  "/(dashboard)/compliance/page": "app/(dashboard)/compliance/page.js"
 }

@@ -1,9 +1,9 @@
 {
   "pages": {
-    "/page": [
+    "/(auth)/login/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/page.js"
+      "static/chunks/app/(auth)/login/page.js"
     ],
     "/layout": [
       "static/chunks/webpack.js",
@@ -21,15 +21,20 @@
       "static/chunks/main-app.js",
       "static/chunks/app/(dashboard)/layout.js"
     ],
-    "/(auth)/login/page": [
+    "/(dashboard)/billing/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/(auth)/login/page.js"
+      "static/chunks/app/(dashboard)/billing/page.js"
     ],
     "/(dashboard)/patients/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/(dashboard)/patients/page.js"
+    ],
+    "/vip-register/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/vip-register/page.js"
     ],
     "/(dashboard)/dispensing/page": [
       "static/chunks/webpack.js",
@@ -46,20 +51,10 @@
       "static/chunks/main-app.js",
       "static/chunks/app/(dashboard)/stock/page.js"
     ],
-    "/(dashboard)/billing/page": [
+    "/(dashboard)/compliance/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/(dashboard)/billing/page.js"
-    ],
-    "/(dashboard)/reports/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/(dashboard)/reports/page.js"
-    ],
-    "/(dashboard)/bulk/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/(dashboard)/bulk/page.js"
+      "static/chunks/app/(dashboard)/compliance/page.js"
     ],
     "/(dashboard)/users/page": [
       "static/chunks/webpack.js",

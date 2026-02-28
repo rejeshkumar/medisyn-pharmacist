@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import api from '@/lib/api';
 import { Crown, Pill, CheckCircle2, Loader2, Star } from 'lucide-react';
 
@@ -49,10 +50,14 @@ export default function VipRegisterPage() {
       {/* Header */}
       <div className="text-center mb-8">
         <div className="flex items-center justify-center gap-2 mb-3">
-          <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center">
-            <Pill className="w-6 h-6 text-white" />
-          </div>
-          <span className="text-2xl font-bold text-gray-900">MediSyn</span>
+          <Image
+            src="/images/logo.jpg"
+            alt="MediSyn"
+            width={44}
+            height={44}
+            className="rounded-xl object-contain"
+          />
+          <span className="text-2xl font-bold text-[#00475a]">MediSyn</span>
         </div>
         <div className="flex items-center justify-center gap-2 mb-2">
           <Crown className="w-6 h-6 text-amber-500" />
@@ -185,7 +190,7 @@ export default function VipRegisterPage() {
               <div className="bg-gradient-to-br from-amber-400 to-yellow-500 rounded-2xl p-5 text-white shadow-lg">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <Pill className="w-5 h-5" />
+                    <Image src="/images/logo.jpg" alt="MediSyn" width={22} height={22} className="rounded object-contain brightness-0 invert" />
                     <span className="font-bold text-sm">MediSyn</span>
                   </div>
                   <Crown className="w-6 h-6" />

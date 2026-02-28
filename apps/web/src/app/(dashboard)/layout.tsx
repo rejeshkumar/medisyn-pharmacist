@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { getUser, clearAuth } from '@/lib/auth';
 import {
   LayoutDashboard,
@@ -54,7 +55,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const handleLogout = () => {
     clearAuth();
-    toast.success('Logged out');
+    toast.success('Logged out successfully');
     router.push('/login');
   };
 
@@ -77,11 +78,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         )}
       >
         <div className="p-5 border-b border-gray-100 flex items-center gap-3">
-          <div className="w-9 h-9 bg-primary-600 rounded-lg flex items-center justify-center flex-shrink-0">
-            <Pill className="w-5 h-5 text-white" />
-          </div>
+          <Image
+            src="/images/logo.jpg"
+            alt="MediSyn"
+            width={36}
+            height={36}
+            className="rounded-lg flex-shrink-0 object-contain"
+          />
           <div>
-            <h1 className="font-bold text-gray-900 text-sm leading-tight">MediSyn</h1>
+            <h1 className="font-bold text-[#00475a] text-sm leading-tight">MediSyn</h1>
             <p className="text-xs text-gray-400">Pharmacy System</p>
           </div>
           <button
@@ -145,10 +150,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Menu className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-primary-600 rounded flex items-center justify-center">
-              <Pill className="w-3.5 h-3.5 text-white" />
-            </div>
-            <span className="font-bold text-gray-900 text-sm">MediSyn</span>
+            <Image
+              src="/images/logo.jpg"
+              alt="MediSyn"
+              width={24}
+              height={24}
+              className="rounded object-contain"
+            />
+            <span className="font-bold text-[#00475a] text-sm">MediSyn</span>
           </div>
         </header>
 
