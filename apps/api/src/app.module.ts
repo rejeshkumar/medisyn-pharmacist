@@ -1,4 +1,5 @@
 import { Module, OnModuleInit } from '@nestjs/common';
+// Railway DATABASE_URL support
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ModuleRef } from '@nestjs/core';

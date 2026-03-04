@@ -44,11 +44,15 @@ exports.AppModule = AppModule = __decorate([
                 imports: [config_1.ConfigModule],
                 useFactory: (configService) => ({
                     type: 'postgres',
-                    host: configService.get('DB_HOST', 'localhost'),
-                    port: configService.get('DB_PORT', 5432),
-                    username: configService.get('DB_USERNAME', 'postgres'),
-                    password: configService.get('DB_PASSWORD', 'password'),
-                    database: configService.get('DB_DATABASE', 'medisyn'),
+                    ...(configService.get('DATABASE_URL')
+                        ? { url: configService.get('DATABASE_URL'), ssl: { rejectUnauthorized: false } }
+                        : {
+                            host: configService.get('DB_HOST', 'localhost'),
+                            port: configService.get('DB_PORT', 5432),
+                            username: configService.get('DB_USERNAME', 'postgres'),
+                            password: configService.get('DB_PASSWORD', 'password'),
+                            database: configService.get('DB_DATABASE', 'medisyn'),
+                        }),
                     autoLoadEntities: true,
                     synchronize: configService.get('NODE_ENV') !== 'production',
                     logging: false,
