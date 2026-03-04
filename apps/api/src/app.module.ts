@@ -20,13 +20,17 @@ import { PatientsModule } from './patients/patients.module';
     ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        host: configService.get('DB_HOST', 'localhost'),
-        port: configService.get<number>('DB_PORT', 5432),
-        username: configService.get('DB_USERNAME', 'postgres'),
-        password: configService.get('DB_PASSWORD', 'password'),
-        database: configService.get('DB_DATABASE', 'medisyn'),
+ useFactory: (configService: ConfigService) => ({
+        type: 'postgres' as const,
+        ...(configService.get('DATABASE_URL')
+          ? { url: configService.get('DATABASE_URL'), ssl: { rejectUnauthorized: false } }
+          : {
+              host: configService.get('DB_HOST', 'localhost'),
+              port: configService.get<number>('DB_PORT', 5432),
+              username: configService.get('DB_USERNAME', 'postgres'),
+              password: configService.get('DB_PASSWORD', 'password'),
+              database: configService.get('DB_DATABASE', 'medisyn') as string,
+            }),
         autoLoadEntities: true,
         synchronize: configService.get('NODE_ENV') !== 'production',
         logging: false,
