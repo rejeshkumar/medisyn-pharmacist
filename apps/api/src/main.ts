@@ -9,7 +9,12 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   app.enableCors({
-    origin: ['http://localhost:3000', 'http://localhost:3002'],
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:3002',
+      'https://medisynweb-production.up.railway.app',
+      process.env.FRONTEND_URL,
+    ].filter(Boolean),
     credentials: true,
   });
 
