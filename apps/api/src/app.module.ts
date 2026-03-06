@@ -33,7 +33,9 @@ import { PatientsModule } from './patients/patients.module';
               database: configService.get('DB_DATABASE', 'medisyn') as string,
             }),
         autoLoadEntities: true,
-        synchronize: configService.get('NODE_ENV') !== 'production',
+        // Always synchronize when using DATABASE_URL (Railway/cloud) so tables
+        // are created on first boot. Falls back to env check for local dev.
+        synchronize: !!configService.get('DATABASE_URL') || configService.get('NODE_ENV') !== 'production',
         logging: false,
       }),
       inject: [ConfigService],
