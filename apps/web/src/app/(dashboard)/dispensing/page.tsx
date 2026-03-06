@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 import {
   Search, Plus, Minus, Trash2, ShoppingCart,
   Check, AlertTriangle, X, FileText,
-  Loader2, Camera,
+  Loader2, Camera, ChevronUp,
 } from 'lucide-react';
 import BillDocument, { type BillData } from '@/components/billing/BillDocument';
 
@@ -27,6 +27,136 @@ interface CartItem {
   schedule_class: string;
 }
 
+// ── Extracted outside component to prevent remount on every render ──
+interface BillSummaryProps {
+  hasScheduledDrugs: boolean;
+  showCompliance: boolean;
+  complianceData: { patient_name: string; doctor_name: string; doctor_reg_no: string };
+  setComplianceData: (fn: (p: any) => any) => void;
+  cart: CartItem[];
+  subtotal: number;
+  taxTotal: number;
+  discount: number;
+  setDiscount: (v: number) => void;
+  total: number;
+  paymentMode: string;
+  setPaymentMode: (v: string) => void;
+  handleBill: () => void;
+  isPending: boolean;
+}
+
+function BillSummaryContent({
+  hasScheduledDrugs, showCompliance, complianceData, setComplianceData,
+  cart, subtotal, taxTotal, discount, setDiscount, total,
+  paymentMode, setPaymentMode, handleBill, isPending,
+}: BillSummaryProps) {
+  return (
+    <div className="flex flex-col flex-1 min-h-0">
+      {hasScheduledDrugs && (
+        <div className="mx-4 mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg flex-shrink-0">
+          <p className="text-xs font-medium text-orange-700 flex items-center gap-1">
+            <AlertTriangle className="w-3.5 h-3.5" />
+            Scheduled drug — compliance required
+          </p>
+        </div>
+      )}
+
+      {(hasScheduledDrugs || showCompliance) && (
+        <div className="mx-4 mt-3 p-3 bg-gray-50 rounded-lg space-y-2 flex-shrink-0">
+          <p className="text-xs font-semibold text-gray-700">Compliance Details</p>
+          <input
+            type="text"
+            className="input text-xs"
+            placeholder="Patient name *"
+            value={complianceData.patient_name}
+            onChange={(e) => setComplianceData((p) => ({ ...p, patient_name: e.target.value }))}
+          />
+          <input
+            type="text"
+            className="input text-xs"
+            placeholder="Doctor name *"
+            value={complianceData.doctor_name}
+            onChange={(e) => setComplianceData((p) => ({ ...p, doctor_name: e.target.value }))}
+          />
+          {cart.some((i) => i.schedule_class === 'X') && (
+            <input
+              type="text"
+              className="input text-xs"
+              placeholder="Doctor registration no. *"
+              value={complianceData.doctor_reg_no}
+              onChange={(e) => setComplianceData((p) => ({ ...p, doctor_reg_no: e.target.value }))}
+            />
+          )}
+        </div>
+      )}
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div className="space-y-1.5 text-sm">
+          <div className="flex justify-between text-gray-600">
+            <span>Subtotal</span>
+            <span>{formatCurrency(subtotal)}</span>
+          </div>
+          <div className="flex justify-between text-gray-600">
+            <span>GST</span>
+            <span>{formatCurrency(taxTotal)}</span>
+          </div>
+          <div className="flex justify-between items-center text-gray-600">
+            <span>Discount</span>
+            <div className="flex items-center gap-1">
+              <span>₹</span>
+              <input
+                type="number"
+                className="w-20 border border-gray-200 rounded px-2 py-1 text-xs text-right"
+                value={discount}
+                min={0}
+                onChange={(e) => setDiscount(Number(e.target.value))}
+              />
+            </div>
+          </div>
+          <div className="border-t border-gray-100 pt-2 flex justify-between font-bold text-gray-900 text-base">
+            <span>Total</span>
+            <span>{formatCurrency(total)}</span>
+          </div>
+        </div>
+
+        <div>
+          <p className="text-xs font-medium text-gray-600 mb-1.5">Payment Mode</p>
+          <div className="grid grid-cols-3 gap-1.5">
+            {['cash', 'card', 'upi'].map((mode) => (
+              <button
+                key={mode}
+                onClick={() => setPaymentMode(mode)}
+                className={`py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                  paymentMode === mode
+                    ? 'bg-primary-600 text-white border-primary-600'
+                    : 'border-gray-200 text-gray-600 hover:border-primary-400'
+                }`}
+              >
+                {mode.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="p-4 border-t border-gray-100 flex-shrink-0">
+        <button
+          onClick={handleBill}
+          disabled={cart.length === 0 || isPending}
+          className="btn-primary w-full py-3 text-base flex items-center justify-center gap-2"
+        >
+          {isPending ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <FileText className="w-4 h-4" />
+          )}
+          Generate Bill
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function DispensingPage() {
   const [search, setSearch] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -42,10 +172,11 @@ export default function DispensingPage() {
   const [showAiReview, setShowAiReview] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [completedSale, setCompletedSale] = useState<any>(null);
+  const [showBillPanel, setShowBillPanel] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const qc = useQueryClient();
 
-  const { data: medicines, isLoading: searching } = useQuery({
+  const { data: medicines } = useQuery({
     queryKey: ['medicines-search', search],
     queryFn: () =>
       search.length >= 2
@@ -71,6 +202,7 @@ export default function DispensingPage() {
       setDiscount(0);
       setAiResult(null);
       setAiPrescriptionId(null);
+      setShowBillPanel(false);
       qc.invalidateQueries({ queryKey: ['dashboard'] });
       toast.success(`Bill ${data.bill_number} created!`);
     },
@@ -87,7 +219,6 @@ export default function DispensingPage() {
         }
         return;
       }
-
       const existing = cart.findIndex(
         (i) => i.medicine_id === medicine.id && i.batch_id === bestBatch.id,
       );
@@ -96,8 +227,8 @@ export default function DispensingPage() {
         updated[existing].qty += 1;
         setCart(updated);
       } else {
-        setCart([
-          ...cart,
+        setCart((prev) => [
+          ...prev,
           {
             medicine_id: medicine.id,
             batch_id: bestBatch.id,
@@ -113,12 +244,11 @@ export default function DispensingPage() {
         ]);
       }
       setSearch('');
-
-      if (medicine.schedule_class === 'H' || medicine.schedule_class === 'H1' || medicine.schedule_class === 'X') {
+      if (['H', 'H1', 'X'].includes(medicine.schedule_class)) {
         setShowCompliance(true);
         toast('Compliance details required for scheduled drug', { icon: '🔐' });
       }
-    } catch (err) {
+    } catch {
       toast.error('Failed to fetch stock');
     }
   };
@@ -126,8 +256,7 @@ export default function DispensingPage() {
   const handleSubstitute = async (original: CartItem, substitute: any, reason: string) => {
     const { data: bestBatch } = await api.get(`/stock/${substitute.id}/best-batch`);
     if (!bestBatch) { toast.error('No stock for this substitute'); return; }
-
-    const updated = cart.map((item) =>
+    setCart((prev) => prev.map((item) =>
       item.medicine_id === original.medicine_id
         ? {
             ...item,
@@ -143,20 +272,15 @@ export default function DispensingPage() {
             schedule_class: substitute.schedule_class,
           }
         : item,
-    );
-    setCart(updated);
+    ));
     setShowSubstitutes(null);
     toast.success('Substitute selected');
   };
 
   const subtotal = cart.reduce((sum, i) => sum + i.qty * i.rate, 0);
   const taxTotal = cart.reduce((sum, i) => sum + (i.qty * i.rate * i.gst_percent) / 100, 0);
-  const discountAmt = discount;
-  const total = subtotal + taxTotal - discountAmt;
-
-  const hasScheduledDrugs = cart.some((i) =>
-    ['H', 'H1', 'X'].includes(i.schedule_class),
-  );
+  const total = subtotal + taxTotal - discount;
+  const hasScheduledDrugs = cart.some((i) => ['H', 'H1', 'X'].includes(i.schedule_class));
 
   const buildPayload = () => ({
     customer_name: complianceData.patient_name,
@@ -172,7 +296,7 @@ export default function DispensingPage() {
       original_medicine_id: i.original_medicine_id,
       substitution_reason: i.substitution_reason,
     })),
-    discount_amount: discountAmt,
+    discount_amount: discount,
     payment_mode: paymentMode,
     ai_prescription_id: aiPrescriptionId,
     compliance_data: hasScheduledDrugs ? complianceData : undefined,
@@ -182,36 +306,11 @@ export default function DispensingPage() {
     if (cart.length === 0) { toast.error('Cart is empty'); return; }
     if (hasScheduledDrugs && (!complianceData.patient_name || !complianceData.doctor_name)) {
       setShowCompliance(true);
+      setShowBillPanel(true);
       toast.error('Compliance details required for scheduled drugs');
       return;
     }
     setShowPreview(true);
-  };
-
-  const handleConfirmDispense = () => {
-    createSaleMutation.mutate(buildPayload());
-  };
-
-  const previewBillData: BillData = {
-    patientName: complianceData.patient_name || undefined,
-    doctorName: complianceData.doctor_name || undefined,
-    doctorRegNo: complianceData.doctor_reg_no || undefined,
-    paymentMode,
-    items: cart.map((i) => ({
-      medicineName: i.medicine_name,
-      batchNumber: i.batch_number,
-      expiryDate: i.expiry_date,
-      qty: i.qty,
-      rate: i.rate,
-      gstPercent: i.gst_percent,
-      itemTotal: i.qty * i.rate + (i.qty * i.rate * i.gst_percent) / 100,
-      isSubstituted: i.is_substituted,
-    })),
-    subtotal,
-    taxAmount: taxTotal,
-    discountAmount: discountAmt,
-    totalAmount: total,
-    hasScheduledDrugs,
   };
 
   const handleFileUpload = async (file: File) => {
@@ -224,7 +323,6 @@ export default function DispensingPage() {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       setAiPrescriptionId(data.id);
-
       let attempts = 0;
       const poll = setInterval(async () => {
         attempts++;
@@ -252,26 +350,64 @@ export default function DispensingPage() {
   };
 
   const handleApproveAi = async () => {
-    const medicines = aiResult?.extraction_json?.medicines || [];
-    for (const med of medicines) {
+    const meds = aiResult?.extraction_json?.medicines || [];
+    for (const med of meds) {
       if (med.matched_medicine_id) {
-        await handleAddMedicine({ id: med.matched_medicine_id, brand_name: med.matched_medicine_name || med.name, gst_percent: 0, schedule_class: 'OTC' });
+        await handleAddMedicine({
+          id: med.matched_medicine_id,
+          brand_name: med.matched_medicine_name || med.name,
+          gst_percent: 0,
+          schedule_class: 'OTC',
+        });
       }
     }
     setShowAiReview(false);
     toast.success('Medicines added from prescription');
   };
 
+  const billSummaryProps: BillSummaryProps = {
+    hasScheduledDrugs, showCompliance, complianceData, setComplianceData,
+    cart, subtotal, taxTotal, discount, setDiscount, total,
+    paymentMode, setPaymentMode, handleBill,
+    isPending: createSaleMutation.isPending,
+  };
+
+  const previewBillData: BillData = {
+    patientName: complianceData.patient_name || undefined,
+    doctorName: complianceData.doctor_name || undefined,
+    doctorRegNo: complianceData.doctor_reg_no || undefined,
+    paymentMode,
+    items: cart.map((i) => ({
+      medicineName: i.medicine_name,
+      batchNumber: i.batch_number,
+      expiryDate: i.expiry_date,
+      qty: i.qty,
+      rate: i.rate,
+      gstPercent: i.gst_percent,
+      itemTotal: i.qty * i.rate + (i.qty * i.rate * i.gst_percent) / 100,
+      isSubstituted: i.is_substituted,
+    })),
+    subtotal,
+    taxAmount: taxTotal,
+    discountAmount: discount,
+    totalAmount: total,
+    hasScheduledDrugs,
+  };
+
   return (
     <div className="flex h-full overflow-hidden">
+
+      {/* ── Main cart area ── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <div className="p-4 border-b border-gray-100 bg-white">
+
+        {/* Search bar */}
+        <div className="p-4 border-b border-gray-100 bg-white flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="relative flex-1 max-w-xl">
+            <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
-                className="input pl-9"
+                className="input pl-9 w-full"
                 placeholder="Search medicine by brand or molecule..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -297,13 +433,12 @@ export default function DispensingPage() {
                 </div>
               )}
             </div>
-
             <button
               onClick={() => fileRef.current?.click()}
               className="btn-secondary flex items-center gap-2 flex-shrink-0"
             >
               {aiExtracting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
-              {aiExtracting ? 'Extracting...' : 'Upload Rx'}
+              <span className="hidden sm:inline">{aiExtracting ? 'Extracting...' : 'Upload Rx'}</span>
             </button>
             <input
               ref={fileRef}
@@ -315,8 +450,9 @@ export default function DispensingPage() {
           </div>
         </div>
 
+        {/* AI Review panel */}
         {showAiReview && aiResult && (
-          <div className="m-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+          <div className="m-4 p-4 bg-blue-50 border border-blue-200 rounded-xl flex-shrink-0">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-blue-900">AI Extracted Medicines</h3>
               <button onClick={() => setShowAiReview(false)} className="text-blue-400 hover:text-blue-600">
@@ -329,9 +465,7 @@ export default function DispensingPage() {
             <div className="space-y-2">
               {aiResult.extraction_json?.medicines?.map((med: any, i: number) => (
                 <div key={i} className="flex items-center gap-3 bg-white p-3 rounded-lg border border-blue-100">
-                  <span className={`badge text-xs ${getConfidenceColor(med.confidence)}`}>
-                    {med.confidence}
-                  </span>
+                  <span className={`badge text-xs ${getConfidenceColor(med.confidence)}`}>{med.confidence}</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900">{med.name}</p>
                     <p className="text-xs text-gray-500">
@@ -339,23 +473,21 @@ export default function DispensingPage() {
                       {med.matched_medicine_name && <span className="text-green-600"> → {med.matched_medicine_name}</span>}
                     </p>
                   </div>
-                  {!med.matched_medicine_id && (
-                    <span className="text-xs text-red-500">No match</span>
-                  )}
+                  {!med.matched_medicine_id && <span className="text-xs text-red-500">No match</span>}
                 </div>
               ))}
             </div>
             <div className="flex gap-2 mt-3">
               <button onClick={handleApproveAi} className="btn-primary flex-1">
-                <Check className="w-4 h-4 inline mr-1" />
-                Approve & Add to Cart
+                <Check className="w-4 h-4 inline mr-1" />Approve & Add to Cart
               </button>
               <button onClick={() => setShowAiReview(false)} className="btn-secondary">Dismiss</button>
             </div>
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+        {/* Cart items — extra bottom padding on mobile for the sticky bar */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-2 pb-20 lg:pb-4">
           {cart.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-gray-400">
               <ShoppingCart className="w-12 h-12 mb-3 opacity-30" />
@@ -383,7 +515,6 @@ export default function DispensingPage() {
                       <p className="text-xs text-blue-600 mt-0.5">Reason: {item.substitution_reason}</p>
                     )}
                   </div>
-
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <button
                       onClick={() => {
@@ -407,12 +538,12 @@ export default function DispensingPage() {
                     >
                       <Plus className="w-3 h-3" />
                     </button>
-                    <span className="text-sm font-semibold text-gray-900 w-20 text-right">
+                    <span className="text-sm font-semibold text-gray-900 w-16 text-right">
                       {formatCurrency(item.qty * item.rate)}
                     </span>
                     <button
                       onClick={() => setShowSubstitutes(item.medicine_id)}
-                      className="text-xs text-primary-600 hover:underline px-1"
+                      className="text-xs text-primary-600 hover:underline px-1 hidden sm:block"
                     >
                       Sub
                     </button>
@@ -430,120 +561,60 @@ export default function DispensingPage() {
         </div>
       </div>
 
-      <div className="w-80 border-l border-gray-100 bg-white flex flex-col flex-shrink-0">
-        <div className="p-4 border-b border-gray-100">
-          <h2 className="font-semibold text-gray-900">Bill Summary</h2>
-        </div>
-
-        {hasScheduledDrugs && (
-          <div className="mx-4 mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-            <p className="text-xs font-medium text-orange-700 flex items-center gap-1">
-              <AlertTriangle className="w-3.5 h-3.5" />
-              Scheduled drug — compliance required
-            </p>
-          </div>
-        )}
-
-        {(hasScheduledDrugs || showCompliance) && (
-          <div className="mx-4 mt-3 p-3 bg-gray-50 rounded-lg space-y-2">
-            <p className="text-xs font-semibold text-gray-700">Compliance Details</p>
-            <input
-              type="text"
-              className="input text-xs"
-              placeholder="Patient name *"
-              value={complianceData.patient_name}
-              onChange={(e) => setComplianceData((p) => ({ ...p, patient_name: e.target.value }))}
-            />
-            <input
-              type="text"
-              className="input text-xs"
-              placeholder="Doctor name *"
-              value={complianceData.doctor_name}
-              onChange={(e) => setComplianceData((p) => ({ ...p, doctor_name: e.target.value }))}
-            />
-            {cart.some((i) => i.schedule_class === 'X') && (
-              <input
-                type="text"
-                className="input text-xs"
-                placeholder="Doctor registration no. *"
-                value={complianceData.doctor_reg_no}
-                onChange={(e) => setComplianceData((p) => ({ ...p, doctor_reg_no: e.target.value }))}
-              />
-            )}
-          </div>
-        )}
-
-        <div className="flex-1 p-4 space-y-3 overflow-y-auto">
-          <div className="space-y-1.5 text-sm">
-            <div className="flex justify-between text-gray-600">
-              <span>Subtotal</span>
-              <span>{formatCurrency(subtotal)}</span>
-            </div>
-            <div className="flex justify-between text-gray-600">
-              <span>GST</span>
-              <span>{formatCurrency(taxTotal)}</span>
-            </div>
-            <div className="flex justify-between items-center text-gray-600">
-              <span>Discount</span>
-              <div className="flex items-center gap-1">
-                <span>₹</span>
-                <input
-                  type="number"
-                  className="w-20 border border-gray-200 rounded px-2 py-1 text-xs text-right"
-                  value={discount}
-                  min={0}
-                  onChange={(e) => setDiscount(Number(e.target.value))}
-                />
-              </div>
-            </div>
-            <div className="border-t border-gray-100 pt-2 flex justify-between font-bold text-gray-900 text-base">
-              <span>Total</span>
-              <span>{formatCurrency(total)}</span>
-            </div>
-          </div>
-
-          <div>
-            <p className="text-xs font-medium text-gray-600 mb-1.5">Payment Mode</p>
-            <div className="grid grid-cols-3 gap-1.5">
-              {['cash', 'card', 'upi'].map((mode) => (
-                <button
-                  key={mode}
-                  onClick={() => setPaymentMode(mode)}
-                  className={`py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                    paymentMode === mode
-                      ? 'bg-primary-600 text-white border-primary-600'
-                      : 'border-gray-200 text-gray-600 hover:border-primary-400'
-                  }`}
-                >
-                  {mode.toUpperCase()}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="p-4 border-t border-gray-100">
-          <button
-            onClick={handleBill}
-            disabled={cart.length === 0 || createSaleMutation.isPending}
-            className="btn-primary w-full py-3 text-base flex items-center justify-center gap-2"
-          >
-            {createSaleMutation.isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <FileText className="w-4 h-4" />
-            )}
-            Generate Bill
-          </button>
-        </div>
+      {/* ── Mobile: sticky bottom bar ── */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 px-4 py-3 bg-white border-t border-gray-100 shadow-lg">
+        <button
+          onClick={() => setShowBillPanel(true)}
+          className="btn-primary w-full py-3 flex items-center justify-center gap-2"
+        >
+          <ShoppingCart className="w-4 h-4" />
+          <span>Bill Summary</span>
+          <span className="font-bold">· {formatCurrency(total)}</span>
+          {cart.length > 0 && (
+            <span className="bg-white text-primary-600 rounded-full w-5 h-5 text-xs font-bold flex items-center justify-center ml-1">
+              {cart.length}
+            </span>
+          )}
+        </button>
       </div>
 
+      {/* ── Mobile: slide-up bill sheet ── */}
+      {showBillPanel && (
+        <div className="lg:hidden fixed inset-0 z-40 flex flex-col justify-end">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setShowBillPanel(false)}
+          />
+          <div className="relative bg-white rounded-t-2xl max-h-[85vh] flex flex-col">
+            <div className="p-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
+              <h2 className="font-semibold text-gray-900">Bill Summary</h2>
+              <button
+                onClick={() => setShowBillPanel(false)}
+                className="text-gray-400 hover:text-gray-600 p-1"
+              >
+                <ChevronUp className="w-5 h-5" />
+              </button>
+            </div>
+            <BillSummaryContent {...billSummaryProps} />
+          </div>
+        </div>
+      )}
+
+      {/* ── Desktop: fixed right panel ── */}
+      <div className="hidden lg:flex w-80 border-l border-gray-100 bg-white flex-col flex-shrink-0">
+        <div className="p-4 border-b border-gray-100 flex-shrink-0">
+          <h2 className="font-semibold text-gray-900">Bill Summary</h2>
+        </div>
+        <BillSummaryContent {...billSummaryProps} />
+      </div>
+
+      {/* ── Modals ── */}
       {showPreview && (
         <BillDocument
           data={previewBillData}
           mode="preview"
           onClose={() => setShowPreview(false)}
-          onConfirm={handleConfirmDispense}
+          onConfirm={() => createSaleMutation.mutate(buildPayload())}
           isLoading={createSaleMutation.isPending}
         />
       )}
@@ -610,7 +681,7 @@ export default function DispensingPage() {
                     </div>
                   </div>
                   {sub.available_stock > 0 && (
-                    <div className="flex gap-2 mt-2">
+                    <div className="flex flex-wrap gap-2 mt-2">
                       {['Brand not in stock', 'Patient preference', 'Better price', 'Doctor approved'].map((reason) => (
                         <button
                           key={reason}
