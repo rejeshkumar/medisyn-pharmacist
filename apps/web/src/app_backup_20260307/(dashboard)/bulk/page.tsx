@@ -277,7 +277,7 @@ export default function BulkPage() {
                 </div>
               </div>
 
-              <div className="card overflow-x-auto -mx-4 sm:mx-0 rounded-none sm:rounded-xl">
+              <div className="card overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-100">

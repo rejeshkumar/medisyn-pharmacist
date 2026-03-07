@@ -33,33 +33,26 @@ export default function CompliancePage() {
       const response = await api.get(`/compliance/log/export?${params}`, { responseType: 'blob' });
       const url = URL.createObjectURL(new Blob([response.data]));
       const a = document.createElement('a');
-      a.href = url;
-      a.download = `schedule-drug-register-${new Date().toISOString().split('T')[0]}.xlsx`;
-      a.click();
+      a.href = url; a.download = `schedule-drug-register-${new Date().toISOString().split('T')[0]}.xlsx`; a.click();
       URL.revokeObjectURL(url);
       toast.success('Export downloaded');
-    } catch {
-      toast.error('Export failed');
-    }
+    } catch { toast.error('Export failed'); }
   };
 
+  const scheduleColor = (sc: string) => sc==='X'?'bg-red-100 text-red-700 border-red-200':sc==='H1'?'bg-orange-100 text-orange-700 border-orange-200':'bg-yellow-100 text-yellow-700 border-yellow-200';
+
   return (
-    <div className="p-6 space-y-5">
+    <div className="p-4 md:p-6 space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Schedule Drug Register</h1>
-          <p className="text-sm text-gray-500">{logs?.length || 0} records</p>
-        </div>
-        <button onClick={handleExport} className="btn-secondary flex items-center gap-2">
-          <Download className="w-4 h-4" /> Export Excel
-        </button>
+        <div><h1 className="text-xl font-bold text-gray-900">Schedule Drug Register</h1><p className="text-sm text-gray-500">{logs?.length || 0} records</p></div>
+        <button onClick={handleExport} className="btn-secondary flex items-center gap-2"><Download className="w-4 h-4" /> Export Excel</button>
       </div>
 
-      <div className="flex flex-wrap gap-3">
-        <input type="date" className="input w-auto" value={from} onChange={(e) => setFrom(e.target.value)} placeholder="From" />
-        <input type="date" className="input w-auto" value={to} onChange={(e) => setTo(e.target.value)} placeholder="To" />
-        <input className="input w-auto" placeholder="Doctor name..." value={doctorName} onChange={(e) => setDoctorName(e.target.value)} />
-        <select className="input w-auto" value={scheduleClass} onChange={(e) => setScheduleClass(e.target.value)}>
+      <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-3">
+        <input type="date" className="input col-span-1" value={from} onChange={(e) => setFrom(e.target.value)} />
+        <input type="date" className="input col-span-1" value={to} onChange={(e) => setTo(e.target.value)} />
+        <input className="input col-span-2 sm:w-auto" placeholder="Doctor name..." value={doctorName} onChange={(e) => setDoctorName(e.target.value)} />
+        <select className="input col-span-2 sm:w-auto" value={scheduleClass} onChange={(e) => setScheduleClass(e.target.value)}>
           <option value="">All schedules</option>
           <option value="H">Schedule H</option>
           <option value="H1">Schedule H1</option>
@@ -67,62 +60,66 @@ export default function CompliancePage() {
         </select>
       </div>
 
-      <div className="card p-0 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-100">
-            <tr>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Date & Time</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Patient</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Doctor</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Medicine</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Schedule</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Qty</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Batch</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Pharmacist</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Substituted</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <tr><td colSpan={9} className="text-center py-12"><Loader2 className="w-5 h-5 animate-spin mx-auto text-gray-400" /></td></tr>
-            ) : logs?.length === 0 ? (
-              <tr><td colSpan={9} className="text-center py-12 text-gray-400">
-                <Shield className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                No records found
-              </td></tr>
-            ) : (
-              logs?.map((log: any) => (
-                <tr key={log.id} className="table-row">
-                  <td className="px-4 py-3 text-xs text-gray-600">{formatDateTime(log.created_at)}</td>
-                  <td className="px-4 py-3 font-medium text-gray-900">{log.patient_name}</td>
-                  <td className="px-4 py-3 text-gray-700">
-                    <p>{log.doctor_name}</p>
-                    {log.doctor_reg_no && <p className="text-xs text-gray-400">{log.doctor_reg_no}</p>}
-                  </td>
-                  <td className="px-4 py-3 text-gray-800">{log.medicine_name}</td>
-                  <td className="px-4 py-3">
-                    <span className={`badge text-xs ${
-                      log.schedule_class === 'X' ? 'bg-red-100 text-red-700 border-red-200' :
-                      log.schedule_class === 'H1' ? 'bg-orange-100 text-orange-700 border-orange-200' :
-                      'bg-yellow-100 text-yellow-700 border-yellow-200'
-                    }`}>
-                      {log.schedule_class}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-700">{log.quantity_dispensed}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-gray-600">{log.batch_number}</td>
-                  <td className="px-4 py-3 text-gray-600">{log.pharmacist?.full_name || '-'}</td>
-                  <td className="px-4 py-3">
-                    {log.is_substituted ? (
-                      <span className="badge bg-blue-50 text-blue-600 border-blue-200 text-xs">Yes</span>
-                    ) : '-'}
-                  </td>
+      {isLoading ? (
+        <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-gray-400" /></div>
+      ) : !logs?.length ? (
+        <div className="card text-center py-12 text-gray-400"><Shield className="w-8 h-8 mx-auto mb-2 opacity-30" /><p>No records found</p></div>
+      ) : (
+        <>
+          {/* Mobile cards */}
+          <div className="space-y-3 md:hidden">
+            {logs.map((log: any) => (
+              <div key={log.id} className="card p-4 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div><p className="font-semibold text-gray-900 text-sm">{log.medicine_name}</p><p className="text-xs text-gray-400">{formatDateTime(log.created_at)}</p></div>
+                  <span className={`badge text-xs ${scheduleColor(log.schedule_class)}`}>{log.schedule_class}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                  <div><span className="text-gray-400">Patient: </span><span className="text-gray-900 font-medium">{log.patient_name}</span></div>
+                  <div><span className="text-gray-400">Qty: </span><span className="text-gray-900">{log.quantity_dispensed}</span></div>
+                  <div><span className="text-gray-400">Doctor: </span><span className="text-gray-700">{log.doctor_name}</span></div>
+                  <div><span className="text-gray-400">Batch: </span><span className="font-mono text-gray-700">{log.batch_number}</span></div>
+                  {log.is_substituted && <div className="col-span-2"><span className="badge bg-blue-50 text-blue-600 border-blue-200 text-xs">Substituted</span></div>}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop table */}
+          <div className="card p-0 overflow-hidden hidden md:block">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-100">
+                <tr>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Date & Time</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Patient</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Doctor</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Medicine</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Schedule</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Qty</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Batch</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Pharmacist</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Substituted</th>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              </thead>
+              <tbody>
+                {logs.map((log: any) => (
+                  <tr key={log.id} className="table-row">
+                    <td className="px-4 py-3 text-xs text-gray-600">{formatDateTime(log.created_at)}</td>
+                    <td className="px-4 py-3 font-medium text-gray-900">{log.patient_name}</td>
+                    <td className="px-4 py-3 text-gray-700"><p>{log.doctor_name}</p>{log.doctor_reg_no && <p className="text-xs text-gray-400">{log.doctor_reg_no}</p>}</td>
+                    <td className="px-4 py-3 text-gray-800">{log.medicine_name}</td>
+                    <td className="px-4 py-3"><span className={`badge text-xs ${scheduleColor(log.schedule_class)}`}>{log.schedule_class}</span></td>
+                    <td className="px-4 py-3 text-gray-700">{log.quantity_dispensed}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-gray-600">{log.batch_number}</td>
+                    <td className="px-4 py-3 text-gray-600">{log.pharmacist?.full_name || '-'}</td>
+                    <td className="px-4 py-3">{log.is_substituted ? <span className="badge bg-blue-50 text-blue-600 border-blue-200 text-xs">Yes</span> : '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </div>
   );
 }
