@@ -8,6 +8,8 @@ import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const patientName = (p: any) => p?.full_name || `${p?.first_name || ''} ${p?.last_name || ''}`.trim() || 'Unknown';
+const patientInitial = (p: any) => patientName(p)[0]?.toUpperCase() || '?';
 
 const VISIT_TYPES = [
   { value: 'general', label: 'General Consultation' },
@@ -158,10 +160,10 @@ export default function BookAppointmentPage() {
           {selectedPatient ? (
             <div className="flex items-center gap-3 bg-teal-50 rounded-lg px-4 py-3">
               <div className="w-9 h-9 rounded-full bg-[#00475a] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                {selectedPatient.full_name[0].toUpperCase()}
+                {patientInitial(selectedPatient)}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-slate-800">{selectedPatient.full_name}</p>
+                <p className="text-sm font-semibold text-slate-800">{patientName(selectedPatient)}</p>
                 <p className="text-xs text-slate-500">{selectedPatient.mobile}</p>
               </div>
               <button onClick={() => { setSelectedPatient(null); setPatientSearch(''); }} className="text-slate-400 hover:text-slate-600">
@@ -190,10 +192,10 @@ export default function BookAppointmentPage() {
                       className="w-full text-left px-4 py-2.5 hover:bg-slate-50 border-b border-slate-50 last:border-0 flex items-center gap-3"
                     >
                       <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center text-[#00475a] font-bold text-xs flex-shrink-0">
-                        {p.full_name[0].toUpperCase()}
+                        {patientInitial(p)}
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-slate-800">{p.full_name}</p>
+                        <p className="text-sm font-medium text-slate-800">{patientName(p)}</p>
                         <p className="text-xs text-slate-400">{p.mobile}</p>
                       </div>
                     </button>
