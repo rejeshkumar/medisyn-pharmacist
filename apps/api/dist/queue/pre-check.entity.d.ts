@@ -1,0 +1,34 @@
+import { Tenant } from '../database/entities/tenant.entity';
+import { User } from '../database/entities/user.entity';
+import { Patient } from '../database/entities/patient.entity';
+import { Queue } from './queue.entity';
+export declare class PreCheck {
+    id: string;
+    tenant_id: string;
+    tenant: Tenant;
+    queue_id: string;
+    queue: Queue;
+    patient_id: string;
+    patient: Patient;
+    recorded_by: string;
+    recorder: User;
+    bp_systolic: number;
+    bp_diastolic: number;
+    pulse_rate: number;
+    temperature: number;
+    weight: number;
+    height: number;
+    bmi: number;
+    spo2: number;
+    blood_sugar: number;
+    chief_complaint: string;
+    allergies: string;
+    current_medicines: string;
+    notes: string;
+    recorded_at: Date;
+    is_active: boolean;
+    created_by: string;
+    updated_by: string;
+    created_at: Date;
+    updated_at: Date;
+}

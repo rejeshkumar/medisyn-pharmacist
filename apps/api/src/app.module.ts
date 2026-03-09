@@ -1,3 +1,4 @@
+
 import { Module, OnModuleInit } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -23,6 +24,8 @@ import { ReportsModule } from './reports/reports.module';
 import { PatientsModule } from './patients/patients.module';
 import { TenantsModule } from './tenants/tenants.module';
 import { AuditModule } from './audit/audit.module';
+import { QueueModule } from './queue/queue.module';
+import { ConsultationModule } from './consultation/consultation.module';
 
 @Module({
   imports: [
@@ -67,6 +70,8 @@ import { AuditModule } from './audit/audit.module';
     ComplianceModule,
     ReportsModule,
     PatientsModule,
+    QueueModule,
+    ConsultationModule,
   ],
   providers: [
     // Applied globally in order — JwtAuthGuard first, then TenantGuard
