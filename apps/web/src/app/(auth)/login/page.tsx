@@ -20,8 +20,8 @@ export default function LoginPage() {
     try {
       const { data } = await api.post('/auth/login', { mobile, password });
       setAuth(data.access_token, data.user);
-      toast.success(`Welcome, ${data.user.full_name}!`);
-      router.push('/dashboard');
+toast.success(`Welcome, ${data.user.full_name}!`);
+router.push(data.user.role === 'doctor' ? '/doctor' : '/dashboard');
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Login failed');
     } finally {
