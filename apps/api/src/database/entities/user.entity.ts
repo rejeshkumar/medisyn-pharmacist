@@ -14,7 +14,9 @@ export enum UserRole {
   OWNER      = 'owner',
   PHARMACIST = 'pharmacist',
   ASSISTANT  = 'assistant',
-  DOCTOR     = 'doctor',
+  DOCTOR        = 'doctor',
+  RECEPTIONIST  = 'receptionist',
+  NURSE         = 'nurse',
 }
 
 export enum UserStatus {
