@@ -11,6 +11,8 @@ import {
 import { format } from 'date-fns';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const patientName = (p: any) => p?.full_name || `${p?.first_name || ''} ${p?.last_name || ''}`.trim() || 'Unknown';
+const patientInitial = (p: any) => patientName(p)[0]?.toUpperCase() || '?';
 
 interface Patient {
   id: string;
@@ -138,10 +140,10 @@ export default function DoctorPatientsPage() {
               className={`w-full text-left px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition-colors flex items-center gap-3 ${selected?.id === p.id ? 'bg-teal-50 border-l-2 border-l-[#00475a]' : ''}`}
             >
               <div className="w-9 h-9 rounded-full bg-teal-100 flex items-center justify-center text-[#00475a] font-bold text-sm flex-shrink-0">
-                {p.full_name[0].toUpperCase()}
+                {patientInitial(p)}
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-medium text-slate-800 truncate">{p.full_name}</p>
+                <p className="text-sm font-medium text-slate-800 truncate">{patientName(p)}</p>
                 <p className="text-xs text-slate-400">{p.mobile}{age(p.date_of_birth) ? ` · ${age(p.date_of_birth)}y` : ''}{p.gender ? ` · ${p.gender}` : ''}</p>
               </div>
               <ChevronRight className="w-4 h-4 text-slate-300 ml-auto flex-shrink-0" />
@@ -163,10 +165,10 @@ export default function DoctorPatientsPage() {
             <div className="bg-white rounded-xl border border-slate-100 p-5 mb-6 shadow-sm">
               <div className="flex items-start gap-4">
                 <div className="w-14 h-14 rounded-full bg-teal-100 flex items-center justify-center text-[#00475a] font-bold text-xl flex-shrink-0">
-                  {selected.full_name[0].toUpperCase()}
+                  {patientInitial(selected)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h2 className="text-lg font-bold text-slate-800">{selected.full_name}</h2>
+                  <h2 className="text-lg font-bold text-slate-800">{patientName(selected)}</h2>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
                     <span className="text-sm text-slate-500 flex items-center gap-1"><Phone className="w-3 h-3" />{selected.mobile}</span>
                     {selected.date_of_birth && <span className="text-sm text-slate-500 flex items-center gap-1"><Calendar className="w-3 h-3" />{age(selected.date_of_birth)} years</span>}
