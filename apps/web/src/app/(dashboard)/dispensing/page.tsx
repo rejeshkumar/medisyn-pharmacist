@@ -8,9 +8,11 @@ import toast from 'react-hot-toast';
 import {
   Search, Plus, Minus, Trash2, ShoppingCart,
   Check, AlertTriangle, X, FileText,
-  Loader2, Camera, ChevronUp,
+  Loader2, Camera, ChevronUp, ClipboardList,
 } from 'lucide-react';
 import BillDocument, { type BillData } from '@/components/billing/BillDocument';
+import PrescriptionBridge from '@/components/dispensing/PrescriptionBridge';
+import { cn } from '@/lib/utils';
 
 interface CartItem {
   medicine_id: string;
@@ -173,6 +175,10 @@ export default function DispensingPage() {
   const [showPreview, setShowPreview] = useState(false);
   const [completedSale, setCompletedSale] = useState<any>(null);
   const [showBillPanel, setShowBillPanel] = useState(false);
+  // ── Prescription bridge state ──
+  const [showRxPanel, setShowRxPanel] = useState(false);
+  const [activePrescriptionId, setActivePrescriptionId] = useState<string | null>(null);
+
   const fileRef = useRef<HTMLInputElement>(null);
   const qc = useQueryClient();
 
@@ -203,7 +209,13 @@ export default function DispensingPage() {
       setAiResult(null);
       setAiPrescriptionId(null);
       setShowBillPanel(false);
+      // ── Mark prescription as dispensed if loaded from bridge ──
+      if (activePrescriptionId) {
+        api.patch(`/prescriptions/${activePrescriptionId}/dispense`, { sale_id: data.id }).catch(() => {});
+        setActivePrescriptionId(null);
+      }
       qc.invalidateQueries({ queryKey: ['dashboard'] });
+      qc.invalidateQueries({ queryKey: ['dispensing-queue'] });
       toast.success(`Bill ${data.bill_number} created!`);
     },
     onError: (err: any) => toast.error(err.response?.data?.message || 'Bill creation failed'),
@@ -253,6 +265,35 @@ export default function DispensingPage() {
     }
   };
 
+  // ── Load prescription into cart ──────────────────────────────────
+  const handleLoadPrescription = async ({ prescriptionId, patientName, doctorName, items }: any) => {
+    setActivePrescriptionId(prescriptionId);
+    setComplianceData(p => ({
+      ...p,
+      patient_name: patientName || p.patient_name,
+      doctor_name: doctorName || p.doctor_name,
+    }));
+    // Add medicines that have a matched medicine_id in stock
+    let loaded = 0;
+    for (const item of items) {
+      if (item.medicine_id) {
+        await handleAddMedicine({
+          id: item.medicine_id,
+          brand_name: item.medicine_name,
+          gst_percent: 0,
+          schedule_class: 'OTC',
+        });
+        loaded++;
+      }
+    }
+    setShowRxPanel(false);
+    if (loaded > 0) {
+      toast.success(`${loaded} medicine(s) loaded from prescription`);
+    } else {
+      toast('Prescription loaded — add medicines manually (no stock matches found)', { icon: '⚠️' });
+    }
+  };
+
   const handleSubstitute = async (original: CartItem, substitute: any, reason: string) => {
     const { data: bestBatch } = await api.get(`/stock/${substitute.id}/best-batch`);
     if (!bestBatch) { toast.error('No stock for this substitute'); return; }
@@ -286,6 +327,7 @@ export default function DispensingPage() {
     customer_name: complianceData.patient_name,
     doctor_name: complianceData.doctor_name,
     doctor_reg_no: complianceData.doctor_reg_no,
+    prescription_id: activePrescriptionId,
     items: cart.map((i) => ({
       medicine_id: i.medicine_id,
       batch_id: i.batch_id,
@@ -397,6 +439,14 @@ export default function DispensingPage() {
   return (
     <div className="flex h-full overflow-hidden">
 
+      {/* ── Prescription Bridge sidebar ── */}
+      <div className={cn(
+        'flex-shrink-0 border-r border-gray-100 bg-white transition-all duration-200 overflow-hidden',
+        showRxPanel ? 'w-72' : 'w-0',
+      )}>
+        <PrescriptionBridge onLoadPrescription={handleLoadPrescription} />
+      </div>
+
       {/* ── Main cart area ── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
@@ -433,6 +483,17 @@ export default function DispensingPage() {
                 </div>
               )}
             </div>
+            {/* ── Prescriptions toggle button ── */}
+            <button
+              onClick={() => setShowRxPanel(v => !v)}
+              className={cn(
+                'btn-secondary flex items-center gap-2 flex-shrink-0',
+                showRxPanel && 'bg-teal-50 border-teal-300 text-teal-700',
+              )}
+            >
+              <ClipboardList className="w-4 h-4" />
+              <span className="hidden sm:inline">Prescriptions</span>
+            </button>
             <button
               onClick={() => fileRef.current?.click()}
               className="btn-secondary flex items-center gap-2 flex-shrink-0"
@@ -448,6 +509,16 @@ export default function DispensingPage() {
               onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])}
             />
           </div>
+          {/* Active prescription indicator */}
+          {activePrescriptionId && (
+            <div className="mt-2 flex items-center gap-2 text-xs text-teal-700 bg-teal-50 border border-teal-200 rounded-lg px-3 py-1.5">
+              <ClipboardList className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>Prescription loaded — will be marked as dispensed after billing</span>
+              <button onClick={() => setActivePrescriptionId(null)} className="ml-auto text-teal-500 hover:text-teal-700">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* AI Review panel */}
@@ -486,7 +557,7 @@ export default function DispensingPage() {
           </div>
         )}
 
-        {/* Cart items — extra bottom padding on mobile for the sticky bar */}
+        {/* Cart items */}
         <div className="flex-1 overflow-y-auto p-4 space-y-2 pb-20 lg:pb-4">
           {cart.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-gray-400">
