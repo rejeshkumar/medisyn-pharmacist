@@ -21,7 +21,7 @@ export default function LoginPage() {
       const { data } = await api.post('/auth/login', { mobile, password });
       setAuth(data.access_token, data.user);
 toast.success(`Welcome, ${data.user.full_name}!`);
-router.push(data.user.role === 'doctor' ? '/doctor' : '/dashboard');
+router.push(data.user.role === 'doctor' ? '/doctor' : data.user.role === 'receptionist' ? '/receptionist' : '/dashboard');
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Login failed');
     } finally {
