@@ -45,6 +45,9 @@ export class BulkActivityLog {
   @Column({ nullable: true })
   error_file_url: string;
 
+
+  @Column({ default: '00000000-0000-0000-0000-000000000001' })
+  tenant_id: string;
   @CreateDateColumn()
   created_at: Date;
 }

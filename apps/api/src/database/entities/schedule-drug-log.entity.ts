@@ -66,6 +66,12 @@ export class ScheduleDrugLog {
   @Column({ nullable: true })
   substitution_reason: string;
 
+
+  @Column({ default: '00000000-0000-0000-0000-000000000001' })
+  tenant_id: string;
+
+  @Column({ nullable: true })
+  created_by: string;
   @CreateDateColumn()
   created_at: Date;
 }

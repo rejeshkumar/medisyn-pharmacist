@@ -13,14 +13,12 @@ import { StockService } from './stock.service';
 import { AddPurchaseDto } from './dto/add-purchase.dto';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { CreateSupplierDto } from './dto/create-supplier.dto';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '../database/entities/user.entity';
 
 @ApiTags('Stock')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
 @Controller('stock')
 export class StockController {
   constructor(private stockService: StockService) {}
@@ -32,6 +30,7 @@ export class StockController {
   @ApiQuery({ name: 'low_stock', required: false, type: Boolean })
   @ApiQuery({ name: 'schedule_class', required: false })
   getStockList(
+    @Request() req,
     @Query('search') search?: string,
     @Query('expiry_days') expiryDays?: number,
     @Query('low_stock') lowStock?: boolean,
@@ -40,10 +39,10 @@ export class StockController {
     @Query('molecule') molecule?: string,
     @Query('category') category?: string,
   ) {
-    return this.stockService.getStockList({
+    return this.stockService.getStockList(req.tenantId, {
       search,
       expiryDays: expiryDays ? Number(expiryDays) : undefined,
-      lowStock: lowStock === true || lowStock === ('true' as any),
+      lowStock:   lowStock === true || lowStock === ('true' as any),
       scheduleClass,
       supplierId,
       molecule,
@@ -53,38 +52,38 @@ export class StockController {
 
   @Get('alerts/low-stock')
   @ApiOperation({ summary: 'Get low stock alerts' })
-  getLowStockAlerts(@Query('threshold') threshold?: number) {
-    return this.stockService.getLowStockAlerts(threshold ? Number(threshold) : 10);
+  getLowStockAlerts(@Request() req, @Query('threshold') threshold?: number) {
+    return this.stockService.getLowStockAlerts(req.tenantId, threshold ? Number(threshold) : 10);
   }
 
   @Get('alerts/near-expiry')
   @ApiOperation({ summary: 'Get near expiry alerts' })
-  getNearExpiryAlerts(@Query('days') days?: number) {
-    return this.stockService.getNearExpiryAlerts(days ? Number(days) : 90);
+  getNearExpiryAlerts(@Request() req, @Query('days') days?: number) {
+    return this.stockService.getNearExpiryAlerts(req.tenantId, days ? Number(days) : 90);
   }
 
   @Get('suppliers')
   @ApiOperation({ summary: 'List all suppliers' })
-  getSuppliers() {
-    return this.stockService.getSuppliers();
+  getSuppliers(@Request() req) {
+    return this.stockService.getSuppliers(req.tenantId);
   }
 
   @Post('suppliers')
   @ApiOperation({ summary: 'Create a supplier' })
-  createSupplier(@Body() dto: CreateSupplierDto) {
-    return this.stockService.createSupplier(dto);
+  createSupplier(@Body() dto: CreateSupplierDto, @Request() req) {
+    return this.stockService.createSupplier(dto, req.user);
   }
 
   @Get(':medicine_id/batches')
   @ApiOperation({ summary: 'Get batches for a medicine' })
-  getBatches(@Param('medicine_id') medicineId: string) {
-    return this.stockService.getBatchesForMedicine(medicineId);
+  getBatches(@Param('medicine_id') medicineId: string, @Request() req) {
+    return this.stockService.getBatchesForMedicine(medicineId, req.tenantId);
   }
 
   @Get(':medicine_id/best-batch')
   @ApiOperation({ summary: 'Get best batch (nearest safe expiry)' })
-  getBestBatch(@Param('medicine_id') medicineId: string) {
-    return this.stockService.getBestBatch(medicineId);
+  getBestBatch(@Param('medicine_id') medicineId: string, @Request() req) {
+    return this.stockService.getBestBatch(medicineId, req.tenantId);
   }
 
   @Post('purchase')
@@ -92,7 +91,7 @@ export class StockController {
   @Roles(UserRole.OWNER, UserRole.PHARMACIST)
   @ApiOperation({ summary: 'Add stock via purchase invoice' })
   addPurchase(@Body() dto: AddPurchaseDto, @Request() req) {
-    return this.stockService.addPurchase(dto, req.user.id);
+    return this.stockService.addPurchase(dto, req.user);
   }
 
   @Post('adjust')
@@ -100,6 +99,6 @@ export class StockController {
   @Roles(UserRole.OWNER, UserRole.PHARMACIST)
   @ApiOperation({ summary: 'Adjust stock (expiry/damage/sample)' })
   adjustStock(@Body() dto: AdjustStockDto, @Request() req) {
-    return this.stockService.adjustStock(dto, req.user.id);
+    return this.stockService.adjustStock(dto, req.user);
   }
 }

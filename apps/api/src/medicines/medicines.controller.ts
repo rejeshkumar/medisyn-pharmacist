@@ -7,19 +7,18 @@ import {
   Param,
   Query,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { MedicinesService } from './medicines.service';
 import { CreateMedicineDto } from './dto/create-medicine.dto';
 import { UpdateMedicineDto } from './dto/update-medicine.dto';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '../database/entities/user.entity';
 
 @ApiTags('Medicines')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
 @Controller('medicines')
 export class MedicinesController {
   constructor(private medicinesService: MedicinesService) {}
@@ -30,52 +29,53 @@ export class MedicinesController {
   @ApiQuery({ name: 'category', required: false })
   @ApiQuery({ name: 'schedule_class', required: false })
   findAll(
+    @Request() req,
     @Query('search') search?: string,
     @Query('category') category?: string,
     @Query('schedule_class') scheduleClass?: string,
   ) {
-    return this.medicinesService.findAll(search, category, scheduleClass);
+    return this.medicinesService.findAll(req.tenantId, search, category, scheduleClass);
   }
 
   @Get('with-stock')
   @ApiOperation({ summary: 'Get all medicines with their available stock' })
-  getWithStock() {
-    return this.medicinesService.getWithStock();
+  getWithStock(@Request() req) {
+    return this.medicinesService.getWithStock(req.tenantId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get medicine by ID' })
-  findOne(@Param('id') id: string) {
-    return this.medicinesService.findOne(id);
+  findOne(@Param('id') id: string, @Request() req) {
+    return this.medicinesService.findOne(id, req.tenantId);
   }
 
   @Get(':id/substitutes')
   @ApiOperation({ summary: 'Get substitute medicines for a given medicine' })
-  getSubstitutes(@Param('id') id: string) {
-    return this.medicinesService.getSubstitutes(id);
+  getSubstitutes(@Param('id') id: string, @Request() req) {
+    return this.medicinesService.getSubstitutes(id, req.tenantId);
   }
 
   @Post()
   @UseGuards(RolesGuard)
   @Roles(UserRole.OWNER, UserRole.PHARMACIST)
   @ApiOperation({ summary: 'Add a new medicine to master' })
-  create(@Body() dto: CreateMedicineDto) {
-    return this.medicinesService.create(dto);
+  create(@Body() dto: CreateMedicineDto, @Request() req) {
+    return this.medicinesService.create(dto, req.user);
   }
 
   @Patch(':id')
   @UseGuards(RolesGuard)
   @Roles(UserRole.OWNER, UserRole.PHARMACIST)
   @ApiOperation({ summary: 'Update medicine details' })
-  update(@Param('id') id: string, @Body() dto: UpdateMedicineDto) {
-    return this.medicinesService.update(id, dto);
+  update(@Param('id') id: string, @Body() dto: UpdateMedicineDto, @Request() req) {
+    return this.medicinesService.update(id, dto, req.user);
   }
 
   @Patch(':id/deactivate')
   @UseGuards(RolesGuard)
   @Roles(UserRole.OWNER)
   @ApiOperation({ summary: 'Deactivate medicine (Owner only)' })
-  deactivate(@Param('id') id: string) {
-    return this.medicinesService.deactivate(id);
+  deactivate(@Param('id') id: string, @Request() req) {
+    return this.medicinesService.deactivate(id, req.user);
   }
 }

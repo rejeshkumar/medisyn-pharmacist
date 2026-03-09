@@ -2,13 +2,16 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
-import { AuthService } from './auth.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { User, UserStatus } from '../database/entities/user.entity';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     configService: ConfigService,
-    private authService: AuthService,
+    @InjectRepository(User)
+    private usersRepo: Repository<User>,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -18,8 +21,27 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
-    const user = await this.authService.validateUser(payload.sub);
-    if (!user) throw new UnauthorizedException();
-    return user;
+    // Load full user from DB on every request to get latest status + tenant_id
+    const user = await this.usersRepo.findOne({
+      where: { id: payload.sub },
+      relations: ['tenant'],
+    });
+
+    if (!user || user.status === UserStatus.INACTIVE) {
+      throw new UnauthorizedException();
+    }
+
+    if (!user.tenant_id) {
+      throw new UnauthorizedException('User has no tenant assigned');
+    }
+
+    // This object becomes request.user — available in all guards and controllers
+    return {
+      id:          user.id,
+      full_name:   user.full_name,
+      role:        user.role,
+      tenant_id:   user.tenant_id,
+      tenant_mode: user.tenant?.mode ?? 'full',
+    };
   }
 }

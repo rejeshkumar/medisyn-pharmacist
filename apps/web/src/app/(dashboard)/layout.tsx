@@ -17,25 +17,26 @@ import {
   Shield,
   LogOut,
   ChevronRight,
-  Bell,
   Menu,
   X,
   HeartPulse,
+  ClipboardList,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
 const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['owner', 'pharmacist', 'assistant'] },
-  { href: '/patients', label: 'Patients', icon: HeartPulse, roles: ['owner', 'pharmacist', 'assistant'] },
-  { href: '/dispensing', label: 'Dispense', icon: ShoppingCart, roles: ['owner', 'pharmacist'] },
-  { href: '/medicines', label: 'Medicines', icon: Pill, roles: ['owner', 'pharmacist', 'assistant'] },
-  { href: '/stock', label: 'Stock', icon: Package, roles: ['owner', 'pharmacist', 'assistant'] },
-  { href: '/billing', label: 'Bills', icon: FileText, roles: ['owner', 'pharmacist'] },
-  { href: '/compliance', label: 'Schedule Log', icon: Shield, roles: ['owner', 'pharmacist'] },
-  { href: '/reports', label: 'Reports', icon: BarChart3, roles: ['owner', 'pharmacist'] },
-  { href: '/bulk', label: 'Bulk Upload', icon: Upload, roles: ['owner'] },
-  { href: '/users', label: 'Users', icon: Users, roles: ['owner'] },
+  { href: '/dashboard',  label: 'Dashboard',    icon: LayoutDashboard, roles: ['owner', 'pharmacist', 'assistant'] },
+  { href: '/patients',   label: 'Patients',      icon: HeartPulse,      roles: ['owner', 'pharmacist', 'assistant'] },
+  { href: '/dispensing', label: 'Dispense',      icon: ShoppingCart,    roles: ['owner', 'pharmacist'] },
+  { href: '/medicines',  label: 'Medicines',     icon: Pill,            roles: ['owner', 'pharmacist', 'assistant'] },
+  { href: '/stock',      label: 'Stock',         icon: Package,         roles: ['owner', 'pharmacist', 'assistant'] },
+  { href: '/billing',    label: 'Bills',         icon: FileText,        roles: ['owner', 'pharmacist'] },
+  { href: '/compliance', label: 'Schedule Log',  icon: Shield,          roles: ['owner', 'pharmacist'] },
+  { href: '/reports',    label: 'Reports',       icon: BarChart3,       roles: ['owner', 'pharmacist'] },
+  { href: '/audit',      label: 'Audit Log',     icon: ClipboardList,   roles: ['owner'] },
+  { href: '/bulk',       label: 'Bulk Upload',   icon: Upload,          roles: ['owner'] },
+  { href: '/users',      label: 'Users',         icon: Users,           roles: ['owner'] },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

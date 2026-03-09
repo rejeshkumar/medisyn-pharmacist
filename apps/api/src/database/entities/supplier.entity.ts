@@ -30,6 +30,15 @@ export class Supplier {
   @OneToMany(() => StockBatch, (batch) => batch.supplier)
   batches: StockBatch[];
 
+
+  @Column({ default: '00000000-0000-0000-0000-000000000001' })
+  tenant_id: string;
+
+  @Column({ nullable: true })
+  created_by: string;
+
+  @Column({ nullable: true })
+  updated_by: string;
   @CreateDateColumn()
   created_at: Date;
 }

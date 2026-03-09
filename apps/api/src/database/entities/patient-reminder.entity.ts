@@ -51,6 +51,9 @@ export class PatientReminder {
   @JoinColumn({ name: 'created_by' })
   creator: User;
 
+
+  @Column({ default: '00000000-0000-0000-0000-000000000001' })
+  tenant_id: string;
   @CreateDateColumn()
   created_at: Date;
 }

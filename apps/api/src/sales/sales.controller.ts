@@ -5,20 +5,18 @@ import {
   Body,
   Param,
   Query,
-  UseGuards,
   Request,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { SalesService } from './sales.service';
 import { CreateSaleDto } from './dto/create-sale.dto';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '../database/entities/user.entity';
+import { UseGuards } from '@nestjs/common';
 
 @ApiTags('Sales')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
 @Controller('sales')
 export class SalesController {
   constructor(private salesService: SalesService) {}
@@ -26,7 +24,7 @@ export class SalesController {
   @Post()
   @ApiOperation({ summary: 'Create a new bill / sale' })
   create(@Body() dto: CreateSaleDto, @Request() req) {
-    return this.salesService.createSale(dto, req.user.id);
+    return this.salesService.createSale(dto, req.user);
   }
 
   @Get()
@@ -35,23 +33,24 @@ export class SalesController {
   @ApiQuery({ name: 'to', required: false })
   @ApiQuery({ name: 'search', required: false })
   findAll(
+    @Request() req,
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('search') search?: string,
   ) {
-    return this.salesService.findAll(from, to, search);
+    return this.salesService.findAll(req.tenantId, from, to, search);
   }
 
   @Get('bill/:billNumber')
   @ApiOperation({ summary: 'Get sale by bill number' })
-  findByBillNumber(@Param('billNumber') billNumber: string) {
-    return this.salesService.findByBillNumber(billNumber);
+  findByBillNumber(@Param('billNumber') billNumber: string, @Request() req) {
+    return this.salesService.findByBillNumber(billNumber, req.tenantId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get sale details by ID' })
-  findOne(@Param('id') id: string) {
-    return this.salesService.findOne(id);
+  findOne(@Param('id') id: string, @Request() req) {
+    return this.salesService.findOne(id, req.tenantId);
   }
 
   @Post(':id/void')
@@ -63,6 +62,6 @@ export class SalesController {
     @Body() body: { reason: string },
     @Request() req,
   ) {
-    return this.salesService.voidSale(id, body.reason, req.user.id);
+    return this.salesService.voidSale(id, body.reason, req.user);
   }
 }

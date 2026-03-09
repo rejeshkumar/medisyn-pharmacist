@@ -97,6 +97,12 @@ export class Patient {
   @OneToMany(() => PatientReminder, (r) => r.patient)
   reminders: PatientReminder[];
 
+
+  @Column({ default: '00000000-0000-0000-0000-000000000001' })
+  tenant_id: string;
+
+  @Column({ nullable: true })
+  updated_by: string;
   @CreateDateColumn()
   created_at: Date;
 

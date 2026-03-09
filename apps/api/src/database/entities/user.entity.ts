@@ -4,18 +4,21 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
-  OneToMany,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { Exclude } from 'class-transformer';
+import { Tenant } from './tenant.entity';
 
 export enum UserRole {
-  OWNER = 'owner',
+  OWNER      = 'owner',
   PHARMACIST = 'pharmacist',
-  ASSISTANT = 'assistant',
+  ASSISTANT  = 'assistant',
+  DOCTOR     = 'doctor',
 }
 
 export enum UserStatus {
-  ACTIVE = 'active',
+  ACTIVE   = 'active',
   INACTIVE = 'inactive',
 }
 
@@ -24,6 +27,15 @@ export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  // ── Tenant isolation ──────────────────────────────────
+  @Column({ default: '00000000-0000-0000-0000-000000000001' })
+  tenant_id: string;
+
+  @ManyToOne(() => Tenant)
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
+
+  // ── Core fields ───────────────────────────────────────
   @Column()
   full_name: string;
 
@@ -39,6 +51,13 @@ export class User {
 
   @Column({ type: 'enum', enum: UserStatus, default: UserStatus.ACTIVE })
   status: UserStatus;
+
+  // ── Audit trail ───────────────────────────────────────
+  @Column({ nullable: true })
+  created_by: string;
+
+  @Column({ nullable: true })
+  updated_by: string;
 
   @CreateDateColumn()
   created_at: Date;
