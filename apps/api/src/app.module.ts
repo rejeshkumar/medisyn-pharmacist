@@ -24,6 +24,7 @@ import { ReportsModule } from './reports/reports.module';
 import { PatientsModule } from './patients/patients.module';
 import { TenantsModule } from './tenants/tenants.module';
 import { AuditModule } from './audit/audit.module';
+import { AiModule } from './ai/ai.module';
 import { AvailabilityModule } from './availability/availability.module';
 import { QueueModule } from './queue/queue.module';
 import { ConsultationModule } from './consultation/consultation.module';
@@ -72,6 +73,7 @@ import { ConsultationModule } from './consultation/consultation.module';
     ReportsModule,
     PatientsModule,
     QueueModule,
+    AiModule,
     AvailabilityModule,
     ConsultationModule,
   ],

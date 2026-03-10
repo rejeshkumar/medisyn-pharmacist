@@ -1,3 +1,4 @@
+import PrescriptionScanner from '@/components/ai/PrescriptionScanner';
 'use client';
 
 import { useState, useRef } from 'react';
