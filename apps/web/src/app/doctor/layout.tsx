@@ -8,7 +8,7 @@ import { getUser, clearAuth } from '@/lib/auth';
 import {
   LayoutDashboard,
   Users,
-  ClipboardList,
+  ClipboardList, Clock,
   LogOut,
   ChevronRight,
   Menu,
@@ -22,6 +22,7 @@ const navItems = [
   { href: '/doctor',             label: 'My Queue',      icon: LayoutDashboard },
   { href: '/doctor/patients',    label: 'Patients',      icon: Users },
   { href: '/doctor/history',     label: 'Consultations', icon: ClipboardList },
+  { href: '/doctor/availability', label: 'My Availability', icon: Clock },
 ];
 
 export default function DoctorLayout({ children }: { children: React.ReactNode }) {
