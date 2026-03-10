@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
-import { getToken, getUser } from '@/lib/auth';
+import { getToken } from '@/lib/auth';
 import {
   Search, User, Phone, Calendar, Droplets, AlertCircle,
   ChevronRight, ClipboardList, Pill, X, Loader2, FileText
@@ -16,16 +16,16 @@ const patientInitial = (p: any) => patientName(p)[0]?.toUpperCase() || '?';
 
 interface Patient {
   id: string;
-  full_name: string;
+  full_name?: string;
+  first_name?: string;
+  last_name?: string;
   mobile: string;
   date_of_birth?: string;
+  dob?: string;
   gender?: string;
   blood_group?: string;
   known_allergies?: string;
   chronic_conditions?: string;
-  emergency_contact_name?: string;
-  emergency_contact_phone?: string;
-  created_at: string;
 }
 
 interface Consultation {
@@ -44,7 +44,7 @@ interface Consultation {
   };
 }
 
-export default function DoctorPatientsPage() {
+export default function ReceptionistPatientsPage() {
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -95,9 +95,11 @@ export default function DoctorPatientsPage() {
     return Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
   };
 
+  const patientDob = (p: Patient) => p.date_of_birth || p.dob;
+
   return (
     <div className="flex h-full">
-      {/* Left panel — search */}
+      {/* Left panel */}
       <div className="w-80 flex-shrink-0 border-r border-slate-100 flex flex-col bg-white">
         <div className="p-4 border-b border-slate-100">
           <h2 className="font-semibold text-slate-800 mb-3">Patient Search</h2>
@@ -144,7 +146,7 @@ export default function DoctorPatientsPage() {
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-medium text-slate-800 truncate">{patientName(p)}</p>
-                <p className="text-xs text-slate-400">{p.mobile}{age(p.date_of_birth) ? ` · ${age(p.date_of_birth)}y` : ''}{p.gender ? ` · ${p.gender}` : ''}</p>
+                <p className="text-xs text-slate-400">{p.mobile}{age(patientDob(p)) ? ` · ${age(patientDob(p))}y` : ''}{p.gender ? ` · ${p.gender}` : ''}</p>
               </div>
               <ChevronRight className="w-4 h-4 text-slate-300 ml-auto flex-shrink-0" />
             </button>
@@ -152,7 +154,7 @@ export default function DoctorPatientsPage() {
         </div>
       </div>
 
-      {/* Right panel — patient detail */}
+      {/* Right panel */}
       <div className="flex-1 overflow-y-auto bg-slate-50">
         {!selected ? (
           <div className="flex flex-col items-center justify-center h-full text-slate-400">
@@ -161,7 +163,6 @@ export default function DoctorPatientsPage() {
           </div>
         ) : (
           <div className="p-6 max-w-3xl">
-            {/* Patient card */}
             <div className="bg-white rounded-xl border border-slate-100 p-5 mb-6 shadow-sm">
               <div className="flex items-start gap-4">
                 <div className="w-14 h-14 rounded-full bg-teal-100 flex items-center justify-center text-[#00475a] font-bold text-xl flex-shrink-0">
@@ -171,17 +172,11 @@ export default function DoctorPatientsPage() {
                   <h2 className="text-lg font-bold text-slate-800">{patientName(selected)}</h2>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
                     <span className="text-sm text-slate-500 flex items-center gap-1"><Phone className="w-3 h-3" />{selected.mobile}</span>
-                    {selected.date_of_birth && <span className="text-sm text-slate-500 flex items-center gap-1"><Calendar className="w-3 h-3" />{age(selected.date_of_birth)} years</span>}
+                    {patientDob(selected) && <span className="text-sm text-slate-500 flex items-center gap-1"><Calendar className="w-3 h-3" />{age(patientDob(selected))} years</span>}
                     {selected.gender && <span className="text-sm text-slate-500 capitalize">{selected.gender}</span>}
                     {selected.blood_group && <span className="text-sm text-slate-500 flex items-center gap-1"><Droplets className="w-3 h-3 text-red-400" />{selected.blood_group}</span>}
                   </div>
                 </div>
-                <button
-                  onClick={() => router.push(`/doctor/consult/new?patientId=${selected.id}`)}
-                  className="text-xs bg-[#00475a] text-white px-3 py-1.5 rounded-lg hover:bg-[#00475a]/90 transition-colors flex-shrink-0"
-                >
-                  + New Consult
-                </button>
               </div>
 
               {(selected.known_allergies || selected.chronic_conditions) && (
@@ -202,7 +197,6 @@ export default function DoctorPatientsPage() {
               )}
             </div>
 
-            {/* Consultation history */}
             <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide mb-3">Consultation History</h3>
 
             {loadingHistory && (
@@ -257,12 +251,6 @@ export default function DoctorPatientsPage() {
                             <p className="text-sm text-slate-800">{c.notes}</p>
                           </div>
                         )}
-                        {c.follow_up_date && (
-                          <div>
-                            <p className="text-xs font-semibold text-slate-500 mb-1">Follow-up</p>
-                            <p className="text-sm text-slate-800">{format(new Date(c.follow_up_date), 'dd MMM yyyy')}</p>
-                          </div>
-                        )}
                       </div>
 
                       {c.prescription && c.prescription.items?.length > 0 && (
@@ -280,7 +268,6 @@ export default function DoctorPatientsPage() {
                                   <th className="text-left px-3 py-2 text-slate-500 font-medium">Medicine</th>
                                   <th className="text-left px-3 py-2 text-slate-500 font-medium">Dosage</th>
                                   <th className="text-left px-3 py-2 text-slate-500 font-medium">Frequency</th>
-                                  <th className="text-left px-3 py-2 text-slate-500 font-medium">Duration</th>
                                   <th className="text-right px-3 py-2 text-slate-500 font-medium">Qty</th>
                                 </tr>
                               </thead>
@@ -290,7 +277,6 @@ export default function DoctorPatientsPage() {
                                     <td className="px-3 py-2 font-medium text-slate-800">{item.medicine_name}</td>
                                     <td className="px-3 py-2 text-slate-600">{item.dosage}</td>
                                     <td className="px-3 py-2 text-slate-600">{item.frequency}</td>
-                                    <td className="px-3 py-2 text-slate-600">{item.duration}</td>
                                     <td className="px-3 py-2 text-right text-slate-600">{item.quantity}</td>
                                   </tr>
                                 ))}
