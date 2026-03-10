@@ -25,6 +25,44 @@ const roleColors: Record<string, string> = {
   nurse:        'bg-pink-100 text-pink-700 border-pink-200',
 };
 
+// Show all roles a user has (roles[] array, fallback to single role)
+function RoleBadges({ user }: { user: any }) {
+  const roles: string[] = user.roles?.length ? user.roles : [user.role];
+  return (
+    <div className="flex flex-wrap gap-1">
+      {roles.map(r => (
+        <span key={r} className={`badge capitalize text-xs ${roleColors[r] || 'bg-gray-100'}`}>{r}</span>
+      ))}
+    </div>
+  );
+}
+
+// Multi-role checkbox picker
+function RolePicker({ selected, onChange }: { selected: string[]; onChange: (roles: string[]) => void }) {
+  const toggle = (role: string) => {
+    onChange(selected.includes(role) ? selected.filter(r => r !== role) : [...selected, role]);
+  };
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {ALL_ROLES.map(r => (
+        <label key={r.value} className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors text-sm ${
+          selected.includes(r.value)
+            ? 'border-indigo-400 bg-indigo-50 text-indigo-700 font-medium'
+            : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+        }`}>
+          <input type="checkbox" checked={selected.includes(r.value)} onChange={() => toggle(r.value)} className="hidden" />
+          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+            selected.includes(r.value) ? 'border-indigo-500 bg-indigo-500' : 'border-gray-300'
+          }`}>
+            {selected.includes(r.value) && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 10 10"><path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+          </div>
+          {r.label}
+        </label>
+      ))}
+    </div>
+  );
+}
+
 export default function UsersPage() {
   const [showForm, setShowForm]           = useState(false);
   const [showEditForm, setShowEditForm]   = useState(false);
@@ -33,8 +71,13 @@ export default function UsersPage() {
   const [newPassword, setNewPassword]     = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  const [form, setForm] = useState({ full_name: '', mobile: '', password: '', role: 'pharmacist' });
-  const [editForm, setEditForm] = useState({ full_name: '', mobile: '', role: '' });
+  const [form, setForm] = useState({
+    full_name: '', mobile: '', password: '',
+    role: 'pharmacist', roles: ['pharmacist'],
+  });
+  const [editForm, setEditForm] = useState({
+    full_name: '', mobile: '', role: '', roles: [] as string[],
+  });
 
   const qc = useQueryClient();
 
@@ -48,7 +91,7 @@ export default function UsersPage() {
     onSuccess: () => {
       toast.success('User created');
       setShowForm(false);
-      setForm({ full_name: '', mobile: '', password: '', role: 'pharmacist' });
+      setForm({ full_name: '', mobile: '', password: '', role: 'pharmacist', roles: ['pharmacist'] });
       qc.invalidateQueries({ queryKey: ['users'] });
     },
     onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to create user'),
@@ -90,7 +133,8 @@ export default function UsersPage() {
 
   const openEdit = (user: any) => {
     setSelectedUser(user);
-    setEditForm({ full_name: user.full_name, mobile: user.mobile, role: user.role });
+    const existingRoles: string[] = user.roles?.length ? user.roles : [user.role];
+    setEditForm({ full_name: user.full_name, mobile: user.mobile, role: user.role, roles: existingRoles });
     setShowEditForm(true);
   };
 
@@ -99,6 +143,14 @@ export default function UsersPage() {
     if (newPassword.length < 6) { toast.error('Minimum 6 characters'); return; }
     if (newPassword !== confirmPassword) { toast.error('Passwords do not match'); return; }
     resetPasswordMutation.mutate({ id: selectedUser.id, password: newPassword });
+  };
+
+  // Keep primary role in sync with roles array
+  const handleCreateRoles = (roles: string[]) => {
+    setForm(f => ({ ...f, roles, role: roles[0] || 'pharmacist' }));
+  };
+  const handleEditRoles = (roles: string[]) => {
+    setEditForm(f => ({ ...f, roles, role: roles[0] || f.role }));
   };
 
   return (
@@ -134,7 +186,7 @@ export default function UsersPage() {
                     <p className="text-xs font-mono text-gray-500">{user.mobile}</p>
                   </div>
                   <div className="flex flex-col items-end gap-1">
-                    <span className={`badge capitalize text-xs ${roleColors[user.role] || 'bg-gray-100'}`}>{user.role}</span>
+                    <RoleBadges user={user} />
                     <span className={`badge text-xs ${user.status === 'active' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>{user.status}</span>
                   </div>
                 </div>
@@ -159,7 +211,7 @@ export default function UsersPage() {
                 <tr>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Name</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Mobile</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Role</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Roles</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Joined</th>
                   <th className="px-4 py-3 font-medium text-gray-600">Actions</th>
@@ -177,7 +229,7 @@ export default function UsersPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3 font-mono text-xs text-gray-600">{user.mobile}</td>
-                    <td className="px-4 py-3"><span className={`badge capitalize ${roleColors[user.role] || 'bg-gray-100'}`}>{user.role}</span></td>
+                    <td className="px-4 py-3"><RoleBadges user={user} /></td>
                     <td className="px-4 py-3"><span className={`badge ${user.status === 'active' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>{user.status}</span></td>
                     <td className="px-4 py-3 text-xs text-gray-500">{formatDate(user.created_at)}</td>
                     <td className="px-4 py-3">
@@ -225,17 +277,19 @@ export default function UsersPage() {
                 <input className="input" value={editForm.mobile} onChange={(e) => setEditForm({ ...editForm, mobile: e.target.value })} placeholder="10-digit mobile" maxLength={10} />
               </div>
               <div>
-                <label className="label">Role *</label>
-                <select className="input" value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}>
-                  {ALL_ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-                </select>
+                <label className="label mb-2 block">Roles * <span className="text-xs text-gray-400 font-normal">(select all that apply)</span></label>
+                <RolePicker selected={editForm.roles} onChange={handleEditRoles} />
+                {editForm.roles.length === 0 && <p className="text-xs text-red-500 mt-1">Select at least one role</p>}
+                {editForm.roles.length > 1 && (
+                  <p className="text-xs text-blue-600 mt-2">Primary role (for login redirect): <span className="font-semibold capitalize">{editForm.roles[0]}</span></p>
+                )}
               </div>
             </div>
             <div className="p-5 border-t flex gap-3">
               <button onClick={() => { setShowEditForm(false); setSelectedUser(null); }} className="btn-secondary flex-1">Cancel</button>
               <button
-                onClick={() => updateMutation.mutate({ id: selectedUser.id, data: editForm })}
-                disabled={updateMutation.isPending || !editForm.full_name || !editForm.mobile}
+                onClick={() => updateMutation.mutate({ id: selectedUser.id, data: { ...editForm, roles: editForm.roles, role: editForm.roles[0] || editForm.role } })}
+                disabled={updateMutation.isPending || !editForm.full_name || !editForm.mobile || editForm.roles.length === 0}
                 className="btn-primary flex-1 flex items-center justify-center gap-2"
               >
                 {updateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pencil className="w-4 h-4" />}
@@ -309,17 +363,16 @@ export default function UsersPage() {
                 <input type="password" className="input" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Min 6 characters" />
               </div>
               <div>
-                <label className="label">Role *</label>
-                <select className="input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-                  {ALL_ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-                </select>
+                <label className="label mb-2 block">Roles * <span className="text-xs text-gray-400 font-normal">(select all that apply)</span></label>
+                <RolePicker selected={form.roles} onChange={handleCreateRoles} />
+                {form.roles.length === 0 && <p className="text-xs text-red-500 mt-1">Select at least one role</p>}
               </div>
             </div>
             <div className="p-5 border-t flex gap-3">
               <button onClick={() => setShowForm(false)} className="btn-secondary flex-1">Cancel</button>
               <button
-                onClick={() => createMutation.mutate(form)}
-                disabled={createMutation.isPending || !form.full_name || !form.mobile || !form.password}
+                onClick={() => createMutation.mutate({ ...form, roles: form.roles, role: form.roles[0] || form.role })}
+                disabled={createMutation.isPending || !form.full_name || !form.mobile || !form.password || form.roles.length === 0}
                 className="btn-primary flex-1 flex items-center justify-center gap-2"
               >
                 {createMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}

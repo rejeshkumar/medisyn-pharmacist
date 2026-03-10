@@ -21,7 +21,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
-    // Load full user from DB on every request to get latest status + tenant_id
     const user = await this.usersRepo.findOne({
       where: { id: payload.sub },
       relations: ['tenant'],
@@ -35,11 +34,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('User has no tenant assigned');
     }
 
-    // This object becomes request.user — available in all guards and controllers
+    // Support both single role (legacy) and roles array (new)
+    const roles: string[] = (user as any).roles?.length
+      ? (user as any).roles
+      : [user.role];
+
     return {
       id:          user.id,
+      sub:         user.id,
       full_name:   user.full_name,
-      role:        user.role,
+      role:        user.role,       // keep for backward compat
+      roles:       roles,           // new multi-role array
       tenant_id:   user.tenant_id,
       tenant_mode: user.tenant?.mode ?? 'full',
     };
