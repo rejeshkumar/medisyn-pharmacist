@@ -8,19 +8,29 @@ export class ClaudeService {
   private readonly hasKey: boolean;
 
   constructor() {
-    this.hasKey = !!process.env.ANTHROPIC_API_KEY;
-    if (!this.hasKey) {
+    // Strip any accidental whitespace/newlines from the key
+    const rawKey = (process.env.ANTHROPIC_API_KEY || '').trim().replace(/\s+/g, '');
+    // A valid Anthropic key starts with sk-ant-
+    const validKey = rawKey.startsWith('sk-ant-') ? rawKey : '';
+    this.hasKey = !!validKey;
+    if (!validKey && rawKey) {
+      this.logger.error(`ANTHROPIC_API_KEY is set but malformed (value: "${rawKey.slice(0, 30)}..."). It must start with sk-ant-`);
+    } else if (!validKey) {
       this.logger.warn('ANTHROPIC_API_KEY is not set — all AI features will fail');
     }
     this.client = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY || 'missing',
+      apiKey: validKey || 'missing',
     });
   }
 
   // ── Health check: verifies the key is set and valid ───────────────
   async healthCheck(): Promise<{ ok: boolean; reason?: string }> {
     if (!this.hasKey) {
-      return { ok: false, reason: 'ANTHROPIC_API_KEY environment variable is not set on the server' };
+      const raw = (process.env.ANTHROPIC_API_KEY || '').trim();
+      if (raw && !raw.startsWith('sk-ant-')) {
+        return { ok: false, reason: `ANTHROPIC_API_KEY is malformed — it must start with "sk-ant-" but got "${raw.slice(0, 20)}...". Fix the Railway variable.` };
+      }
+      return { ok: false, reason: 'ANTHROPIC_API_KEY is not set in Railway environment variables' };
     }
     try {
       await this.client.messages.create({
