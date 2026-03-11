@@ -34,9 +34,11 @@ export class AuthService {
     if (!isPasswordValid) throw new UnauthorizedException('Invalid credentials');
 
     // JWT now carries tenant context — this is what TenantGuard reads
+    const userRoles = user.roles?.length ? user.roles : [user.role];
     const payload = {
       sub:         user.id,
       role:        user.role,
+      roles:       userRoles,
       name:        user.full_name,
       tenant_id:   user.tenant_id,
       tenant_mode: user.tenant.mode,
@@ -51,6 +53,7 @@ export class AuthService {
         full_name:   user.full_name,
         mobile:      user.mobile,
         role:        user.role,
+        roles:       userRoles,
         tenant_id:   user.tenant_id,
         tenant_mode: user.tenant.mode,
       },
