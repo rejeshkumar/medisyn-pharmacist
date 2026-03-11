@@ -94,8 +94,9 @@ export default function VoiceInput({ patientContext, onNotesReady }: Props) {
       onNotesReady(r.data);
       setState('done');
       toast.success('Notes structured successfully');
-    } catch {
-      toast.error('Failed to process notes');
+    } catch (e: any) {
+      const reason = e?.response?.data?.message || 'Failed to process notes';
+      toast.error(reason, { duration: 6000 });
       setState('idle');
     }
   };

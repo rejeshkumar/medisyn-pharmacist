@@ -5,11 +5,37 @@ import Anthropic from '@anthropic-ai/sdk';
 export class ClaudeService {
   private readonly logger = new Logger(ClaudeService.name);
   private client: Anthropic;
+  private readonly hasKey: boolean;
 
   constructor() {
+    this.hasKey = !!process.env.ANTHROPIC_API_KEY;
+    if (!this.hasKey) {
+      this.logger.warn('ANTHROPIC_API_KEY is not set — all AI features will fail');
+    }
     this.client = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
+      apiKey: process.env.ANTHROPIC_API_KEY || 'missing',
     });
+  }
+
+  // ── Health check: verifies the key is set and valid ───────────────
+  async healthCheck(): Promise<{ ok: boolean; reason?: string }> {
+    if (!this.hasKey) {
+      return { ok: false, reason: 'ANTHROPIC_API_KEY environment variable is not set on the server' };
+    }
+    try {
+      await this.client.messages.create({
+        model: 'claude-haiku-4-5',
+        max_tokens: 10,
+        messages: [{ role: 'user', content: 'reply ok' }],
+      });
+      return { ok: true };
+    } catch (e: any) {
+      const msg = e?.message || String(e);
+      if (msg.includes('401') || msg.includes('authentication') || msg.includes('invalid x-api-key')) {
+        return { ok: false, reason: 'ANTHROPIC_API_KEY is set but invalid or expired' };
+      }
+      return { ok: false, reason: `API call failed: ${msg}` };
+    }
   }
 
   // ── 3.1 OCR: Extract medicines from prescription image ─────────────
