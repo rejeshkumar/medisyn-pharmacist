@@ -5,9 +5,10 @@ import { PatientsService } from './patients.service';
 import { Patient } from '../database/entities/patient.entity';
 import { PatientAppointment } from '../database/entities/patient-appointment.entity';
 import { PatientReminder } from '../database/entities/patient-reminder.entity';
+import { AuditModule } from '../audit/audit.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Patient, PatientAppointment, PatientReminder])],
+  imports: [TypeOrmModule.forFeature([Patient, PatientAppointment, PatientReminder]), AuditModule],
   controllers: [PatientsController],
   providers: [PatientsService],
   exports: [PatientsService],

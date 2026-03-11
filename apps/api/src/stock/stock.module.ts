@@ -6,9 +6,10 @@ import { StockBatch } from '../database/entities/stock-batch.entity';
 import { StockAdjustment } from '../database/entities/stock-adjustment.entity';
 import { Supplier } from '../database/entities/supplier.entity';
 import { Medicine } from '../database/entities/medicine.entity';
+import { AuditModule } from '../audit/audit.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([StockBatch, StockAdjustment, Supplier, Medicine])],
+  imports: [TypeOrmModule.forFeature([StockBatch, StockAdjustment, Supplier, Medicine]), AuditModule],
   controllers: [StockController],
   providers: [StockService],
   exports: [StockService],

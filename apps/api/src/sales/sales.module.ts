@@ -7,10 +7,12 @@ import { SaleItem } from '../database/entities/sale-item.entity';
 import { StockBatch } from '../database/entities/stock-batch.entity';
 import { Medicine } from '../database/entities/medicine.entity';
 import { ScheduleDrugLog } from '../database/entities/schedule-drug-log.entity';
+import { AuditModule } from '../audit/audit.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Sale, SaleItem, StockBatch, Medicine, ScheduleDrugLog]),
+    AuditModule,
   ],
   controllers: [SalesController],
   providers: [SalesService],
