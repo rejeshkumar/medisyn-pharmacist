@@ -35,7 +35,11 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
   useEffect(() => {
     const u = getUser();
     if (!u) { router.push('/login'); return; }
-    if (u.role !== 'doctor') { router.push('/dashboard'); return; }
+    const roles: string[] = u.roles?.length ? u.roles : [u.role];
+    if (!roles.some((r: string) => ['doctor', 'owner'].includes(r))) {
+      router.push('/dashboard');
+      return;
+    }
     setUser(u);
   }, []);
 
