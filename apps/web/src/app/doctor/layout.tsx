@@ -34,9 +34,16 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     const u = getUser();
+    // #region agent log
+    fetch('http://127.0.0.1:7877/ingest/e4777394-aee8-41e2-8183-900979d7c179',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e68e7d'},body:JSON.stringify({sessionId:'e68e7d',location:'doctor/layout.tsx:37',message:'doctor layout guard entered',data:{user_exists:!!u,role:u?.role,roles:u?.roles,roles_length:u?.roles?.length},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     if (!u) { router.push('/login'); return; }
     const roles: string[] = u.roles?.length ? u.roles : [u.role];
-    if (!roles.some((r: string) => ['doctor', 'owner'].includes(r))) {
+    const allowed = roles.some((r: string) => ['doctor', 'owner'].includes(r));
+    // #region agent log
+    fetch('http://127.0.0.1:7877/ingest/e4777394-aee8-41e2-8183-900979d7c179',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e68e7d'},body:JSON.stringify({sessionId:'e68e7d',location:'doctor/layout.tsx:42',message:'doctor layout guard result',data:{roles,allowed,will_redirect:!allowed},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+    if (!allowed) {
       router.push('/dashboard');
       return;
     }

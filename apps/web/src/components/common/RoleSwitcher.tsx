@@ -72,7 +72,7 @@ export default function RoleSwitcher() {
               return (
                 <button
                   key={p.path}
-                  onClick={() => { setOpen(false); router.push(p.path); }}
+                  onClick={() => { setOpen(false); fetch('http://127.0.0.1:7877/ingest/e4777394-aee8-41e2-8183-900979d7c179',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e68e7d'},body:JSON.stringify({sessionId:'e68e7d',location:'RoleSwitcher.tsx:click',message:'portal switch clicked',data:{target_path:p.path,target_label:p.label,user_role:user?.role,user_roles:user?.roles},timestamp:Date.now()})}).catch(()=>{}); router.push(p.path); }}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm transition-colors ${
                     isActive ? 'bg-slate-50' : 'hover:bg-slate-50'
                   }`}
