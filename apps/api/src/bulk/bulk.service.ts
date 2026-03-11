@@ -495,7 +495,7 @@ export class BulkService {
 
         if (!medicine) {
           medicine = await this.medicineRepo.save(
-            this.medicineRepo.create({ tenant_id: tenantId,
+            this.medicineRepo.create({
               brand_name: item.medicineName,
               molecule: item.medicineName,
               strength: 'As per label',
