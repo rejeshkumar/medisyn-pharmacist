@@ -19,10 +19,15 @@ export class MedicinesService {
     private auditService: AuditService,
   ) {}
 
-  async findAll(tenantId: string, search?: string, category?: string, scheduleClass?: string) {
+  async findAll(tenantId: string, search?: string, category?: string, scheduleClass?: string, withStock?: boolean) {
     const qb = this.medicinesRepo
       .createQueryBuilder('m')
       .where('m.tenant_id = :tenantId', { tenantId });
+
+    if (withStock) {
+      // For prescription autocomplete, only surface active medicines
+      qb.andWhere('m.is_active = true');
+    }
 
     if (search) {
       qb.andWhere(
@@ -32,6 +37,18 @@ export class MedicinesService {
     }
     if (category)      qb.andWhere('m.category = :category',    { category });
     if (scheduleClass) qb.andWhere('m.schedule_class = :sc',    { sc: scheduleClass });
+
+    if (withStock) {
+      // Join valid stock batches and return availability counts
+      qb.leftJoinAndSelect('m.batches', 'b', 'b.quantity > 0 AND b.expiry_date > NOW()');
+      qb.orderBy('m.brand_name', 'ASC').limit(15);
+      const meds = await qb.getMany();
+      return meds.map(m => ({
+        ...m,
+        available_stock: (m.batches || []).reduce((sum: number, b: any) => sum + Number(b.quantity), 0),
+        has_stock: (m.batches || []).some((b: any) => Number(b.quantity) > 0),
+      }));
+    }
 
     qb.orderBy('m.brand_name', 'ASC');
     return qb.getMany();

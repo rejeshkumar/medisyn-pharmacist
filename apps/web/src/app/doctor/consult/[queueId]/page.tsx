@@ -4,10 +4,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { getUser } from '@/lib/auth';
 import { useParams, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   ArrowLeft, User, Heart, Thermometer, Wind,
   Activity, Save, FileText, CheckCircle2, Plus, Trash2, Scan,
+  AlertCircle, PackageX,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
@@ -19,7 +20,10 @@ import DrugInteractionChecker from '@/components/ai/DrugInteractionChecker';
 import PrescriptionScanner from '@/components/ai/PrescriptionScanner';
 
 interface PrescriptionItem {
+  medicine_id?: string;
   medicine_name: string;
+  has_stock?: boolean;
+  available_stock?: number;
   dosage: string;
   frequency: string;
   duration: string;
@@ -41,6 +45,9 @@ export default function ConsultPage() {
   const [consultSaved, setConsultSaved] = useState(false);
   const [consultId, setConsultId] = useState<string | null>(null);
   const [showScanner, setShowScanner] = useState(false);
+  const [itemSearches, setItemSearches] = useState<Record<number, { results: any[]; open: boolean; loading: boolean }>>({});
+  const [subsModal, setSubsModal] = useState<{ itemIdx: number; subs: any[]; loading: boolean } | null>(null);
+  const searchTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
 
   // Consult form state
   const [form, setForm] = useState({
@@ -119,8 +126,13 @@ export default function ConsultPage() {
       patient_id: queueEntry?.patient_id,
       notes: rxNotes,
       items: items.filter(i => i.medicine_name.trim()).map(i => ({
-        ...i,
+        medicine_id: i.medicine_id ?? null,
+        medicine_name: i.medicine_name,
+        dosage: i.dosage,
+        frequency: i.frequency,
+        duration: i.duration,
         quantity: i.quantity ? parseInt(i.quantity) : undefined,
+        instructions: i.instructions,
       })),
     }),
     onSuccess: (res) => {
@@ -140,8 +152,47 @@ export default function ConsultPage() {
 
   const addItem = () => setItems([...items, emptyItem()]);
   const removeItem = (i: number) => setItems(items.filter((_, idx) => idx !== i));
-  const updateItem = (i: number, field: keyof PrescriptionItem, value: string) => {
+  const updateItem = (i: number, field: string, value: string) => {
     setItems(items.map((item, idx) => idx === i ? { ...item, [field]: value } : item));
+  };
+
+  // Debounced medicine search for prescription autocomplete
+  const searchMedicines = (idx: number, query: string) => {
+    setItems(prev => prev.map((item, i) =>
+      i === idx ? { ...item, medicine_name: query, medicine_id: undefined, has_stock: undefined, available_stock: undefined } : item
+    ));
+    if (searchTimers.current[idx]) clearTimeout(searchTimers.current[idx]);
+    if (query.length < 2) {
+      setItemSearches(s => ({ ...s, [idx]: { results: [], open: false, loading: false } }));
+      return;
+    }
+    setItemSearches(s => ({ ...s, [idx]: { ...(s[idx] || { results: [], loading: false }), loading: true, open: true } }));
+    searchTimers.current[idx] = setTimeout(async () => {
+      try {
+        const res = await api.get(`/medicines?search=${encodeURIComponent(query)}&with_stock=true`);
+        setItemSearches(s => ({ ...s, [idx]: { results: res.data, open: true, loading: false } }));
+      } catch {
+        setItemSearches(s => ({ ...s, [idx]: { results: [], open: false, loading: false } }));
+      }
+    }, 400);
+  };
+
+  const handleSelectMedicine = (idx: number, med: any) => {
+    const name = [med.brand_name, med.strength].filter(Boolean).join(' ');
+    setItems(prev => prev.map((item, i) =>
+      i === idx ? { ...item, medicine_name: name, medicine_id: med.id, has_stock: med.has_stock, available_stock: med.available_stock } : item
+    ));
+    setItemSearches(s => ({ ...s, [idx]: { results: [], open: false, loading: false } }));
+  };
+
+  const fetchSubstitutes = async (idx: number, medicineId: string) => {
+    setSubsModal({ itemIdx: idx, subs: [], loading: true });
+    try {
+      const res = await api.get(`/medicines/${medicineId}/substitutes`);
+      setSubsModal(m => m ? { ...m, subs: res.data, loading: false } : null);
+    } catch {
+      setSubsModal(m => m ? { ...m, loading: false } : null);
+    }
   };
 
   // ── AI handlers ──────────────────────────────────────────────────────
@@ -180,6 +231,8 @@ export default function ConsultPage() {
   const medicineNames = items.map(i => i.medicine_name.trim()).filter(Boolean);
 
   const patient = queueEntry?.patient;
+  const tenantMode = user?.tenant_mode as string | undefined;
+  const hasPharmacy = tenantMode !== 'clinic';
 
   // Patient context passed to AI features
   const patientContext = {
@@ -383,6 +436,19 @@ export default function ConsultPage() {
       {/* Prescription tab */}
       {tab === 'rx' && (
         <div className="space-y-4">
+          {/* Pharmacy routing banner */}
+          {hasPharmacy ? (
+            <div className="flex items-center gap-2 text-xs text-green-700 bg-green-50 border border-green-100 rounded-lg px-4 py-2.5">
+              <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+              <span><strong>Pharmacy integrated:</strong> This prescription will automatically appear in the pharmacist dispensing queue.</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5">
+              <FileText className="w-4 h-4 flex-shrink-0" />
+              <span><strong>Standalone clinic:</strong> Prescription saved for records only — no pharmacy dispensing queue.</span>
+            </div>
+          )}
+
           <div className="bg-white rounded-xl border border-slate-100 p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-slate-900 flex items-center gap-2">
@@ -416,14 +482,65 @@ export default function ConsultPage() {
                   )}
                 </div>
                 <div className="grid grid-cols-2 gap-3 mb-3">
-                  <div className="col-span-2">
+                  <div className="col-span-2 relative">
                     <input
                       type="text"
                       value={item.medicine_name}
-                      onChange={e => updateItem(i, 'medicine_name', e.target.value)}
-                      placeholder="Medicine name *"
-                      className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#00475a]/20 focus:border-[#00475a] bg-white"
+                      onChange={e => searchMedicines(i, e.target.value)}
+                      onBlur={() => setTimeout(() => setItemSearches(s => ({ ...s, [i]: { ...(s[i] || { results: [], loading: false }), open: false } })), 200)}
+                      placeholder="Type medicine name to search catalogue..."
+                      className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#00475a]/20 focus:border-[#00475a] bg-white pr-32"
                     />
+                    {item.medicine_id && (
+                      <span className={cn(
+                        'absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium px-2 py-0.5 rounded-full pointer-events-none',
+                        item.has_stock ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600',
+                      )}>
+                        {item.has_stock ? `✓ ${item.available_stock} in stock` : '✗ Out of stock'}
+                      </span>
+                    )}
+                    {/* Autocomplete dropdown */}
+                    {itemSearches[i]?.open && (
+                      <div className="absolute z-50 w-full bg-white border border-slate-200 rounded-lg shadow-lg mt-0.5 max-h-52 overflow-auto">
+                        {itemSearches[i].loading && (
+                          <div className="px-4 py-3 text-xs text-slate-400">Searching medicines...</div>
+                        )}
+                        {!itemSearches[i].loading && itemSearches[i].results.length === 0 && item.medicine_name.length >= 2 && (
+                          <div className="px-4 py-3 text-xs text-slate-400">No medicines found in catalogue — name will be saved as typed.</div>
+                        )}
+                        {itemSearches[i].results.map((med: any) => (
+                          <button
+                            key={med.id}
+                            type="button"
+                            onMouseDown={() => handleSelectMedicine(i, med)}
+                            className="w-full text-left px-4 py-2.5 hover:bg-slate-50 flex items-center justify-between gap-2 border-b border-slate-100 last:border-0"
+                          >
+                            <div className="min-w-0">
+                              <span className="text-sm font-medium text-slate-900">{med.brand_name}</span>
+                              {med.strength && <span className="text-sm text-slate-500"> {med.strength}</span>}
+                              {med.molecule && <div className="text-xs text-slate-400 truncate">{med.molecule}</div>}
+                            </div>
+                            <span className={cn('text-xs font-medium flex-shrink-0', med.has_stock ? 'text-green-600' : 'text-red-500')}>
+                              {med.has_stock ? `${med.available_stock} units` : 'Out of stock'}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {/* Out-of-stock warning with substitute picker */}
+                    {item.medicine_id && item.has_stock === false && (
+                      <div className="mt-1 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-1.5">
+                        <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span>This medicine is currently out of stock.</span>
+                        <button
+                          type="button"
+                          onClick={() => fetchSubstitutes(i, item.medicine_id!)}
+                          className="underline font-medium hover:text-amber-900 ml-auto flex-shrink-0"
+                        >
+                          Pick alternative →
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <input
                     type="text"
@@ -500,6 +617,51 @@ export default function ConsultPage() {
           onExtracted={handleOcrImport}
           onClose={() => setShowScanner(false)}
         />
+      )}
+
+      {/* Substitutes modal */}
+      {subsModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setSubsModal(null)}>
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+            <h3 className="font-semibold text-slate-900 mb-1 flex items-center gap-2">
+              <PackageX className="w-5 h-5 text-amber-500" />
+              Available Substitutes
+            </h3>
+            <p className="text-xs text-slate-500 mb-4">Same molecule / strength — select one to replace the out-of-stock medicine.</p>
+            {subsModal.loading ? (
+              <p className="text-sm text-slate-500 py-4 text-center">Loading alternatives...</p>
+            ) : subsModal.subs.length === 0 ? (
+              <p className="text-sm text-slate-500 py-4 text-center">No substitutes found in this medicine group.</p>
+            ) : (
+              <div className="space-y-2 max-h-64 overflow-auto">
+                {subsModal.subs.map((sub: any) => (
+                  <button
+                    key={sub.id}
+                    onClick={() => { handleSelectMedicine(subsModal.itemIdx, sub); setSubsModal(null); }}
+                    className="w-full text-left px-4 py-3 rounded-xl border border-slate-200 hover:border-[#00475a] hover:bg-teal-50 transition-colors"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <span className="font-medium text-slate-900">{sub.brand_name}</span>
+                        {sub.strength && <span className="text-slate-500"> {sub.strength}</span>}
+                        {sub.molecule && <div className="text-xs text-slate-400 truncate">{sub.molecule}</div>}
+                      </div>
+                      <span className={cn('text-xs font-medium flex-shrink-0', sub.has_stock ? 'text-green-600' : 'text-red-500')}>
+                        {sub.has_stock ? `${sub.available_stock} units` : 'Out of stock'}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+            <button
+              onClick={() => setSubsModal(null)}
+              className="mt-4 w-full py-2 text-sm text-slate-500 hover:text-slate-700 border border-slate-200 rounded-lg"
+            >
+              Close — keep original
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -28,13 +28,15 @@ export class MedicinesController {
   @ApiQuery({ name: 'search', required: false })
   @ApiQuery({ name: 'category', required: false })
   @ApiQuery({ name: 'schedule_class', required: false })
+  @ApiQuery({ name: 'with_stock', required: false, description: 'Include real-time stock availability (for prescription autocomplete)' })
   findAll(
     @Request() req,
     @Query('search') search?: string,
     @Query('category') category?: string,
     @Query('schedule_class') scheduleClass?: string,
+    @Query('with_stock') withStock?: string,
   ) {
-    return this.medicinesService.findAll(req.tenantId, search, category, scheduleClass);
+    return this.medicinesService.findAll(req.tenantId, search, category, scheduleClass, withStock === 'true');
   }
 
   @Get('with-stock')

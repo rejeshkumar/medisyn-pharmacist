@@ -30,3 +30,12 @@ export function isPharmacist(): boolean {
   const user = getUser();
   return user?.role === 'pharmacist' || user?.role === 'owner';
 }
+
+export function getTenantMode(): string {
+  const user = getUser();
+  return user?.tenant_mode ?? 'full';
+}
+
+export function hasPharmacyIntegration(): boolean {
+  return getTenantMode() !== 'clinic';
+}
