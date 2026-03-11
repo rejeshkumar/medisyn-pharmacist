@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
+import RoleSwitcher from '@/components/common/RoleSwitcher';
 
 const navItems = [
   { href: '/receptionist',              label: 'Dashboard',    icon: LayoutDashboard },
@@ -86,6 +87,7 @@ export default function ReceptionistLayout({ children }: { children: React.React
               </Link>
             );
           })}
+        <RoleSwitcher />
         </nav>
 
         <div className="p-3 border-t border-slate-100">

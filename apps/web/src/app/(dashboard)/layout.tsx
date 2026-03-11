@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
+import RoleSwitcher from '@/components/common/RoleSwitcher';
 
 const navItems = [
   { href: '/dashboard',  label: 'Dashboard',    icon: LayoutDashboard, roles: ['owner', 'pharmacist', 'assistant'] },
@@ -120,6 +121,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </Link>
             );
           })}
+        <RoleSwitcher />
         </nav>
 
         <div className="p-3 border-t border-gray-100">

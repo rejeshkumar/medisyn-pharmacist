@@ -43,10 +43,7 @@ export class UsersService {
     if (existing) throw new ConflictException('Mobile number already registered');
 
     const hash = await bcrypt.hash(dto.password, 10);
-
-    // Derive roles: use dto.roles if provided, else wrap single role
     const roles: string[] = dto.roles?.length ? dto.roles : [dto.role];
-    // Primary role = first in roles array
     const primaryRole = roles[0] as any;
 
     const user = this.usersRepo.create({
@@ -79,6 +76,15 @@ export class UsersService {
     const { id: actorId, tenant_id: tenantId } = actor;
     const user = await this.findOne(id, tenantId);
 
+    // Snapshot before
+    const oldRoles = (user as any).roles?.length ? (user as any).roles : [user.role];
+    const oldValue: Record<string, any> = {
+      full_name: user.full_name,
+      mobile:    user.mobile,
+      role:      user.role,
+      roles:     oldRoles,
+    };
+
     if (dto.password) {
       (dto as any).password_hash = await bcrypt.hash(dto.password, 10);
       delete dto.password;
@@ -86,22 +92,51 @@ export class UsersService {
 
     // Handle roles array update
     if (dto.roles?.length) {
-      user.roles = dto.roles;
-      // Keep primary role in sync with first entry in roles array
+      (user as any).roles = dto.roles;
       user.role = dto.roles[0] as any;
     } else if (dto.role) {
-      // Single role update — wrap into array too
       user.role = dto.role;
-      user.roles = [dto.role];
+      (user as any).roles = [dto.role];
     }
 
-    // Apply other fields (full_name, mobile, password_hash)
     if (dto.full_name) user.full_name = dto.full_name;
     if (dto.mobile)    user.mobile    = dto.mobile;
     if ((dto as any).password_hash) user.password_hash = (dto as any).password_hash;
 
     user.updated_by = actorId;
-    return this.usersRepo.save(user);
+    const saved = await this.usersRepo.save(user);
+
+    // Build newValue snapshot
+    const newRoles = (saved as any).roles?.length ? (saved as any).roles : [saved.role];
+    const newValue: Record<string, any> = {
+      full_name: saved.full_name,
+      mobile:    saved.mobile,
+      role:      saved.role,
+      roles:     newRoles,
+    };
+
+    // Detect what changed for a clear audit description
+    const changes: string[] = [];
+    if (oldValue.full_name !== newValue.full_name) changes.push('name');
+    if (oldValue.mobile !== newValue.mobile)       changes.push('mobile');
+    if (JSON.stringify(oldValue.roles.sort()) !== JSON.stringify(newRoles.sort())) {
+      changes.push(`roles: [${oldRoles.join(', ')}] → [${newRoles.join(', ')}]`);
+    }
+
+    await this.auditService.log({
+      tenantId,
+      userId:    actorId,
+      userName:  actor.full_name,
+      userRole:  actor.role,
+      action:    AuditAction.UPDATE,
+      entity:    'User',
+      entityId:  id,
+      entityRef: `${saved.full_name} — changed: ${changes.join(', ') || 'no changes'}`,
+      oldValue,
+      newValue,
+    });
+
+    return saved;
   }
 
   async deactivate(id: string, actor: UserContext) {

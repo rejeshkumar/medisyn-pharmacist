@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
+import RoleSwitcher from '@/components/common/RoleSwitcher';
 
 const navItems = [
   { href: '/doctor',             label: 'My Queue',      icon: LayoutDashboard },
@@ -95,6 +96,7 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
               </Link>
             );
           })}
+        <RoleSwitcher />
         </nav>
 
         {/* User */}

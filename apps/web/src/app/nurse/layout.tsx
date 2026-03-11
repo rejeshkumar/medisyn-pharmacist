@@ -7,6 +7,7 @@ import { getUser, clearAuth } from '@/lib/auth';
 import { LayoutDashboard, ClipboardList, LogOut, ChevronRight, Menu, X, Stethoscope } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
+import RoleSwitcher from '@/components/common/RoleSwitcher';
 
 const navItems = [
   { href: '/nurse',         label: 'Queue',      icon: LayoutDashboard },
@@ -70,6 +71,7 @@ export default function NurseLayout({ children }: { children: React.ReactNode })
               </Link>
             );
           })}
+        <RoleSwitcher />
         </nav>
 
         <div className="p-3 border-t border-slate-100">
