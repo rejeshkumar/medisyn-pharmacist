@@ -381,7 +381,7 @@ export default function ConsultPage() {
         </div>
       )}
 
-      {/* Prescription tab */}}
+      {/* Prescription tab */}
       {tab === 'rx' && (
         <div className="space-y-4">
           <div className="bg-white rounded-xl border border-slate-100 p-5">
