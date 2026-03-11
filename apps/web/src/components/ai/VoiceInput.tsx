@@ -51,10 +51,13 @@ export default function VoiceInput({ patientContext, onNotesReady }: Props) {
 
   // Check AI health on mount so the doctor knows if voice AI will work before trying
   useEffect(() => {
-    axios.get(`${API}/ai/health`)
+    const token = getToken();
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    axios.get(`${API}/ai/health`, { headers })
       .then(() => setAiStatus('ok'))
       .catch(e => {
-        const reason = e?.response?.data?.reason || 'AI service unavailable';
+        const data = e?.response?.data;
+        const reason = data?.reason || data?.message || `HTTP ${e?.response?.status || 'error'}`;
         setAiStatus('error');
         setAiStatusReason(reason);
       });

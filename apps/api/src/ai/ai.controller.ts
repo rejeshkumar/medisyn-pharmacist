@@ -3,6 +3,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ClaudeService } from './claude.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { TenantGuard } from '../common/guards/tenant.guard';
+import { Public } from '../common/decorators/public.decorator';
 import { IsString, IsOptional, IsArray, IsNumber, IsObject } from 'class-validator';
 
 export class OcrDto {
@@ -34,7 +35,8 @@ export class DiagnosisDto {
 export class AiController {
   constructor(private readonly claudeService: ClaudeService) {}
 
-  // GET /ai/health — public, no auth — check if Claude API key is configured and valid
+  // GET /ai/health — truly public (bypasses global JwtAuthGuard via @Public())
+  @Public()
   @Get('health')
   async health() {
     const result = await this.claudeService.healthCheck();
