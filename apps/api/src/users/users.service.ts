@@ -22,20 +22,18 @@ export class UsersService {
   ) {}
 
   async findAll(tenantId: string, role?: string) {
-    if (role) {
-      // Match users whose primary role OR multi-role array includes the requested role
-      return this.usersRepo
-        .createQueryBuilder('u')
-        .where('u.tenant_id = :tenantId', { tenantId })
-        .andWhere('u.status = :status', { status: 'active' })
-        .andWhere('(u.role = :role OR :role = ANY(u.roles))', { role })
-        .orderBy('u.full_name', 'ASC')
-        .getMany();
-    }
-    return this.usersRepo.find({
+    const all = await this.usersRepo.find({
       where: { tenant_id: tenantId },
       order: { created_at: 'DESC' },
     });
+    if (!role) return all;
+    // Filter by role: check both primary role and multi-role array
+    return all
+      .filter(u => {
+        const userRoles: string[] = (u.roles?.length) ? u.roles : [u.role];
+        return userRoles.includes(role) && u.status === UserStatus.ACTIVE;
+      })
+      .sort((a, b) => a.full_name.localeCompare(b.full_name));
   }
 
   async findOne(id: string, tenantId: string) {
