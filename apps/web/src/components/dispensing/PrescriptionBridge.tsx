@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useRef, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
-import { ClipboardList, ChevronRight, Loader2, User, Pill, CheckCircle2, Clock } from 'lucide-react';
+import { ClipboardList, ChevronRight, Loader2, User, Pill, CheckCircle2, Clock, Bell } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
@@ -20,6 +20,7 @@ interface PrescriptionBridgeProps {
       quantity?: number;
     }>;
   }) => void;
+  onPendingCountChange?: (count: number) => void;
 }
 
 const STATUS_LABEL: Record<string, { label: string; color: string; bg: string }> = {
@@ -30,16 +31,18 @@ const STATUS_LABEL: Record<string, { label: string; color: string; bg: string }>
   cancelled:           { label: 'Cancelled',  color: 'text-red-600',    bg: 'bg-red-50 border-red-200' },
 };
 
-export default function PrescriptionBridge({ onLoadPrescription }: PrescriptionBridgeProps) {
+export default function PrescriptionBridge({ onLoadPrescription, onPendingCountChange }: PrescriptionBridgeProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [newArrival, setNewArrival] = useState(false);
+  const prevPendingCount = useRef<number | null>(null);
 
-  // Fetch today's queue entries that are consultation_done or dispensing
+  // Fetch today's queue entries that are consultation_done or dispensing — poll every 15s
   const { data: queue = [], isLoading: queueLoading } = useQuery({
     queryKey: ['dispensing-queue'],
     queryFn: () => api.get('/queue/today').then(r =>
       r.data.filter((e: any) => ['consultation_done', 'dispensing', 'completed'].includes(e.status))
     ),
-    refetchInterval: 30000,
+    refetchInterval: 15000,
   });
 
   // Fetch prescription for selected queue entry
@@ -72,13 +75,42 @@ export default function PrescriptionBridge({ onLoadPrescription }: PrescriptionB
   const pending = queue.filter((e: any) => e.status !== 'completed');
   const done = queue.filter((e: any) => e.status === 'completed');
 
+  // Alert when new prescriptions arrive
+  useEffect(() => {
+    const count = pending.length;
+    if (prevPendingCount.current !== null && count > prevPendingCount.current) {
+      const added = count - prevPendingCount.current;
+      toast.success(`${added} new prescription${added > 1 ? 's' : ''} ready for dispensing`, {
+        icon: '🔔',
+        duration: 6000,
+      });
+      setNewArrival(true);
+      setTimeout(() => setNewArrival(false), 4000);
+    }
+    prevPendingCount.current = count;
+    onPendingCountChange?.(count);
+  }, [pending.length, onPendingCountChange]);
+
   return (
     <div className="flex flex-col h-full">
       <div className="p-4 border-b border-gray-100 flex-shrink-0">
-        <h2 className="font-semibold text-gray-900 flex items-center gap-2 text-sm">
-          <ClipboardList className="w-4 h-4 text-[#00475a]" />
-          Today's Prescriptions
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold text-gray-900 flex items-center gap-2 text-sm">
+            <ClipboardList className="w-4 h-4 text-[#00475a]" />
+            Today's Prescriptions
+          </h2>
+          {pending.length > 0 && (
+            <span className={cn(
+              'flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full',
+              newArrival
+                ? 'bg-red-500 text-white animate-pulse'
+                : 'bg-amber-100 text-amber-700',
+            )}>
+              {newArrival && <Bell className="w-3 h-3" />}
+              {pending.length} pending
+            </span>
+          )}
+        </div>
         <p className="text-xs text-gray-400 mt-0.5">Select a patient to load their prescription</p>
       </div>
 
@@ -97,8 +129,12 @@ export default function PrescriptionBridge({ onLoadPrescription }: PrescriptionB
           {/* Pending */}
           {pending.length > 0 && (
             <div>
-              <p className="px-4 pt-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide flex items-center gap-1">
+              <p className={cn(
+                'px-4 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide flex items-center gap-1',
+                newArrival ? 'text-amber-600' : 'text-gray-400',
+              )}>
                 <Clock className="w-3 h-3" /> Awaiting Dispensing
+                {newArrival && <span className="ml-1 text-amber-600">● New</span>}
               </p>
               {pending.map((entry: any) => (
                 <button

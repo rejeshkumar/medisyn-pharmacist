@@ -176,6 +176,7 @@ export default function DispensingPage() {
   const [showPreview, setShowPreview] = useState(false);
   const [completedSale, setCompletedSale] = useState<any>(null);
   const [showBillPanel, setShowBillPanel] = useState(false);
+  const [pendingRxCount, setPendingRxCount] = useState(0);
   // ── Prescription bridge state ──
   const [showRxPanel, setShowRxPanel] = useState(false);
   const [activePrescriptionId, setActivePrescriptionId] = useState<string | null>(null);
@@ -383,7 +384,7 @@ export default function DispensingPage() {
         if (result.status === 'failed') {
           clearInterval(poll);
           setAiExtracting(false);
-          toast.error('AI extraction failed. Please add medicines manually.');
+          toast.error('Prescription scan failed — AI credits may be exhausted. Search and add medicines manually using the search bar above.', { duration: 8000 });
         }
       }, 2000);
     } catch {
@@ -445,7 +446,10 @@ export default function DispensingPage() {
         'flex-shrink-0 border-r border-gray-100 bg-white transition-all duration-200 overflow-hidden',
         showRxPanel ? 'w-72' : 'w-0',
       )}>
-        <PrescriptionBridge onLoadPrescription={handleLoadPrescription} />
+        <PrescriptionBridge
+          onLoadPrescription={handleLoadPrescription}
+          onPendingCountChange={setPendingRxCount}
+        />
       </div>
 
       {/* ── Main cart area ── */}
@@ -484,16 +488,22 @@ export default function DispensingPage() {
                 </div>
               )}
             </div>
-            {/* ── Prescriptions toggle button ── */}
+            {/* ── Prescriptions toggle button with pending badge ── */}
             <button
               onClick={() => setShowRxPanel(v => !v)}
               className={cn(
-                'btn-secondary flex items-center gap-2 flex-shrink-0',
+                'btn-secondary flex items-center gap-2 flex-shrink-0 relative',
                 showRxPanel && 'bg-teal-50 border-teal-300 text-teal-700',
+                pendingRxCount > 0 && !showRxPanel && 'border-amber-400 text-amber-700 bg-amber-50',
               )}
             >
               <ClipboardList className="w-4 h-4" />
               <span className="hidden sm:inline">Prescriptions</span>
+              {pendingRxCount > 0 && (
+                <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 animate-pulse">
+                  {pendingRxCount}
+                </span>
+              )}
             </button>
             <button
               onClick={() => fileRef.current?.click()}
