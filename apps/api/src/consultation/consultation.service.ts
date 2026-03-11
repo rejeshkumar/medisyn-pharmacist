@@ -306,6 +306,25 @@ export class ConsultationService {
 
     const saved = await this.prescriptionRepo.save(prescription);
 
+    // Advance the queue to completed now that medicine has been dispensed
+    if (prescription.consultation_id) {
+      const consultation = await this.consultationRepo.findOne({
+        where: { id: prescription.consultation_id, tenant_id: tenantId },
+      });
+      if (consultation?.queue_id) {
+        try {
+          await this.queueService.updateStatus(
+            consultation.queue_id,
+            { status: QueueStatus.COMPLETED },
+            tenantId,
+            user,
+          );
+        } catch {
+          // Non-fatal — prescription is already marked dispensed
+        }
+      }
+    }
+
     await this.auditService.log({
       tenantId,
       userId: user.id,
