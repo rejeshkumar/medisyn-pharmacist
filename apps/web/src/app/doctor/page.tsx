@@ -145,21 +145,21 @@ export default function DoctorQueuePage() {
                   </span>
 
                   {/* Action */}
-                  {(isReady || isActive) && (
-                    <button
-                      onClick={() => handleCall(entry)}
-                      disabled={callMutation.isPending}
-                      className={cn(
-                        'flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all flex-shrink-0',
-                        isActive
-                          ? 'bg-purple-600 text-white hover:bg-purple-700'
-                          : 'bg-[#00475a] text-white hover:bg-[#003d4d]',
-                      )}
-                    >
-                      {isActive ? 'Resume' : 'Call'}
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
-                  )}
+                  <button
+                    onClick={() => handleCall(entry)}
+                    disabled={callMutation.isPending}
+                    className={cn(
+                      'flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all flex-shrink-0',
+                      isActive
+                        ? 'bg-purple-600 text-white hover:bg-purple-700'
+                        : isReady
+                          ? 'bg-[#00475a] text-white hover:bg-[#003d4d]'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200',
+                    )}
+                  >
+                    {isActive ? 'Resume' : isReady ? 'Call' : 'Call'}
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               );
             })}

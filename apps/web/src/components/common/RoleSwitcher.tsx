@@ -72,7 +72,7 @@ export default function RoleSwitcher() {
               return (
                 <button
                   key={p.path}
-                  onClick={() => { setOpen(false); console.log('[DEBUG RoleSwitcher] navigating to:', p.path, '| user.roles:', user?.roles, '| user.role:', user?.role); router.push(p.path); }}
+                  onClick={() => { setOpen(false); router.push(p.path); }}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm transition-colors ${
                     isActive ? 'bg-slate-50' : 'hover:bg-slate-50'
                   }`}
