@@ -114,7 +114,7 @@ export default function NurseDashboard() {
             </div>
           )}
 
-          {/* Done */}
+          {/* Done — still clickable to edit vitals */}
           {done.length > 0 && (
             <>
               <h2 className="text-sm font-semibold text-slate-600 uppercase tracking-wide mb-3 flex items-center gap-2">
@@ -122,13 +122,16 @@ export default function NurseDashboard() {
               </h2>
               <div className="space-y-2">
                 {done.map(q => (
-                  <div key={q.id} className="bg-white rounded-xl border border-slate-50 px-5 py-3 flex items-center gap-4 opacity-60">
+                  <Link key={q.id} href={`/nurse/precheck/${q.id}`}
+                    className="bg-white rounded-xl border border-slate-50 px-5 py-3 flex items-center gap-4 hover:border-pink-200 hover:opacity-100 transition-all group opacity-70">
                     <span className="text-sm font-bold text-slate-400">#{q.token_number}</span>
                     <span className="text-sm text-slate-500 flex-1">{patientName(q.patient)}</span>
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[q.status] || 'bg-slate-100 text-slate-500'}`}>
                       {STATUS_LABEL[q.status] || q.status}
                     </span>
-                  </div>
+                    <span className="text-xs text-slate-300 group-hover:text-pink-400 transition-colors">Edit vitals</span>
+                    <ChevronRight className="w-4 h-4 text-slate-200 group-hover:text-pink-400 transition-colors" />
+                  </Link>
                 ))}
               </div>
             </>
