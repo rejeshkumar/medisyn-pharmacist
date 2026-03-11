@@ -369,8 +369,7 @@ export default function ConsultPage() {
               {consultSaved ? 'Update & Continue' : 'Save & Continue to Prescription'}
             </button>
           </div>
-        </div>
-          </div>{/* end consult card */}
+        </div>{/* end consult card */}
 
           {/* 🧠 AI Diagnosis — suggests diagnoses based on symptoms + vitals */}
           <DiagnosisSuggestions patientContext={{
