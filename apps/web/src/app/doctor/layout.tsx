@@ -35,18 +35,20 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
   useEffect(() => {
     const u = getUser();
     // #region agent log
-    fetch('http://127.0.0.1:7877/ingest/e4777394-aee8-41e2-8183-900979d7c179',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e68e7d'},body:JSON.stringify({sessionId:'e68e7d',location:'doctor/layout.tsx:37',message:'doctor layout guard entered',data:{user_exists:!!u,role:u?.role,roles:u?.roles,roles_length:u?.roles?.length},timestamp:Date.now()})}).catch(()=>{});
+    console.log('[DEBUG doctor/layout] user from localStorage:', JSON.stringify(u));
     // #endregion
     if (!u) { router.push('/login'); return; }
     const roles: string[] = u.roles?.length ? u.roles : [u.role];
     const allowed = roles.some((r: string) => ['doctor', 'owner'].includes(r));
     // #region agent log
-    fetch('http://127.0.0.1:7877/ingest/e4777394-aee8-41e2-8183-900979d7c179',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e68e7d'},body:JSON.stringify({sessionId:'e68e7d',location:'doctor/layout.tsx:42',message:'doctor layout guard result',data:{roles,allowed,will_redirect:!allowed},timestamp:Date.now()})}).catch(()=>{});
+    console.log('[DEBUG doctor/layout] roles:', roles, '| allowed:', allowed);
     // #endregion
     if (!allowed) {
+      console.log('[DEBUG doctor/layout] REDIRECTING to /dashboard — not allowed');
       router.push('/dashboard');
       return;
     }
+    console.log('[DEBUG doctor/layout] ALLOWED — rendering doctor portal');
     setUser(u);
   }, []);
 
