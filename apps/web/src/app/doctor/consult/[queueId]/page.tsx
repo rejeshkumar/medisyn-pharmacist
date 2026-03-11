@@ -7,10 +7,16 @@ import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import {
   ArrowLeft, User, Heart, Thermometer, Wind,
-  Activity, Save, FileText, CheckCircle2, Plus, Trash2,
+  Activity, Save, FileText, CheckCircle2, Plus, Trash2, Scan,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
+
+// ── AI Components ──────────────────────────────────────────────────────
+import VoiceInput from '@/components/ai/VoiceInput';
+import DiagnosisSuggestions from '@/components/ai/DiagnosisSuggestions';
+import DrugInteractionChecker from '@/components/ai/DrugInteractionChecker';
+import PrescriptionScanner from '@/components/ai/PrescriptionScanner';
 
 interface PrescriptionItem {
   medicine_name: string;
@@ -34,6 +40,7 @@ export default function ConsultPage() {
   const [tab, setTab] = useState<'consult' | 'rx'>('consult');
   const [consultSaved, setConsultSaved] = useState(false);
   const [consultId, setConsultId] = useState<string | null>(null);
+  const [showScanner, setShowScanner] = useState(false);
 
   // Consult form state
   const [form, setForm] = useState({
@@ -137,6 +144,57 @@ export default function ConsultPage() {
     setItems(items.map((item, idx) => idx === i ? { ...item, [field]: value } : item));
   };
 
+  // ── AI handlers ──────────────────────────────────────────────────────
+
+  // 🎤 Voice: fill form fields from structured transcription
+  const handleVoiceNotes = (notes: any) => {
+    setForm(f => ({
+      ...f,
+      symptoms:    notes.chief_complaint || notes.history_of_present_illness || f.symptoms,
+      examination: notes.examination_findings || f.examination,
+      diagnosis:   notes.diagnosis || f.diagnosis,
+      advice:      notes.advice || f.advice,
+    }));
+    toast.success('Voice notes applied to form');
+  };
+
+  // 📷 OCR: import medicines extracted from scanned prescription photo
+  const handleOcrImport = (medicines: any[]) => {
+    const newItems = medicines.map((m: any) => ({
+      medicine_name: m.name || '',
+      dosage:        m.dosage || '',
+      frequency:     m.frequency || '',
+      duration:      m.duration || '',
+      quantity:      '',
+      instructions:  m.notes || '',
+    }));
+    setItems(prev => {
+      const hasContent = prev.some(p => p.medicine_name.trim());
+      return hasContent ? [...prev, ...newItems] : newItems;
+    });
+    toast.success(`${newItems.length} medicine(s) imported from scan`);
+    setShowScanner(false);
+  };
+
+  // Medicine names for live drug interaction check
+  const medicineNames = items.map(i => i.medicine_name.trim()).filter(Boolean);
+
+  // Patient context passed to AI features
+  const patientContext = {
+    age:                 patient?.age,
+    gender:              patient?.gender,
+    chief_complaint:     queueEntry?.chief_complaint,
+    existing_conditions: patient?.chronic_conditions,
+    current_medicines:   preCheck?.current_medicines,
+    vitals: preCheck ? {
+      bp:          preCheck.bp_systolic ? `${preCheck.bp_systolic}/${preCheck.bp_diastolic}` : undefined,
+      pulse:       preCheck.pulse_rate,
+      temperature: preCheck.temperature,
+      spo2:        preCheck.spo2,
+      blood_sugar: preCheck.blood_sugar,
+    } : undefined,
+  };
+
   const patient = queueEntry?.patient;
 
   return (
@@ -220,7 +278,15 @@ export default function ConsultPage() {
 
       {/* Consultation tab */}
       {tab === 'consult' && (
-        <div className="bg-white rounded-xl border border-slate-100 p-5 space-y-4">
+        <div className="space-y-4">
+
+          {/* 🎤 Voice Input — speak symptoms/findings, auto-fills form */}
+          <VoiceInput
+            patientContext={patientContext}
+            onNotesReady={handleVoiceNotes}
+          />
+
+          <div className="bg-white rounded-xl border border-slate-100 p-5 space-y-4">
           <div className="flex items-center gap-2 mb-1">
             <input
               type="checkbox"
@@ -304,21 +370,39 @@ export default function ConsultPage() {
             </button>
           </div>
         </div>
+          </div>{/* end consult card */}
+
+          {/* 🧠 AI Diagnosis — suggests diagnoses based on symptoms + vitals */}
+          <DiagnosisSuggestions patientContext={{
+            ...patientContext,
+            symptoms: form.symptoms || queueEntry?.chief_complaint,
+          }} />
+
+        </div>
       )}
 
-      {/* Prescription tab */}
+      {/* Prescription tab */}}
       {tab === 'rx' && (
-        <div className="bg-white rounded-xl border border-slate-100 p-5">
+        <div className="space-y-4">
+          <div className="bg-white rounded-xl border border-slate-100 p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-slate-900 flex items-center gap-2">
               <FileText className="w-4 h-4 text-[#00475a]" /> Prescription Items
             </h3>
-            <button
-              onClick={addItem}
-              className="flex items-center gap-1.5 text-sm text-[#00475a] hover:text-[#003d4d] font-medium"
-            >
-              <Plus className="w-4 h-4" /> Add Medicine
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowScanner(true)}
+                className="flex items-center gap-1.5 text-sm border border-[#00475a] text-[#00475a] px-3 py-1.5 rounded-lg hover:bg-teal-50 transition-colors font-medium"
+              >
+                <Scan className="w-4 h-4" /> Scan Rx
+              </button>
+              <button
+                onClick={addItem}
+                className="flex items-center gap-1.5 text-sm text-[#00475a] hover:text-[#003d4d] font-medium"
+              >
+                <Plus className="w-4 h-4" /> Add Medicine
+              </button>
+            </div>
           </div>
 
           <div className="space-y-3 mb-4">
@@ -403,7 +487,20 @@ export default function ConsultPage() {
               Issue Prescription & Complete
             </button>
           </div>
+          </div>{/* end rx card */}
+
+          {/* 💊 Drug Interaction Checker — auto-runs when 2+ medicines added */}
+          <DrugInteractionChecker medicines={medicineNames} />
+
         </div>
+      )}
+
+      {/* 📷 OCR Scanner modal */}
+      {showScanner && (
+        <PrescriptionScanner
+          onExtracted={handleOcrImport}
+          onClose={() => setShowScanner(false)}
+        />
       )}
     </div>
   );
