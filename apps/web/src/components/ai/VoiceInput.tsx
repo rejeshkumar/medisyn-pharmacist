@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { getToken } from '@/lib/auth';
-import { Mic, MicOff, Loader2, CheckCircle, X, Volume2, ChevronDown } from 'lucide-react';
+import { Mic, MicOff, Loader2, CheckCircle, X, Volume2, ChevronDown, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -42,10 +42,23 @@ export default function VoiceInput({ patientContext, onNotesReady }: Props) {
   const [transcript, setTranscript] = useState('');
   const [duration, setDuration] = useState(0);
   const [selectedLang, setSelectedLang] = useState('en-IN');
+  const [aiStatus, setAiStatus] = useState<'unknown' | 'ok' | 'error'>('unknown');
+  const [aiStatusReason, setAiStatusReason] = useState('');
   const mediaRecorder = useRef<MediaRecorder | null>(null);
   const chunks = useRef<Blob[]>([]);
   const timer = useRef<NodeJS.Timeout | null>(null);
   const recognition = useRef<any>(null);
+
+  // Check AI health on mount so the doctor knows if voice AI will work before trying
+  useEffect(() => {
+    axios.get(`${API}/ai/health`)
+      .then(() => setAiStatus('ok'))
+      .catch(e => {
+        const reason = e?.response?.data?.reason || 'AI service unavailable';
+        setAiStatus('error');
+        setAiStatusReason(reason);
+      });
+  }, []);
 
   const startRecording = async () => {
     setTranscript('');
@@ -126,6 +139,24 @@ export default function VoiceInput({ patientContext, onNotesReady }: Props) {
 
   return (
     <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+      {/* AI health banner — shows only when key is misconfigured */}
+      {aiStatus === 'error' && (
+        <div className="flex items-start gap-2 mb-3 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+          <div>
+            <span className="font-semibold">AI not available: </span>
+            <span>{aiStatusReason}</span>
+            <a
+              href="https://railway.app"
+              target="_blank"
+              rel="noreferrer"
+              className="ml-1 underline font-medium hover:text-amber-900"
+            >
+              Fix in Railway →
+            </a>
+          </div>
+        </div>
+      )}
       <div className="flex items-center gap-3 mb-3">
         <Volume2 className="w-4 h-4 text-[#00475a]" />
         <span className="text-sm font-semibold text-slate-700">Voice Notes</span>
