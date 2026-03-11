@@ -101,7 +101,9 @@ export default function NursePrecheckPage() {
       toast.success('Pre-check saved — patient advanced to Pre-check Done');
       setTimeout(() => router.push('/nurse'), 1500);
     } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Failed to save');
+      const detail = e?.response?.data?.message;
+      const msg = Array.isArray(detail) ? detail.join(', ') : (detail || `Error ${e?.response?.status || ''}: Failed to save pre-check`);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }

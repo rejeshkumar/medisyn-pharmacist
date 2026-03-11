@@ -164,7 +164,7 @@ export class QueueService {
     return stats;
   }
 
-  // ── Record pre-check vitals ───────────────────────────────────────
+  // ── Record pre-check vitals (upsert — safe to call multiple times) ──
   async recordPreCheck(
     dto: RecordPreCheckDto,
     tenantId: string,
@@ -179,44 +179,63 @@ export class QueueService {
       bmi = parseFloat((dto.weight / (heightM * heightM)).toFixed(1));
     }
 
-    const preCheck = this.preCheckRepo.create({
-      tenant_id: tenantId,
-      queue_id: dto.queue_id,
-      patient_id: queue.patient_id,
-      recorded_by: user.id,
-      bp_systolic: dto.bp_systolic,
-      bp_diastolic: dto.bp_diastolic,
-      pulse_rate: dto.pulse_rate,
-      temperature: dto.temperature,
-      weight: dto.weight,
-      height: dto.height,
+    const vitalsData = {
+      bp_systolic:      dto.bp_systolic,
+      bp_diastolic:     dto.bp_diastolic,
+      pulse_rate:       dto.pulse_rate,
+      temperature:      dto.temperature,
+      weight:           dto.weight,
+      height:           dto.height,
       bmi,
-      spo2: dto.spo2,
-      blood_sugar: dto.blood_sugar,
-      chief_complaint: dto.chief_complaint,
-      allergies: dto.allergies,
+      spo2:             dto.spo2,
+      blood_sugar:      dto.blood_sugar,
+      chief_complaint:  dto.chief_complaint,
+      allergies:        dto.allergies,
       current_medicines: dto.current_medicines,
-      notes: dto.notes,
-      created_by: user.id,
-      updated_by: user.id,
+      notes:            dto.notes,
+      updated_by:       user.id,
+    };
+
+    // Upsert: update if pre-check already exists (unique constraint on queue_id)
+    let preCheck = await this.preCheckRepo.findOne({
+      where: { queue_id: dto.queue_id, tenant_id: tenantId },
     });
+
+    if (preCheck) {
+      Object.assign(preCheck, vitalsData);
+    } else {
+      preCheck = this.preCheckRepo.create({
+        tenant_id:   tenantId,
+        queue_id:    dto.queue_id,
+        patient_id:  queue.patient_id,
+        recorded_by: user.id,
+        created_by:  user.id,
+        ...vitalsData,
+      });
+    }
 
     const saved = await this.preCheckRepo.save(preCheck);
 
-    // Advance queue status to precheck_done
-    await this.updateStatus(
-      dto.queue_id,
-      { status: QueueStatus.PRECHECK_DONE },
-      tenantId,
-      user,
-    );
+    // Only advance queue to precheck_done if it's still in an early stage
+    const earlyStatuses: QueueStatus[] = [
+      QueueStatus.WAITING,
+      QueueStatus.IN_PRECHECK,
+    ];
+    if (earlyStatuses.includes(queue.status as QueueStatus)) {
+      await this.updateStatus(
+        dto.queue_id,
+        { status: QueueStatus.PRECHECK_DONE },
+        tenantId,
+        user,
+      );
+    }
 
     await this.auditService.log({
       tenantId,
       userId: user.id,
       userName: user.full_name,
       userRole: user.role,
-      action: AuditAction.CREATE,
+      action: preCheck.created_at ? AuditAction.UPDATE : AuditAction.CREATE,
       entity: 'pre_checks',
       entityId: saved.id,
       newValue: { queue_id: dto.queue_id, patient_id: queue.patient_id },
