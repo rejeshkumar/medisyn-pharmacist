@@ -17,6 +17,7 @@ export class DrugInteractionDto {
 export class VoiceTranscribeDto {
   @IsString() transcribedText: string;
   @IsOptional() @IsObject() patientContext?: any;
+  @IsOptional() @IsString() inputLanguage?: string; // e.g. 'ml-IN', 'hi-IN', 'ta-IN'
 }
 
 export class DiagnosisDto {
@@ -62,7 +63,7 @@ export class AiController {
   @Post('transcribe')
   async transcribe(@Body() dto: VoiceTranscribeDto) {
     try {
-      return await this.claudeService.transcribeConsultationNotes(dto.transcribedText, dto.patientContext);
+      return await this.claudeService.transcribeConsultationNotes(dto.transcribedText, dto.patientContext, dto.inputLanguage);
     } catch (e: any) {
       const msg = e?.message || String(e);
       const isKeyMissing = msg.includes('missing') || msg.includes('401') || msg.includes('authentication');

@@ -161,7 +161,7 @@ Return only JSON, no other text.`,
     gender?: string;
     chief_complaint?: string;
     vitals?: any;
-  }): Promise<{
+  }, inputLanguage?: string): Promise<{
     chief_complaint?: string;
     history_of_present_illness?: string;
     examination_findings?: string;
@@ -178,16 +178,28 @@ Patient context:
 - Vitals: ${patientContext.vitals ? JSON.stringify(patientContext.vitals) : 'not available'}
 ` : '';
 
+    // Map BCP-47 codes to human-readable language names for the prompt
+    const langNames: Record<string, string> = {
+      'en-IN': 'English', 'ml-IN': 'Malayalam', 'hi-IN': 'Hindi',
+      'ta-IN': 'Tamil', 'te-IN': 'Telugu', 'kn-IN': 'Kannada',
+      'mr-IN': 'Marathi', 'gu-IN': 'Gujarati', 'bn-IN': 'Bengali',
+      'pa-IN': 'Punjabi',
+    };
+    const langName = (inputLanguage && langNames[inputLanguage]) || 'English';
+    const langNote = langName !== 'English'
+      ? `The doctor dictated in ${langName}. Translate the content and structure it into English medical notes.`
+      : 'Structure this into a proper medical note.';
+
     const response = await this.client.messages.create({
       model: 'claude-opus-4-5',
       max_tokens: 1024,
       messages: [{
         role: 'user',
-        content: `A doctor dictated the following consultation notes (voice transcription):
+        content: `A doctor dictated the following consultation notes (voice transcription, language: ${langName}):
 
 "${transcribedText}"
 ${contextStr}
-Structure this into a proper medical note. Return ONLY valid JSON:
+${langNote} Return ONLY valid JSON:
 {
   "chief_complaint": "main complaint in one line",
   "history_of_present_illness": "structured HPI",

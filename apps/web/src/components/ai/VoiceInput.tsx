@@ -3,10 +3,22 @@
 import { useState, useRef } from 'react';
 import axios from 'axios';
 import { getToken } from '@/lib/auth';
-import { Mic, MicOff, Loader2, CheckCircle, X, Volume2 } from 'lucide-react';
+import { Mic, MicOff, Loader2, CheckCircle, X, Volume2, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+const LANGUAGES = [
+  { code: 'en-IN', label: 'English' },
+  { code: 'ml-IN', label: 'Malayalam' },
+  { code: 'hi-IN', label: 'Hindi' },
+  { code: 'ta-IN', label: 'Tamil' },
+  { code: 'te-IN', label: 'Telugu' },
+  { code: 'kn-IN', label: 'Kannada' },
+  { code: 'mr-IN', label: 'Marathi' },
+  { code: 'gu-IN', label: 'Gujarati' },
+  { code: 'bn-IN', label: 'Bengali' },
+];
 
 interface StructuredNotes {
   chief_complaint?: string;
@@ -29,6 +41,7 @@ export default function VoiceInput({ patientContext, onNotesReady }: Props) {
   const [state, setState] = useState<RecordingState>('idle');
   const [transcript, setTranscript] = useState('');
   const [duration, setDuration] = useState(0);
+  const [selectedLang, setSelectedLang] = useState('en-IN');
   const mediaRecorder = useRef<MediaRecorder | null>(null);
   const chunks = useRef<Blob[]>([]);
   const timer = useRef<NodeJS.Timeout | null>(null);
@@ -46,7 +59,7 @@ export default function VoiceInput({ patientContext, onNotesReady }: Props) {
       recognition.current = new SpeechRecognition();
       recognition.current.continuous = true;
       recognition.current.interimResults = true;
-      recognition.current.lang = 'en-IN';
+      recognition.current.lang = selectedLang;
 
       let finalTranscript = '';
       recognition.current.onresult = (event: any) => {
@@ -89,7 +102,7 @@ export default function VoiceInput({ patientContext, onNotesReady }: Props) {
 
     try {
       const r = await axios.post(`${API}/ai/transcribe`,
-        { transcribedText: finalText, patientContext },
+        { transcribedText: finalText, patientContext, inputLanguage: selectedLang },
         { headers: { Authorization: `Bearer ${getToken()}` } });
       onNotesReady(r.data);
       setState('done');
@@ -109,18 +122,35 @@ export default function VoiceInput({ patientContext, onNotesReady }: Props) {
 
   const formatDuration = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
+  const currentLangLabel = LANGUAGES.find(l => l.code === selectedLang)?.label ?? 'English';
+
   return (
     <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
       <div className="flex items-center gap-3 mb-3">
         <Volume2 className="w-4 h-4 text-[#00475a]" />
         <span className="text-sm font-semibold text-slate-700">Voice Notes</span>
         <span className="text-xs text-slate-400">Speak your consultation findings</span>
+        {/* Language selector — only shown when idle */}
+        {state === 'idle' && (
+          <div className="ml-auto relative">
+            <select
+              value={selectedLang}
+              onChange={e => setSelectedLang(e.target.value)}
+              className="appearance-none text-xs bg-white border border-slate-200 rounded-lg pl-3 pr-7 py-1.5 text-slate-600 focus:outline-none focus:ring-2 focus:ring-[#00475a]/20 focus:border-[#00475a] cursor-pointer"
+            >
+              {LANGUAGES.map(l => (
+                <option key={l.code} value={l.code}>{l.label}</option>
+              ))}
+            </select>
+            <ChevronDown className="w-3 h-3 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+        )}
       </div>
 
       {state === 'idle' && (
         <button onClick={startRecording}
           className="flex items-center gap-2 bg-[#00475a] text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-[#00475a]/90 transition-colors">
-          <Mic className="w-4 h-4" />Start Dictating
+          <Mic className="w-4 h-4" />Start Dictating in {currentLangLabel}
         </button>
       )}
 
