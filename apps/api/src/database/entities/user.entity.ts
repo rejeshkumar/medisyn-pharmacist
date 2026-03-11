@@ -11,12 +11,12 @@ import { Exclude } from 'class-transformer';
 import { Tenant } from './tenant.entity';
 
 export enum UserRole {
-  OWNER      = 'owner',
-  PHARMACIST = 'pharmacist',
-  ASSISTANT  = 'assistant',
-  DOCTOR        = 'doctor',
-  RECEPTIONIST  = 'receptionist',
-  NURSE         = 'nurse',
+  OWNER        = 'owner',
+  PHARMACIST   = 'pharmacist',
+  ASSISTANT    = 'assistant',
+  DOCTOR       = 'doctor',
+  RECEPTIONIST = 'receptionist',
+  NURSE        = 'nurse',
 }
 
 export enum UserStatus {
@@ -30,7 +30,7 @@ export class User {
   id: string;
 
   // ── Tenant isolation ──────────────────────────────────
-  @Column({ default: '00000000-0000-0000-0000-000000000001' })
+  @Column()
   tenant_id: string;
 
   @ManyToOne(() => Tenant)
@@ -50,6 +50,10 @@ export class User {
 
   @Column({ type: 'enum', enum: UserRole, default: UserRole.PHARMACIST })
   role: UserRole;
+
+  // Multi-role support — array of roles
+  @Column({ type: 'text', array: true, default: () => "'{}'", nullable: true })
+  roles: string[];
 
   @Column({ type: 'enum', enum: UserStatus, default: UserStatus.ACTIVE })
   status: UserStatus;

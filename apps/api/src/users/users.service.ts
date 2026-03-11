@@ -43,11 +43,18 @@ export class UsersService {
     if (existing) throw new ConflictException('Mobile number already registered');
 
     const hash = await bcrypt.hash(dto.password, 10);
+
+    // Derive roles: use dto.roles if provided, else wrap single role
+    const roles: string[] = dto.roles?.length ? dto.roles : [dto.role];
+    // Primary role = first in roles array
+    const primaryRole = roles[0] as any;
+
     const user = this.usersRepo.create({
       full_name:     dto.full_name,
       mobile:        dto.mobile,
       password_hash: hash,
-      role:          dto.role,
+      role:          primaryRole,
+      roles:         roles,
       tenant_id:     tenantId,
       created_by:    actorId,
     });
@@ -61,8 +68,8 @@ export class UsersService {
       action:    AuditAction.CREATE,
       entity:    'User',
       entityId:  saved.id,
-      entityRef: `${saved.full_name} (${saved.role})`,
-      newValue:  { full_name: saved.full_name, role: saved.role, mobile: saved.mobile },
+      entityRef: `${saved.full_name} (${roles.join(', ')})`,
+      newValue:  { full_name: saved.full_name, roles, mobile: saved.mobile },
     });
 
     return saved;
@@ -77,7 +84,22 @@ export class UsersService {
       delete dto.password;
     }
 
-    Object.assign(user, dto);
+    // Handle roles array update
+    if (dto.roles?.length) {
+      user.roles = dto.roles;
+      // Keep primary role in sync with first entry in roles array
+      user.role = dto.roles[0] as any;
+    } else if (dto.role) {
+      // Single role update — wrap into array too
+      user.role = dto.role;
+      user.roles = [dto.role];
+    }
+
+    // Apply other fields (full_name, mobile, password_hash)
+    if (dto.full_name) user.full_name = dto.full_name;
+    if (dto.mobile)    user.mobile    = dto.mobile;
+    if ((dto as any).password_hash) user.password_hash = (dto as any).password_hash;
+
     user.updated_by = actorId;
     return this.usersRepo.save(user);
   }
