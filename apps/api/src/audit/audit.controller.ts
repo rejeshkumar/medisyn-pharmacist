@@ -1,70 +1,49 @@
-import {
-  Controller,
-  Get,
-  Query,
-  Request,
-  ForbiddenException,
-} from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
-import { AuditQueryService } from './audit-query.service';
-import { UserRole } from '../database/entities/user.entity';
+import { Controller, Get, Patch, Body, Query, Req, UseGuards } from '@nestjs/common';
+import { AuditService } from './audit.service';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { TenantGuard } from '../common/guards/tenant.guard';
 
-@ApiTags('Audit')
-@ApiBearerAuth()
 @Controller('audit')
+@UseGuards(JwtAuthGuard, TenantGuard)
 export class AuditController {
-  constructor(private readonly auditQueryService: AuditQueryService) {}
+  constructor(private readonly auditService: AuditService) {}
 
+  // GET /audit/logs?action=&entity=&from=&to=&page=&limit=
   @Get('logs')
-  @ApiOperation({ summary: 'Get audit logs (Owner only)' })
-  @ApiQuery({ name: 'from',        required: false, description: 'Start date YYYY-MM-DD' })
-  @ApiQuery({ name: 'to',          required: false, description: 'End date YYYY-MM-DD' })
-  @ApiQuery({ name: 'user_id',     required: false })
-  @ApiQuery({ name: 'action',      required: false, description: 'e.g. DISPENSE, VOID, CREATE' })
-  @ApiQuery({ name: 'entity',      required: false, description: 'e.g. Sale, Medicine, Patient' })
-  @ApiQuery({ name: 'entity_id',   required: false })
-  @ApiQuery({ name: 'page',        required: false, type: Number })
-  @ApiQuery({ name: 'limit',       required: false, type: Number })
-  getLogs(
-    @Request() req,
-    @Query('from')      from?:     string,
-    @Query('to')        to?:       string,
-    @Query('user_id')   userId?:   string,
-    @Query('action')    action?:   string,
-    @Query('entity')    entity?:   string,
-    @Query('entity_id') entityId?: string,
-    @Query('page')      page?:     number,
-    @Query('limit')     limit?:    number,
-  ) {
-    if (req.userRole !== UserRole.OWNER) {
-      throw new ForbiddenException('Audit logs are restricted to owners');
-    }
-
-    return this.auditQueryService.getLogs(req.tenantId, {
-      from,
-      to,
-      userId,
-      action,
-      entity,
-      entityId,
-      page:  page  ? Number(page)  : 1,
-      limit: limit ? Number(limit) : 50,
+  getLogs(@Query() query: any, @Req() req: any) {
+    return this.auditService.getLogs(req.user.tenant_id, {
+      action: query.action,
+      entity: query.entity,
+      userId: query.userId,
+      from:   query.from,
+      to:     query.to,
+      page:   query.page   ? parseInt(query.page)  : 1,
+      limit:  query.limit  ? parseInt(query.limit) : 50,
     });
   }
 
-  @Get('summary')
-  @ApiOperation({ summary: 'Get audit summary counts by action (Owner only)' })
-  @ApiQuery({ name: 'from', required: false })
-  @ApiQuery({ name: 'to',   required: false })
-  getSummary(
-    @Request() req,
-    @Query('from') from?: string,
-    @Query('to')   to?:   string,
-  ) {
-    if (req.userRole !== UserRole.OWNER) {
-      throw new ForbiddenException('Audit logs are restricted to owners');
-    }
+  // GET /audit/config — get current tenant audit settings
+  @Get('config')
+  getConfig(@Req() req: any) {
+    return this.auditService.getConfigForTenant(req.user.tenant_id);
+  }
 
-    return this.auditQueryService.getSummary(req.tenantId, { from, to });
+  // PATCH /audit/config — update audit settings (owner/admin only)
+  @Patch('config')
+  updateConfig(@Body() body: any, @Req() req: any) {
+    const user = req.user;
+    const roles: string[] = user.roles?.length ? user.roles : [user.role];
+    if (!roles.some((r: string) => ['owner', 'admin'].includes(r))) {
+      return { error: 'Only owners and admins can change audit settings' };
+    }
+    // Strip non-config fields from body
+    const allowed = [
+      'log_login_events', 'log_bulk_imports', 'log_queue_booking',
+      'log_consultation', 'log_patient_changes', 'log_report_views',
+      'log_availability_changes',
+    ];
+    const updates: any = {};
+    allowed.forEach(k => { if (body[k] !== undefined) updates[k] = body[k]; });
+    return this.auditService.updateConfig(user.tenant_id, updates);
   }
 }
