@@ -5,6 +5,7 @@ import {
   Patch,
   Body,
   Param,
+  Query,
   UseGuards,
   Request,
 } from '@nestjs/common';
@@ -24,10 +25,10 @@ export class UsersController {
   constructor(private usersService: UsersService) {}
 
   @Get()
-  @Roles(UserRole.OWNER)
-  @ApiOperation({ summary: 'List all users (Owner only)' })
-  findAll(@Request() req) {
-    return this.usersService.findAll(req.tenantId);
+  @Roles(UserRole.OWNER, UserRole.RECEPTIONIST, UserRole.NURSE, UserRole.DOCTOR, UserRole.PHARMACIST)
+  @ApiOperation({ summary: 'List users; supports ?role=doctor filter' })
+  findAll(@Request() req, @Query('role') role?: string) {
+    return this.usersService.findAll(req.tenantId, role);
   }
 
   @Post()
