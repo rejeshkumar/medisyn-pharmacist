@@ -42,6 +42,22 @@ export class ConsultationController {
     return this.consultationService.getByPatient(patientId, req.tenantId);
   }
 
+  // PATCH /consultations/:id — update in-progress consultation notes
+  @Patch(':id')
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateConsultationDto,
+    @Req() req: any,
+  ) {
+    const user: UserContext = {
+      id: req.user.id,
+      full_name: req.user.full_name,
+      role: req.user.role,
+      tenant_id: req.tenantId,
+    };
+    return this.consultationService.updateConsultation(id, dto, req.tenantId, user);
+  }
+
   // PATCH /consultations/:id/complete — complete consultation
   @Patch(':id/complete')
   complete(

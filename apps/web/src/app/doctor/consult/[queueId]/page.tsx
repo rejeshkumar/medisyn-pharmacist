@@ -95,29 +95,55 @@ export default function ConsultPage() {
     retry: false,
   });
 
+  // Strip empty strings from optional date/string fields before sending to API.
+  // class-validator's @IsOptional() only skips "" through null/undefined,
+  // so an empty string fails @IsDateString() and causes a silent 400.
+  const sanitizeForm = (f: typeof form) => {
+    const out: any = { ...f };
+    if (!out.follow_up_date) delete out.follow_up_date;
+    if (!out.diagnosis_code) delete out.diagnosis_code;
+    if (!out.referral) delete out.referral;
+    if (!out.advice) delete out.advice;
+    if (!out.symptoms) delete out.symptoms;
+    if (!out.examination) delete out.examination;
+    return out;
+  };
+
   const saveConsultMutation = useMutation({
-    mutationFn: () => api.post('/consultations', {
-      queue_id: queueId,
-      patient_id: queueEntry?.patient_id,
-      ...form,
-    }),
+    mutationFn: () => {
+      const payload = { queue_id: queueId, patient_id: queueEntry?.patient_id, ...sanitizeForm(form) };
+      // If consultation already exists (came back to page), update instead of create
+      if (consultId) {
+        return api.patch(`/consultations/${consultId}`, sanitizeForm(form));
+      }
+      return api.post('/consultations', payload);
+    },
     onSuccess: (res) => {
-      setConsultId(res.data.id);
+      const id = res.data?.id ?? consultId;
+      if (id) setConsultId(id);
       setConsultSaved(true);
       toast.success('Consultation saved');
       qc.invalidateQueries({ queryKey: ['doctor-queue'] });
       setTab('rx');
     },
-    onError: () => toast.error('Failed to save consultation'),
+    onError: (e: any) => {
+      const detail = e?.response?.data?.message;
+      const msg = Array.isArray(detail) ? detail.join(', ') : (detail || 'Failed to save consultation');
+      toast.error(msg);
+    },
   });
 
   const completeConsultMutation = useMutation({
-    mutationFn: () => api.patch(`/consultations/${consultId}/complete`, form),
+    mutationFn: () => api.patch(`/consultations/${consultId}/complete`, sanitizeForm(form)),
     onSuccess: () => {
       toast.success('Consultation completed');
       qc.invalidateQueries({ queryKey: ['doctor-queue'] });
     },
-    onError: () => toast.error('Failed to complete consultation'),
+    onError: (e: any) => {
+      const detail = e?.response?.data?.message;
+      const msg = Array.isArray(detail) ? detail.join(', ') : (detail || 'Failed to complete consultation');
+      toast.error(msg);
+    },
   });
 
   const createRxMutation = useMutation({

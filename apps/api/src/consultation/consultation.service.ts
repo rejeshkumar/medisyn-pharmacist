@@ -85,6 +85,32 @@ export class ConsultationService {
     return saved;
   }
 
+  // ── Update consultation notes (in-progress, no status change) ───────
+  async updateConsultation(
+    id: string,
+    dto: UpdateConsultationDto,
+    tenantId: string,
+    user: UserContext,
+  ): Promise<Consultation> {
+    const consultation = await this.getById(id, tenantId);
+
+    Object.assign(consultation, { ...dto, updated_by: user.id });
+    const saved = await this.consultationRepo.save(consultation);
+
+    await this.auditService.log({
+      tenantId,
+      userId: user.id,
+      userName: user.full_name,
+      userRole: user.role,
+      action: AuditAction.UPDATE,
+      entity: 'consultations',
+      entityId: id,
+      newValue: dto as Record<string, any>,
+    });
+
+    return saved;
+  }
+
   // ── Complete consultation ─────────────────────────────────────────
   async completeConsultation(
     id: string,

@@ -2,7 +2,10 @@ import {
   IsUUID, IsString, IsOptional, IsBoolean,
   IsDateString, IsArray, ValidateNested, IsInt, IsEnum,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
+
+// Converts empty string to undefined so @IsOptional() properly skips validation
+const EmptyToUndefined = () => Transform(({ value }) => (value === '' ? undefined : value));
 
 export class CreateConsultationDto {
   @IsUUID()
@@ -30,6 +33,7 @@ export class CreateConsultationDto {
   @IsOptional()
   advice?: string;
 
+  @EmptyToUndefined()
   @IsDateString()
   @IsOptional()
   follow_up_date?: string;
@@ -64,6 +68,7 @@ export class UpdateConsultationDto {
   @IsOptional()
   advice?: string;
 
+  @EmptyToUndefined()
   @IsDateString()
   @IsOptional()
   follow_up_date?: string;
