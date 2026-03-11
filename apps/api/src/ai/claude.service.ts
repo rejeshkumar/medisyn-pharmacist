@@ -42,7 +42,10 @@ export class ClaudeService {
     } catch (e: any) {
       const msg = e?.message || String(e);
       if (msg.includes('401') || msg.includes('authentication') || msg.includes('invalid x-api-key')) {
-        return { ok: false, reason: 'ANTHROPIC_API_KEY is set but invalid or expired' };
+        return { ok: false, reason: 'ANTHROPIC_API_KEY is set but invalid or expired — generate a new key at console.anthropic.com' };
+      }
+      if (msg.includes('credit balance') || msg.includes('too low') || msg.includes('402') || msg.includes('billing')) {
+        return { ok: false, reason: 'Anthropic account has no credits — go to console.anthropic.com/settings/billing to add credits' };
       }
       return { ok: false, reason: `API call failed: ${msg}` };
     }

@@ -149,14 +149,17 @@ export default function VoiceInput({ patientContext, onNotesReady }: Props) {
           <div>
             <span className="font-semibold">AI not available: </span>
             <span>{aiStatusReason}</span>
-            <a
-              href="https://railway.app"
-              target="_blank"
-              rel="noreferrer"
-              className="ml-1 underline font-medium hover:text-amber-900"
-            >
-              Fix in Railway →
-            </a>
+            {aiStatusReason.includes('credit') || aiStatusReason.includes('billing') ? (
+              <a href="https://console.anthropic.com/settings/billing" target="_blank" rel="noreferrer"
+                className="ml-1 underline font-medium hover:text-amber-900">
+                Add credits →
+              </a>
+            ) : (
+              <a href="https://railway.app" target="_blank" rel="noreferrer"
+                className="ml-1 underline font-medium hover:text-amber-900">
+                Fix in Railway →
+              </a>
+            )}
           </div>
         </div>
       )}
