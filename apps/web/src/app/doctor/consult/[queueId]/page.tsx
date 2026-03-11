@@ -179,6 +179,8 @@ export default function ConsultPage() {
   // Medicine names for live drug interaction check
   const medicineNames = items.map(i => i.medicine_name.trim()).filter(Boolean);
 
+  const patient = queueEntry?.patient;
+
   // Patient context passed to AI features
   const patientContext = {
     age:                 patient?.age,
@@ -194,8 +196,6 @@ export default function ConsultPage() {
       blood_sugar: preCheck.blood_sugar,
     } : undefined,
   };
-
-  const patient = queueEntry?.patient;
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
