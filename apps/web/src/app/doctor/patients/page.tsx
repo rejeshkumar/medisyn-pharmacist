@@ -52,6 +52,12 @@ export default function ReceptionistPatientsPage() {
   const [selected, setSelected] = useState<Patient | null>(null);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+
+  // Out-of-stock alternatives
+  const [stockWarnings, setStockWarnings] = useState<Record<string, {
+    outOfStock: boolean;
+    alternatives: Array<{ id: string; name: string; stock: number }>;
+  }>>({});
   const [expandedConsult, setExpandedConsult] = useState<string | null>(null);
 
   const headers = () => ({ Authorization: `Bearer ${getToken()}` });
@@ -96,6 +102,54 @@ export default function ReceptionistPatientsPage() {
   };
 
   const patientDob = (p: Patient) => p.date_of_birth || p.dob;
+
+
+  // Check if a medicine is in stock and fetch alternatives if not
+  const checkStock = async (medicineId: string, medicineName: string, index: number) => {
+    const token = getToken();
+    const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    try {
+      // Check current stock
+      const stockRes = await axios.get(
+        `${API}/stock/medicine/${medicineId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      ).catch(() => null);
+      
+      const totalStock = stockRes?.data?.reduce
+        ? stockRes.data.reduce((sum: number, b: any) => sum + (Number(b.quantity) || 0), 0)
+        : (Number(stockRes?.data?.quantity) || 0);
+      
+      if (totalStock === 0) {
+        // Fetch alternatives — medicines with same generic name
+        const altRes = await axios.get(
+          `${API}/medicines?search=${encodeURIComponent(medicineName)}&exclude=${medicineId}&limit=5`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        ).catch(() => null);
+        
+        const alts = (altRes?.data?.data ?? altRes?.data ?? [])
+          .filter((m: any) => m.id !== medicineId)
+          .slice(0, 3)
+          .map((m: any) => ({ 
+            id: m.id, 
+            name: m.name, 
+            stock: m.current_stock ?? m.stock ?? 0 
+          }));
+        
+        setStockWarnings(prev => ({
+          ...prev,
+          [String(index)]: { outOfStock: true, alternatives: alts }
+        }));
+      } else {
+        setStockWarnings(prev => {
+          const next = { ...prev };
+          delete next[String(index)];
+          return next;
+        });
+      }
+    } catch {
+      // silent fail — don't block prescription
+    }
+  };
 
   return (
     <div className="flex h-full">
@@ -272,9 +326,41 @@ export default function ReceptionistPatientsPage() {
                                 </tr>
                               </thead>
                               <tbody>
-                                {c.prescription.items.map((item, i) => (
+                                {c.(prescription?.items ?? []).map((item, i) => (
                                   <tr key={i} className="border-b border-slate-100 last:border-0">
                                     <td className="px-3 py-2 font-medium text-slate-800">{item.medicine_name}</td>
+
+                          {stockWarnings[String(idx)] && (
+                            <div className="mt-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                              <p className="text-xs font-semibold text-amber-700 flex items-center gap-1">
+                                ⚠️ Out of stock
+                              </p>
+                              {stockWarnings[String(idx)].alternatives.length > 0 && (
+                                <div className="mt-1">
+                                  <p className="text-xs text-amber-600 mb-1">Alternatives in stock:</p>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {stockWarnings[String(idx)].alternatives.map(alt => (
+                                      <button
+                                        key={alt.id}
+                                        type="button"
+                                        onClick={() => {
+                                          const updated = [...items];
+                                          updated[idx] = { ...updated[idx], medicine_id: alt.id, medicine_name: alt.name };
+                                          setItems(updated);
+          checkStock(updated[idx].medicine_id, updated[idx].medicine_name ?? '', Number(idx));
+                                          setStockWarnings(prev => { const n = {...prev}; delete n[String(idx)]; return n; });
+                                        }}
+                                        className="text-xs px-2 py-1 rounded-md bg-white border border-amber-300 text-amber-800 hover:bg-amber-100 transition-colors"
+                                      >
+                                        {alt.name} ({alt.stock} units)
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
                                     <td className="px-3 py-2 text-slate-600">{item.dosage}</td>
                                     <td className="px-3 py-2 text-slate-600">{item.frequency}</td>
                                     <td className="px-3 py-2 text-right text-slate-600">{item.quantity}</td>
