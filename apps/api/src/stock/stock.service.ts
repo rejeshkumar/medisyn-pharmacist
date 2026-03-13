@@ -226,8 +226,21 @@ export class StockService {
       .andWhere('b.tenant_id = :tenantId', { tenantId })
       .andWhere('b.quantity > 0')
       .andWhere('b.expiry_date > NOW()')
-      .andWhere("b.expiry_date > NOW() + INTERVAL '30 days'")
-      .orderBy('b.expiry_date', 'ASC')
+      .orderBy('b.expiry_date', 'ASC')  // FEFO
       .getOne();
+  }
+
+  async getExpiring(tenantId: string, days: number = 60) {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() + days);
+    return this.batchRepo
+      .createQueryBuilder('b')
+      .leftJoinAndSelect('b.medicine', 'm')
+      .where('b.tenant_id = :tenantId', { tenantId })
+      .andWhere('b.quantity > 0')
+      .andWhere('b.expiry_date <= :cutoff', { cutoff })
+      .andWhere('b.is_active = true')
+      .orderBy('b.expiry_date', 'ASC')
+      .getMany();
   }
 }

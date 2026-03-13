@@ -175,4 +175,75 @@ export class MedicinesService {
       .andWhere('m.tenant_id = :tenantId', { tenantId })
       .getMany();
   }
+
+  async lookupBarcode(barcode: string, tenantId: string) {
+    // 1. Check batch barcode (manufacturer label on box)
+    const batchRows = await this.dataSource.query(
+      `SELECT sb.id, sb.batch_number, sb.expiry_date, sb.quantity, sb.sale_rate,
+              m.id as med_id, m.brand_name, m.molecule, m.strength,
+              m.dosage_form, m.schedule_class, m.gst_percent
+       FROM stock_batches sb
+       JOIN medicines m ON sb.medicine_id = m.id
+       WHERE sb.barcode = $1 AND sb.tenant_id = $2 AND sb.quantity > 0
+       ORDER BY sb.expiry_date ASC LIMIT 1`,
+      [barcode, tenantId]
+    ).catch(() => []);
+    if (batchRows?.length) {
+      const r = batchRows[0];
+      return {
+        medicine: { id: r.med_id, brand_name: r.brand_name, molecule: r.molecule,
+                    strength: r.strength, dosage_form: r.dosage_form,
+                    schedule_class: r.schedule_class, gst_percent: r.gst_percent },
+        batch: { id: r.id, batch_number: r.batch_number, expiry_date: r.expiry_date,
+                 quantity: r.quantity, sale_rate: r.sale_rate },
+        source: 'batch',
+      };
+    }
+    // 2. Check barcode mappings (custom mapped)
+    const mappingRows = await this.dataSource.query(
+      `SELECT bm.medicine_id, m.id, m.brand_name, m.molecule, m.strength,
+              m.dosage_form, m.schedule_class, m.gst_percent
+       FROM barcode_mappings bm
+       JOIN medicines m ON bm.medicine_id = m.id
+       WHERE bm.barcode = $1 AND bm.tenant_id = $2 LIMIT 1`,
+      [barcode, tenantId]
+    ).catch(() => []);
+    if (mappingRows?.length) {
+      const med = mappingRows[0];
+      const batches = await this.dataSource.query(
+        `SELECT * FROM stock_batches WHERE medicine_id = $1 AND tenant_id = $2
+         AND quantity > 0 AND expiry_date > NOW() ORDER BY expiry_date ASC LIMIT 1`,
+        [med.id, tenantId]
+      ).catch(() => []);
+      return {
+        medicine: { id: med.id, brand_name: med.brand_name, molecule: med.molecule,
+                    strength: med.strength, dosage_form: med.dosage_form,
+                    schedule_class: med.schedule_class, gst_percent: med.gst_percent },
+        batch: batches?.[0] ?? null,
+        source: 'mapping',
+      };
+    }
+    return { medicine: null, batch: null, source: null };
+  }
+
+  async getBarcodeMappings(tenantId: string) {
+    return this.dataSource.query(
+      `SELECT bm.id, bm.barcode, bm.created_at,
+              m.id as medicine_id, m.brand_name, m.molecule, m.strength
+       FROM barcode_mappings bm
+       LEFT JOIN medicines m ON bm.medicine_id = m.id
+       WHERE bm.tenant_id = $1 ORDER BY bm.created_at DESC`,
+      [tenantId]
+    ).catch(() => []);
+  }
+
+  async createBarcodeMapping(dto: { barcode: string; medicine_id: string }, actor: any) {
+    await this.dataSource.query(
+      `INSERT INTO barcode_mappings(tenant_id, barcode, medicine_id, created_by)
+       VALUES($1,$2,$3,$4)
+       ON CONFLICT(tenant_id, barcode) DO UPDATE SET medicine_id = EXCLUDED.medicine_id`,
+      [actor.tenant_id, dto.barcode, dto.medicine_id, actor.id]
+    );
+    return { success: true, barcode: dto.barcode, medicine_id: dto.medicine_id };
+  }
 }

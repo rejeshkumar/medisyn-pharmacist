@@ -69,4 +69,11 @@ export class UsersController {
   ) {
     return this.usersService.resetPassword(id, body.password, req.user);
   }
+
+  @Patch(':id/consultation-fee')
+  updateFee(@Param('id') id: string, @Body() body: { consultation_fee: number }, @Req() req: any) {
+    return this.usersService.update(id, { consultation_fee: body.consultation_fee } as any, {
+      id: req.user.sub, full_name: req.user.name, role: req.user.role, tenant_id: req.user.tenant_id,
+    });
+  }
 }

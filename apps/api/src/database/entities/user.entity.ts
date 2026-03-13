@@ -62,6 +62,9 @@ export class User {
   @Column({ nullable: true })
   created_by: string;
 
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0, nullable: true })
+  consultation_fee: number;
+
   @Column({ nullable: true })
   updated_by: string;
 

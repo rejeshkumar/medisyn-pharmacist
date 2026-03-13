@@ -13,6 +13,7 @@ export enum QueueStatus {
   IN_CONSULTATION = 'in_consultation',
   CONSULTATION_DONE = 'consultation_done',
   DISPENSING = 'dispensing',
+  PAYMENT_PENDING = 'payment_pending',
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',
   NO_SHOW = 'no_show',

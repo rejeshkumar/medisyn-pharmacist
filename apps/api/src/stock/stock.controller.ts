@@ -101,4 +101,14 @@ export class StockController {
   adjustStock(@Body() dto: AdjustStockDto, @Request() req) {
     return this.stockService.adjustStock(dto, req.user);
   }
+
+  @Get('expiring')
+  getExpiring(@Req() req: any, @Query('days') days?: string) {
+    return this.stockService.getExpiring(req.user.tenant_id, parseInt(days || '60'));
+  }
+
+  @Get(':medicineId/batches')
+  getBatches(@Param('medicineId') medicineId: string, @Req() req: any) {
+    return this.stockService.getBatchesForMedicine(medicineId, req.user.tenant_id);
+  }
 }

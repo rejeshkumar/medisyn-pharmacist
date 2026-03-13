@@ -29,6 +29,8 @@ import { AvailabilityModule } from './availability/availability.module';
 import { QueueModule } from './queue/queue.module';
 import { ConsultationModule } from './consultation/consultation.module';
 
+import { PaymentModule } from './payments/payment.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -58,7 +60,8 @@ import { ConsultationModule } from './consultation/consultation.module';
 
     // Foundation modules (load first)
     TenantsModule,
-    AuditModule,   // @Global — AuditService available everywhere without importing
+    AuditModule,
+    PaymentModule,   // @Global — AuditService available everywhere without importing
 
     // Feature modules
     AuthModule,

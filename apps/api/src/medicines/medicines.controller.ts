@@ -80,4 +80,22 @@ export class MedicinesController {
   deactivate(@Param('id') id: string, @Request() req) {
     return this.medicinesService.deactivate(id, req.user);
   }
+
+  @Get('barcode-mappings')
+  getBarcodeMappings(@Req() req: any) {
+    return this.medicinesService.getBarcodeMappings(req.user.tenant_id);
+  }
+
+  @Get('barcode/:code')
+  lookupBarcode(@Param('code') code: string, @Req() req: any) {
+    return this.medicinesService.lookupBarcode(decodeURIComponent(code), req.user.tenant_id);
+  }
+
+  @Post('barcode-mappings')
+  createBarcodeMapping(@Body() body: { barcode: string; medicine_id: string }, @Req() req: any) {
+    return this.medicinesService.createBarcodeMapping(body, {
+      id: req.user.sub, full_name: req.user.name,
+      role: req.user.role, tenant_id: req.user.tenant_id,
+    });
+  }
 }

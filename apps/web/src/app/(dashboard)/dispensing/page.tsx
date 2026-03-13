@@ -11,6 +11,8 @@ import {
   Check, AlertTriangle, X, FileText,
   Loader2, Camera, ChevronUp, ClipboardList,
 } from 'lucide-react';
+import FEFOBatchSelector from '@/components/dispensing/FEFOBatchSelector';
+import BarcodeScanner from '@/components/dispensing/BarcodeScanner';
 import BillDocument, { type BillData } from '@/components/billing/BillDocument';
 import PrescriptionBridge from '@/components/dispensing/PrescriptionBridge';
 import { cn } from '@/lib/utils';
@@ -156,6 +158,29 @@ function BillSummaryContent({
           Generate Bill
         </button>
       </div>
+      {showBarcodeScanner && (
+        <BarcodeScanner
+          onFound={async (medicine, batch) => {
+            let b = batch;
+            if (!b) {
+              try { const r = await api.get(`/stock/${medicine.id}/best-batch`); b = r.data; } catch {}
+            }
+            if (!b) { return; }
+            setCart(prev => {
+              const ex = prev.findIndex(i => i.medicine_id === medicine.id && i.batch_id === b.id);
+              if (ex !== -1) return prev.map((c, i) => i === ex ? { ...c, qty: c.qty + 1 } : c);
+              return [...prev, {
+                medicine_id: medicine.id, batch_id: b.id,
+                medicine_name: medicine.brand_name, batch_number: b.batch_number,
+                expiry_date: b.expiry_date, qty: 1, rate: b.sale_rate,
+                gst_percent: medicine.gst_percent || 0,
+                is_substituted: false, schedule_class: medicine.schedule_class || 'OTC',
+              }];
+            });
+          }}
+          onClose={() => setShowBarcodeScanner(false)}
+        />
+      )}
     </div>
   );
 }
@@ -163,6 +188,7 @@ function BillSummaryContent({
 export default function DispensingPage() {
   const [search, setSearch] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [showSubstitutes, setShowSubstitutes] = useState<string | null>(null);
   const [complianceData, setComplianceData] = useState({ patient_name: '', doctor_name: '', doctor_reg_no: '' });
   const [showCompliance, setShowCompliance] = useState(false);
@@ -590,9 +616,22 @@ export default function DispensingPage() {
                         {item.schedule_class}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      Batch: {item.batch_number} · Exp: {formatDate(item.expiry_date)}
-                    </p>
+                    <div className="mt-1.5">
+                      <FEFOBatchSelector
+                        medicineId={item.medicine_id}
+                        medicineName={item.medicine_name}
+                        selectedBatchId={item.batch_id}
+                        onSelect={(batch) => {
+                          setCart(prev => prev.map((c, i) => i === idx ? {
+                            ...c,
+                            batch_id:     batch.id,
+                            batch_number: batch.batch_number,
+                            expiry_date:  batch.expiry_date,
+                            rate:         batch.sale_rate,
+                          } : c));
+                        }}
+                      />
+                    </div>
                     {item.is_substituted && item.substitution_reason && (
                       <p className="text-xs text-blue-600 mt-0.5">Reason: {item.substitution_reason}</p>
                     )}
@@ -783,6 +822,29 @@ export default function DispensingPage() {
             </div>
           </div>
         </div>
+      )}
+      {showBarcodeScanner && (
+        <BarcodeScanner
+          onFound={async (medicine, batch) => {
+            let b = batch;
+            if (!b) {
+              try { const r = await api.get(`/stock/${medicine.id}/best-batch`); b = r.data; } catch {}
+            }
+            if (!b) { return; }
+            setCart(prev => {
+              const ex = prev.findIndex(i => i.medicine_id === medicine.id && i.batch_id === b.id);
+              if (ex !== -1) return prev.map((c, i) => i === ex ? { ...c, qty: c.qty + 1 } : c);
+              return [...prev, {
+                medicine_id: medicine.id, batch_id: b.id,
+                medicine_name: medicine.brand_name, batch_number: b.batch_number,
+                expiry_date: b.expiry_date, qty: 1, rate: b.sale_rate,
+                gst_percent: medicine.gst_percent || 0,
+                is_substituted: false, schedule_class: medicine.schedule_class || 'OTC',
+              }];
+            });
+          }}
+          onClose={() => setShowBarcodeScanner(false)}
+        />
       )}
     </div>
   );
