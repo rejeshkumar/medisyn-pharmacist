@@ -74,10 +74,6 @@ export class StockController {
     return this.stockService.createSupplier(dto, req.user);
   }
 
-  @Get(':medicine_id/batches')
-  @ApiOperation({ summary: 'Get batches for a medicine' })
-  getBatches(@Param('medicine_id') medicineId: string, @Request() req) {
-    return this.stockService.getBatchesForMedicine(medicineId, req.tenantId);
   }
 
   @Get(':medicine_id/best-batch')

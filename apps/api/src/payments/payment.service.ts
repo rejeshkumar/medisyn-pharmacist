@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Payment, PaymentMethod, PaymentStatus } from '../database/entities/payment.entity';
-import { Queue, QueueStatus } from '../database/entities/queue.entity';
+import { Queue, QueueStatus } from '../queue/queue.entity';
 import { User } from '../database/entities/user.entity';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../database/entities/audit-log.entity';

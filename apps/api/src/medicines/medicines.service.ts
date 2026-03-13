@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
+import { Repository } , DataSource } from 'typeorm';
 import { Medicine } from '../database/entities/medicine.entity';
 import { StockBatch } from '../database/entities/stock-batch.entity';
 import { CreateMedicineDto } from './dto/create-medicine.dto';
