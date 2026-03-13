@@ -25,8 +25,6 @@ import {
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import RoleSwitcher from '@/components/common/RoleSwitcher';
-import { useQuery } from '@tanstack/react-query';
-import api from '@/lib/api';
 
 const navItems = [
   { href: '/dashboard',  label: 'Dashboard',    icon: LayoutDashboard, roles: ['owner', 'pharmacist', 'assistant'] },
@@ -56,18 +54,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
     setUser(u);
   }, []);
-
-  // Live pending dispensing count — poll every 20s
-  const { data: pendingDispenseCount = 0 } = useQuery<number>({
-    queryKey: ['pending-dispense-count'],
-    queryFn: () =>
-      api.get('/queue/today').then((r) => {
-        const entries: any[] = r.data ?? [];
-        return entries.filter((e) => e.status === 'consultation_done').length;
-      }),
-    refetchInterval: 20000,
-    enabled: !!user,
-  });
 
   const handleLogout = () => {
     clearAuth();
@@ -117,8 +103,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {visibleNav.map((item) => {
             const Icon = item.icon;
             const active = pathname === item.href || pathname.startsWith(item.href + '/');
-            const isDispense = item.href === '/dispensing';
-            const badge = isDispense && pendingDispenseCount > 0 ? pendingDispenseCount : 0;
             return (
               <Link
                 key={item.href}
@@ -133,11 +117,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               >
                 <Icon className="w-4.5 h-4.5 flex-shrink-0" style={{ width: 18, height: 18 }} />
                 {item.label}
-                {badge > 0 && !active && (
-                  <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white animate-pulse">
-                    {badge}
-                  </span>
-                )}
                 {active && <ChevronRight className="w-4 h-4 ml-auto" />}
               </Link>
             );

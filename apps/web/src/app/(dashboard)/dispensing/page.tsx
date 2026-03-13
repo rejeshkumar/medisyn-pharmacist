@@ -212,24 +212,8 @@ export default function DispensingPage() {
       setAiPrescriptionId(null);
       setShowBillPanel(false);
       // ── Mark prescription as dispensed if loaded from bridge ──
-      // #region agent log
-      fetch('http://127.0.0.1:7877/ingest/e4777394-aee8-41e2-8183-900979d7c179',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e68e7d'},body:JSON.stringify({sessionId:'e68e7d',location:'dispensing/page.tsx:onSuccess',message:'H3: activePrescriptionId at billing success',data:{activePrescriptionId,saleId:data.id,billNumber:data.bill_number},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
-      // #endregion
       if (activePrescriptionId) {
-        // #region agent log
-        fetch('http://127.0.0.1:7877/ingest/e4777394-aee8-41e2-8183-900979d7c179',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e68e7d'},body:JSON.stringify({sessionId:'e68e7d',location:'dispensing/page.tsx:dispense-patch',message:'H1: firing PATCH /prescriptions/:id/dispense',data:{prescriptionId:activePrescriptionId,saleId:data.id},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
-        // #endregion
-        api.patch(`/prescriptions/${activePrescriptionId}/dispense`, { sale_id: data.id })
-          .then(resp => {
-            // #region agent log
-            fetch('http://127.0.0.1:7877/ingest/e4777394-aee8-41e2-8183-900979d7c179',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e68e7d'},body:JSON.stringify({sessionId:'e68e7d',location:'dispensing/page.tsx:dispense-response',message:'H1: dispense PATCH response',data:{status:resp.status,rxStatus:resp.data?.status,queueId:resp.data?.queue_id},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
-            // #endregion
-          })
-          .catch(e => {
-            // #region agent log
-            fetch('http://127.0.0.1:7877/ingest/e4777394-aee8-41e2-8183-900979d7c179',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e68e7d'},body:JSON.stringify({sessionId:'e68e7d',location:'dispensing/page.tsx:dispense-error',message:'H1: dispense PATCH failed',data:{error:e?.response?.data},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
-            // #endregion
-          });
+        api.patch(`/prescriptions/${activePrescriptionId}/dispense`, { sale_id: data.id }).catch(() => {});
         setActivePrescriptionId(null);
       }
       qc.invalidateQueries({ queryKey: ['dashboard'] });
