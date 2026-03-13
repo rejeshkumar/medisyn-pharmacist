@@ -103,54 +103,6 @@ export default function ReceptionistPatientsPage() {
 
   const patientDob = (p: Patient) => p.date_of_birth || p.dob;
 
-
-  // Check if a medicine is in stock and fetch alternatives if not
-  const checkStock = async (medicineId: string, medicineName: string, index: number) => {
-    const token = getToken();
-    const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-    try {
-      // Check current stock
-      const stockRes = await axios.get(
-        `${API}/stock/medicine/${medicineId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      ).catch(() => null);
-      
-      const totalStock = stockRes?.data?.reduce
-        ? stockRes.data.reduce((sum: number, b: any) => sum + (Number(b.quantity) || 0), 0)
-        : (Number(stockRes?.data?.quantity) || 0);
-      
-      if (totalStock === 0) {
-        // Fetch alternatives — medicines with same generic name
-        const altRes = await axios.get(
-          `${API}/medicines?search=${encodeURIComponent(medicineName)}&exclude=${medicineId}&limit=5`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        ).catch(() => null);
-        
-        const alts = (altRes?.data?.data ?? altRes?.data ?? [])
-          .filter((m: any) => m.id !== medicineId)
-          .slice(0, 3)
-          .map((m: any) => ({ 
-            id: m.id, 
-            name: m.name, 
-            stock: m.current_stock ?? m.stock ?? 0 
-          }));
-        
-        setStockWarnings(prev => ({
-          ...prev,
-          [String(index)]: { outOfStock: true, alternatives: alts }
-        }));
-      } else {
-        setStockWarnings(prev => {
-          const next = { ...prev };
-          delete next[String(index)];
-          return next;
-        });
-      }
-    } catch {
-      // silent fail — don't block prescription
-    }
-  };
-
   return (
     <div className="flex h-full">
       {/* Left panel */}
