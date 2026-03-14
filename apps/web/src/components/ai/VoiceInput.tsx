@@ -1,232 +1,286 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import axios from 'axios';
-import { getToken } from '@/lib/auth';
-import { Mic, MicOff, Loader2, CheckCircle, X, Volume2, ChevronDown, AlertTriangle } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Mic, MicOff, Loader2, CheckCircle, Languages } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
 const LANGUAGES = [
-  { code: 'en-IN', label: 'English' },
-  { code: 'ml-IN', label: 'Malayalam' },
-  { code: 'hi-IN', label: 'Hindi' },
-  { code: 'ta-IN', label: 'Tamil' },
-  { code: 'te-IN', label: 'Telugu' },
-  { code: 'kn-IN', label: 'Kannada' },
-  { code: 'mr-IN', label: 'Marathi' },
-  { code: 'gu-IN', label: 'Gujarati' },
-  { code: 'bn-IN', label: 'Bengali' },
+  { code: 'en', label: 'English' },
+  { code: 'ml', label: 'Malayalam' },
+  { code: 'hi', label: 'Hindi' },
+  { code: 'ta', label: 'Tamil' },
 ];
 
-interface StructuredNotes {
-  chief_complaint?: string;
-  history_of_present_illness?: string;
-  examination_findings?: string;
-  diagnosis?: string;
-  advice?: string;
-  follow_up?: string;
-  raw_transcription: string;
+const LANG_NAMES: Record<string, string> = {
+  en: 'English', ml: 'Malayalam', hi: 'Hindi', ta: 'Tamil',
+};
+
+interface VoiceInputProps {
+  patientContext?: {
+    age?: number;
+    gender?: string;
+    chief_complaint?: string;
+    existing_conditions?: string;
+  };
+  onNotesReady: (notes: {
+    chief_complaint?: string;
+    history_of_present_illness?: string;
+    examination_findings?: string;
+    diagnosis?: string;
+    advice?: string;
+    raw_transcript?: string;
+  }) => void;
 }
 
-interface Props {
-  patientContext?: { age?: number; gender?: string; chief_complaint?: string; vitals?: any; };
-  onNotesReady: (notes: StructuredNotes) => void;
-}
-
-type RecordingState = 'idle' | 'recording' | 'processing' | 'done';
-
-export default function VoiceInput({ patientContext, onNotesReady }: Props) {
-  const [state, setState] = useState<RecordingState>('idle');
+export default function VoiceInput({ patientContext, onNotesReady }: VoiceInputProps) {
+  const [recording, setRecording] = useState(false);
+  const [processing, setProcessing] = useState(false);
   const [transcript, setTranscript] = useState('');
-  const [duration, setDuration] = useState(0);
-  const [selectedLang, setSelectedLang] = useState('en-IN');
-  const [aiStatus, setAiStatus] = useState<'unknown' | 'ok' | 'error'>('unknown');
-  const [aiStatusReason, setAiStatusReason] = useState('');
-  const mediaRecorder = useRef<MediaRecorder | null>(null);
-  const chunks = useRef<Blob[]>([]);
-  const timer = useRef<NodeJS.Timeout | null>(null);
-  const recognition = useRef<any>(null);
+  const [lang, setLang] = useState('en');
+  const [showLang, setShowLang] = useState(false);
+  const [secondsElapsed, setSecondsElapsed] = useState(0);
 
-  // Check AI health on mount so the doctor knows if voice AI will work before trying
-  useEffect(() => {
-    const token = getToken();
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
-    axios.get(`${API}/ai/health`, { headers })
-      .then(() => setAiStatus('ok'))
-      .catch(e => {
-        const data = e?.response?.data;
-        const reason = data?.reason || data?.message || `HTTP ${e?.response?.status || 'error'}`;
-        setAiStatus('error');
-        setAiStatusReason(reason);
-      });
-  }, []);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   const startRecording = async () => {
-    setTranscript('');
-    setDuration(0);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
 
-    // Use Web Speech API for live transcription if available
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      // Prefer webm/opus for best Claude compatibility, fall back to any available
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm')
+        ? 'audio/webm'
+        : 'audio/mp4';
 
-    if (SpeechRecognition) {
-      // Use browser's built-in speech recognition for transcription
-      recognition.current = new SpeechRecognition();
-      recognition.current.continuous = true;
-      recognition.current.interimResults = true;
-      recognition.current.lang = selectedLang;
+      const recorder = new MediaRecorder(stream, { mimeType });
+      mediaRecorderRef.current = recorder;
+      chunksRef.current = [];
 
-      let finalTranscript = '';
-      recognition.current.onresult = (event: any) => {
-        let interim = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const t = event.results[i][0].transcript;
-          if (event.results[i].isFinal) finalTranscript += t + ' ';
-          else interim = t;
-        }
-        setTranscript(finalTranscript + interim);
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
       };
 
-      recognition.current.onerror = (e: any) => {
-        if (e.error !== 'aborted') toast.error('Speech recognition error');
-      };
+      recorder.onstop = () => processRecording(mimeType);
+      recorder.start(250); // collect chunks every 250ms
 
-      recognition.current.start();
+      setRecording(true);
+      setTranscript('');
+      setSecondsElapsed(0);
+      timerRef.current = setInterval(() => setSecondsElapsed(s => s + 1), 1000);
+    } catch (err: any) {
+      if (err.name === 'NotAllowedError') {
+        toast.error('Microphone access denied. Please allow mic access in browser settings.');
+      } else {
+        toast.error('Could not access microphone.');
+      }
     }
-
-    setState('recording');
-    timer.current = setInterval(() => setDuration(d => d + 1), 1000);
   };
 
-  const stopRecording = async () => {
-    if (timer.current) clearInterval(timer.current);
+  const stopRecording = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    mediaRecorderRef.current?.stop();
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    setRecording(false);
+    setProcessing(true);
+  };
 
-    if (recognition.current) {
-      recognition.current.stop();
-    }
+  const processRecording = async (mimeType: string) => {
+    const blob = new Blob(chunksRef.current, { type: mimeType });
 
-    setState('processing');
-
-    // Get final transcript
-    const finalText = transcript.trim();
-    if (!finalText) {
-      toast.error('No speech detected — please try again');
-      setState('idle');
+    if (blob.size < 1000) {
+      toast.error('Recording too short — please speak for at least 2 seconds.');
+      setProcessing(false);
       return;
     }
 
+    // Convert audio blob → base64
+    const base64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        resolve(result.split(',')[1]); // strip data:...;base64, prefix
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+
+    const mediaType = mimeType.split(';')[0] as 'audio/webm' | 'audio/mp4';
+
+    const contextNote = patientContext
+      ? `Patient context: Age ${patientContext.age || 'unknown'}, Gender ${patientContext.gender || 'unknown'}, Chief complaint: ${patientContext.chief_complaint || 'not specified'}${patientContext.existing_conditions ? `, Known conditions: ${patientContext.existing_conditions}` : ''}.`
+      : '';
+
+    const systemPrompt = `You are a medical transcription assistant for a clinic in India. 
+The doctor is speaking in ${LANG_NAMES[lang]}${lang !== 'en' ? ' (transcribe and translate to English)' : ''}.
+${contextNote}
+Listen to the doctor's voice recording and extract structured clinical notes.
+Respond ONLY with a JSON object — no markdown, no explanation, no preamble.
+JSON fields (all optional, only include what is mentioned):
+{
+  "chief_complaint": "...",
+  "history_of_present_illness": "...",
+  "examination_findings": "...",
+  "diagnosis": "...",
+  "advice": "...",
+  "raw_transcript": "exact words spoken"
+}`;
+
     try {
-      const r = await axios.post(`${API}/ai/transcribe`,
-        { transcribedText: finalText, patientContext, inputLanguage: selectedLang },
-        { headers: { Authorization: `Bearer ${getToken()}` } });
-      onNotesReady(r.data);
-      setState('done');
-      toast.success('Notes structured successfully');
-    } catch (e: any) {
-      const reason = e?.response?.data?.message || 'Failed to process notes';
-      toast.error(reason, { duration: 6000 });
-      setState('idle');
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          system: systemPrompt,
+          messages: [{
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: `Please transcribe and structure these clinical voice notes spoken in ${LANG_NAMES[lang]}.`,
+              },
+              {
+                type: 'document',
+                source: {
+                  type: 'base64',
+                  media_type: mediaType,
+                  data: base64,
+                },
+              },
+            ],
+          }],
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        const msg = data?.error?.message || 'Claude API error';
+        // Audio input not supported fallback — use text-only transcription prompt
+        if (msg.includes('audio') || msg.includes('document') || response.status === 400) {
+          toast.error('Audio transcription requires Claude to support audio input. Using text fallback — please type your notes instead.');
+        } else {
+          toast.error(`Transcription failed: ${msg}`);
+        }
+        setProcessing(false);
+        return;
+      }
+
+      const text = data.content?.[0]?.text || '';
+      const clean = text.replace(/```json|```/g, '').trim();
+
+      let notes: any = {};
+      try {
+        notes = JSON.parse(clean);
+      } catch {
+        // Claude returned plain text — treat as raw transcript
+        notes = { raw_transcript: text };
+      }
+
+      setTranscript(notes.raw_transcript || text);
+      onNotesReady(notes);
+      toast.success('Voice notes applied to form');
+    } catch (err) {
+      toast.error('Network error — could not reach Claude API.');
+    } finally {
+      setProcessing(false);
     }
   };
 
-  const reset = () => {
-    setState('idle');
-    setTranscript('');
-    setDuration(0);
-  };
-
-  const formatDuration = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
-
-  const currentLangLabel = LANGUAGES.find(l => l.code === selectedLang)?.label ?? 'English';
+  const fmtTime = (s: number) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
 
   return (
-    <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-      {/* AI health banner — shows only when key is misconfigured */}
-      {aiStatus === 'error' && (
-        <div className="flex items-start gap-2 mb-3 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-          <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+    <div className="bg-teal-50 border border-teal-100 rounded-xl p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-[#00475a] flex items-center justify-center flex-shrink-0">
+            <Mic className="w-3.5 h-3.5 text-white" />
+          </div>
           <div>
-            <span className="font-semibold">AI not available: </span>
-            <span>{aiStatusReason}</span>
-            {aiStatusReason.includes('credit') || aiStatusReason.includes('billing') ? (
-              <a href="https://console.anthropic.com/settings/billing" target="_blank" rel="noreferrer"
-                className="ml-1 underline font-medium hover:text-amber-900">
-                Add credits →
-              </a>
-            ) : (
-              <a href="https://railway.app" target="_blank" rel="noreferrer"
-                className="ml-1 underline font-medium hover:text-amber-900">
-                Fix in Railway →
-              </a>
-            )}
+            <p className="text-sm font-semibold text-[#00475a]">Voice Dictation</p>
+            <p className="text-xs text-teal-600">Speak symptoms, findings & diagnosis — auto-fills form</p>
           </div>
         </div>
-      )}
-      <div className="flex items-center gap-3 mb-3">
-        <Volume2 className="w-4 h-4 text-[#00475a]" />
-        <span className="text-sm font-semibold text-slate-700">Voice Notes</span>
-        <span className="text-xs text-slate-400">Speak your consultation findings</span>
-        {/* Language selector — only shown when idle */}
-        {state === 'idle' && (
-          <div className="ml-auto relative">
-            <select
-              value={selectedLang}
-              onChange={e => setSelectedLang(e.target.value)}
-              className="appearance-none text-xs bg-white border border-slate-200 rounded-lg pl-3 pr-7 py-1.5 text-slate-600 focus:outline-none focus:ring-2 focus:ring-[#00475a]/20 focus:border-[#00475a] cursor-pointer"
-            >
-              {LANGUAGES.map(l => (
-                <option key={l.code} value={l.code}>{l.label}</option>
-              ))}
-            </select>
-            <ChevronDown className="w-3 h-3 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+
+        {/* Language picker */}
+        <div className="relative">
+          <button
+            onClick={() => setShowLang(!showLang)}
+            disabled={recording || processing}
+            className="flex items-center gap-1.5 text-xs border border-teal-200 bg-white text-teal-700 px-2.5 py-1.5 rounded-lg hover:bg-teal-50 transition-colors disabled:opacity-50"
+          >
+            <Languages className="w-3.5 h-3.5" />
+            {LANG_NAMES[lang]}
+          </button>
+          {showLang && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setShowLang(false)} />
+              <div className="absolute right-0 top-full mt-1 bg-white border border-slate-100 rounded-xl shadow-lg z-20 overflow-hidden min-w-[130px]">
+                {LANGUAGES.map(l => (
+                  <button key={l.code} onClick={() => { setLang(l.code); setShowLang(false); }}
+                    className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-50 transition-colors ${lang === l.code ? 'text-[#00475a] font-semibold bg-teal-50' : 'text-slate-700'}`}>
+                    {l.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Record button + status */}
+      <div className="flex items-center gap-3">
+        {!recording && !processing && (
+          <button onClick={startRecording}
+            className="flex items-center gap-2 bg-[#00475a] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#003d4d] transition-colors">
+            <Mic className="w-4 h-4" />
+            Start Recording
+          </button>
+        )}
+
+        {recording && (
+          <button onClick={stopRecording}
+            className="flex items-center gap-2 bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-600 transition-colors animate-pulse">
+            <MicOff className="w-4 h-4" />
+            Stop — {fmtTime(secondsElapsed)}
+          </button>
+        )}
+
+        {processing && (
+          <div className="flex items-center gap-2 text-sm text-teal-700">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Transcribing with Claude...
+          </div>
+        )}
+
+        {recording && (
+          <div className="flex items-center gap-1.5 text-xs text-red-600">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            Recording in {LANG_NAMES[lang]}...
           </div>
         )}
       </div>
 
-      {state === 'idle' && (
-        <button onClick={startRecording}
-          className="flex items-center gap-2 bg-[#00475a] text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-[#00475a]/90 transition-colors">
-          <Mic className="w-4 h-4" />Start Dictating in {currentLangLabel}
-        </button>
-      )}
-
-      {state === 'recording' && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-              <span className="text-sm font-medium text-red-600">Recording {formatDuration(duration)}</span>
-            </div>
-            <button onClick={stopRecording}
-              className="flex items-center gap-2 bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-600 transition-colors ml-auto">
-              <MicOff className="w-4 h-4" />Stop & Process
-            </button>
+      {/* Transcript preview */}
+      {transcript && !recording && !processing && (
+        <div className="mt-3 bg-white border border-teal-100 rounded-lg px-3 py-2.5 flex items-start gap-2">
+          <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-xs font-medium text-slate-600 mb-0.5">Transcript applied:</p>
+            <p className="text-xs text-slate-500 italic line-clamp-2">{transcript}</p>
           </div>
-          {transcript && (
-            <div className="bg-white rounded-lg p-3 border border-slate-100 max-h-24 overflow-y-auto">
-              <p className="text-xs text-slate-600 italic">{transcript}</p>
-            </div>
-          )}
         </div>
       )}
 
-      {state === 'processing' && (
-        <div className="flex items-center gap-3 py-2">
-          <Loader2 className="w-5 h-5 animate-spin text-[#00475a]" />
-          <span className="text-sm text-slate-600">AI is structuring your notes...</span>
-        </div>
-      )}
-
-      {state === 'done' && (
-        <div className="flex items-center gap-3">
-          <CheckCircle className="w-5 h-5 text-green-600" />
-          <span className="text-sm text-green-700 font-medium">Notes imported successfully</span>
-          <button onClick={reset} className="ml-auto text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1">
-            <X className="w-3 h-3" />Clear
-          </button>
-        </div>
-      )}
+      <p className="text-xs text-teal-500 mt-2">
+        Speak naturally — includes medicine names, dosages, instructions. Translated to English automatically.
+      </p>
     </div>
   );
 }
