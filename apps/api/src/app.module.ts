@@ -31,6 +31,8 @@ import { ConsultationModule } from './consultation/consultation.module';
 
 import { PaymentModule } from './payments/payment.module';
 
+import { BillingModule } from './billing/billing.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -61,6 +63,7 @@ import { PaymentModule } from './payments/payment.module';
     // Foundation modules (load first)
     TenantsModule,
     AuditModule,
+    BillingModule,
     PaymentModule,   // @Global — AuditService available everywhere without importing
 
     // Feature modules
