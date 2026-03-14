@@ -1,26 +1,40 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-import api from '@/lib/api';
-import { getUser } from '@/lib/auth';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { getUser } from '@/lib/auth';
+import api from '@/lib/api';
 import { ClipboardList, ChevronRight, Calendar } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 export default function DoctorHistoryPage() {
   const router = useRouter();
   const user = getUser();
+  const [queue, setQueue] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // We query all patients and for each show recent consultations
-  // For now we show a generic recent consultations list via queue history
-  const { data: queue = [], isLoading } = useQuery({
-    queryKey: ['doctor-history'],
-    queryFn: () => api.get(`/queue/today?doctor_id=${user?.id}`).then(r => r.data),
-  });
+  const loadHistory = useCallback(async () => {
+    try {
+      const res = await api.get(`/queue/today?doctor_id=${(user as any)?.id}`);
+      const items = Array.isArray(res.data) ? res.data : (res.data?.items || []);
+      setQueue(items);
+    } catch {
+      // silent
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const completed = queue.filter((e: any) =>
+  useEffect(() => { loadHistory(); }, [loadHistory]);
+
+  const completed = queue.filter((e) =>
     ['consultation_done', 'completed'].includes(e.status)
   );
+
+  const patientName = (e: any) =>
+    e.patient?.full_name ||
+    `${e.patient?.first_name || ''} ${e.patient?.last_name || ''}`.trim() ||
+    e.patient?.name ||
+    'Unknown';
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -29,9 +43,9 @@ export default function DoctorHistoryPage() {
         <p className="text-slate-500 text-sm mt-1">Today's completed consultations</p>
       </div>
 
-      {isLoading ? (
+      {loading ? (
         <div className="space-y-3">
-          {[1,2,3].map(i => <div key={i} className="h-16 bg-slate-100 rounded-xl animate-pulse" />)}
+          {[1, 2, 3].map((i) => <div key={i} className="h-16 bg-slate-100 rounded-xl animate-pulse" />)}
         </div>
       ) : completed.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-100 p-10 text-center text-slate-400">
@@ -40,7 +54,7 @@ export default function DoctorHistoryPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {completed.map((entry: any) => (
+          {completed.map((entry) => (
             <div
               key={entry.id}
               onClick={() => router.push(`/doctor/consult/${entry.id}`)}
@@ -50,7 +64,7 @@ export default function DoctorHistoryPage() {
                 {entry.token_number}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-slate-900 truncate">{entry.patient?.name || 'Unknown'}</p>
+                <p className="font-medium text-slate-900 truncate">{patientName(entry)}</p>
                 <p className="text-xs text-slate-400 flex items-center gap-1.5">
                   <Calendar className="w-3 h-3" />
                   {new Date(entry.completed_at || entry.updated_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}

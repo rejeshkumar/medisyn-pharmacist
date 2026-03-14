@@ -3,27 +3,18 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import { getUser, clearAuth } from '@/lib/auth';
 import {
-  LayoutDashboard,
-  Users,
-  ClipboardList, Clock,
-  LogOut,
-  ChevronRight,
-  Menu,
-  X,
-  Stethoscope,
+  LayoutDashboard, Users, ClipboardList,
+  LogOut, ChevronRight, Menu, X, Stethoscope,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
-import RoleSwitcher from '@/components/common/RoleSwitcher';
 
 const navItems = [
-  { href: '/doctor',             label: 'My Queue',      icon: LayoutDashboard },
-  { href: '/doctor/patients',    label: 'Patients',      icon: Users },
-  { href: '/doctor/history',     label: 'Consultations', icon: ClipboardList },
-  { href: '/doctor/availability', label: 'My Availability', icon: Clock },
+  { href: '/doctor',          label: 'My Queue',      icon: LayoutDashboard },
+  { href: '/doctor/patients', label: 'Patients',      icon: Users },
+  { href: '/doctor/history',  label: 'Consultations', icon: ClipboardList },
 ];
 
 export default function DoctorLayout({ children }: { children: React.ReactNode }) {
@@ -35,9 +26,7 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
   useEffect(() => {
     const u = getUser();
     if (!u) { router.push('/login'); return; }
-    const roles: string[] = u.roles?.length ? u.roles : [u.role];
-    const allowed = roles.some((r: string) => ['doctor', 'owner'].includes(r));
-    if (!allowed) { router.push('/dashboard'); return; }
+    if (u.role !== 'doctor') { router.push('/dashboard'); return; }
     setUser(u);
   }, []);
 
@@ -50,10 +39,7 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
   return (
     <div className="flex h-screen bg-slate-50">
       {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-20 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
+        <div className="fixed inset-0 bg-black/50 z-20 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
       <aside className={cn(
@@ -61,7 +47,6 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
         sidebarOpen ? 'translate-x-0' : '-translate-x-full',
         'lg:translate-x-0 lg:static lg:z-auto',
       )}>
-        {/* Logo */}
         <div className="p-5 border-b border-slate-100 flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-[#00475a] flex items-center justify-center flex-shrink-0">
             <Stethoscope className="w-5 h-5 text-white" />
@@ -75,7 +60,6 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
           </button>
         </div>
 
-        {/* Nav */}
         <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -87,9 +71,7 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
                 onClick={() => setSidebarOpen(false)}
                 className={cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
-                  active
-                    ? 'bg-[#00475a] text-white'
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
+                  active ? 'bg-[#00475a] text-white' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
                 )}
               >
                 <Icon style={{ width: 18, height: 18 }} className="flex-shrink-0" />
@@ -98,18 +80,16 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
               </Link>
             );
           })}
-        <RoleSwitcher />
         </nav>
 
-        {/* User */}
         <div className="p-3 border-t border-slate-100">
           <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1">
             <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center text-[#00475a] font-bold text-sm flex-shrink-0">
-              {user?.full_name?.[0]?.toUpperCase() || 'D'}
+              {user?.name?.[0]?.toUpperCase() || user?.full_name?.[0]?.toUpperCase() || 'D'}
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-medium text-slate-900 truncate">{user?.full_name}</p>
-              <p className="text-xs text-slate-400 capitalize">Doctor</p>
+              <p className="text-sm font-medium text-slate-900 truncate">{user?.name || user?.full_name}</p>
+              <p className="text-xs text-slate-400">Doctor</p>
             </div>
           </div>
           <button
@@ -123,7 +103,6 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Mobile header */}
         <header className="bg-white border-b border-slate-100 px-4 py-3 flex items-center gap-3 lg:hidden">
           <button onClick={() => setSidebarOpen(true)} className="text-slate-500">
             <Menu className="w-5 h-5" />
@@ -133,10 +112,7 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
             <span className="font-bold text-[#00475a] text-sm">Doctor Portal</span>
           </div>
         </header>
-
-        <main className="flex-1 overflow-y-auto">
-          {children}
-        </main>
+        <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
     </div>
   );
