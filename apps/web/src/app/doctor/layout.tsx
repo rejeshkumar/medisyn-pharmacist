@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
+import RoleSwitcher from '@/components/common/RoleSwitcher';
 
 const navItems = [
   { href: '/doctor',          label: 'My Queue',      icon: LayoutDashboard },
@@ -25,8 +26,16 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     const u = getUser();
-    if (!u) { router.push('/login'); return; }
-    if (u.role !== 'doctor') { router.push('/dashboard'); return; }
+    if (!u) {
+      router.push('/login');
+      return;
+    }
+    // Allow access if primary role is doctor OR if doctor is in roles array
+    const roles: string[] = u.roles?.length ? u.roles : [u.role];
+    if (!roles.includes('doctor')) {
+      router.push('/dashboard');
+      return;
+    }
     setUser(u);
   }, []);
 
@@ -80,6 +89,7 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
               </Link>
             );
           })}
+          <RoleSwitcher />
         </nav>
 
         <div className="p-3 border-t border-slate-100">
