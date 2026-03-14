@@ -246,4 +246,49 @@ export class MedicinesService {
     );
     return { success: true, barcode: dto.barcode, medicine_id: dto.medicine_id };
   }
+
+  async stockCheck(medicineName: string, tenantId: string) {
+    // Find the medicine by brand name (fuzzy)
+    const medicines = await this.dataSource.query(
+      `SELECT m.id, m.brand_name, m.molecule, m.strength, m.dosage_form,
+              COALESCE(SUM(sb.quantity), 0)::int as quantity
+       FROM medicines m
+       LEFT JOIN stock_batches sb ON sb.medicine_id = m.id
+         AND sb.tenant_id = $1 AND sb.quantity > 0 AND sb.expiry_date > NOW()
+       WHERE m.tenant_id = $1
+         AND LOWER(m.brand_name) LIKE LOWER($2)
+       GROUP BY m.id, m.brand_name, m.molecule, m.strength, m.dosage_form
+       LIMIT 1`,
+      [tenantId, `%${medicineName}%`]
+    ).catch(() => []);
+
+    if (!medicines?.length) {
+      return { quantity: -1, alternatives: [] };
+    }
+
+    const med = medicines[0];
+    const quantity = med.quantity;
+
+    // If out of stock, find alternatives with same molecule
+    let alternatives: any[] = [];
+    if (quantity === 0 && med.molecule) {
+      alternatives = await this.dataSource.query(
+        `SELECT m.id, m.brand_name, m.strength,
+                COALESCE(SUM(sb.quantity), 0)::int as quantity
+         FROM medicines m
+         LEFT JOIN stock_batches sb ON sb.medicine_id = m.id
+           AND sb.tenant_id = $1 AND sb.quantity > 0 AND sb.expiry_date > NOW()
+         WHERE m.tenant_id = $1
+           AND LOWER(m.molecule) = LOWER($2)
+           AND m.id != $3
+         GROUP BY m.id, m.brand_name, m.strength
+         HAVING COALESCE(SUM(sb.quantity), 0) > 0
+         ORDER BY quantity DESC
+         LIMIT 5`,
+        [tenantId, med.molecule, med.id]
+      ).catch(() => []);
+    }
+
+    return { quantity, alternatives };
+  }
 }

@@ -98,4 +98,10 @@ export class MedicinesController {
       role: req.user.role, tenant_id: req.user.tenant_id,
     });
   }
+
+  // GET /medicines/stock-check?name=... — check stock and suggest alternatives
+  @Get('stock-check')
+  async stockCheck(@Query('name') name: string, @Req() req: any) {
+    return this.medicinesService.stockCheck(name, req.user.tenant_id);
+  }
 }
