@@ -11,10 +11,8 @@ import {
   Check, AlertTriangle, X, FileText,
   Loader2, Camera, ChevronUp, ClipboardList,
 } from 'lucide-react';
-import FEFOBatchSelector from '@/components/dispensing/FEFOBatchSelector';
 import BarcodeScanner from '@/components/dispensing/BarcodeScanner';
 import BillDocument, { type BillData } from '@/components/billing/BillDocument';
-import PrescriptionBridge from '@/components/dispensing/PrescriptionBridge';
 import { cn } from '@/lib/utils';
 
 interface CartItem {
@@ -449,10 +447,7 @@ export default function DispensingPage() {
         'flex-shrink-0 border-r border-gray-100 bg-white transition-all duration-200 overflow-hidden',
         showRxPanel ? 'w-72' : 'w-0',
       )}>
-        <PrescriptionBridge
-          onLoadPrescription={handleLoadPrescription}
-          onPendingCountChange={setPendingRxCount}
-        />
+        
       </div>
 
       {/* ── Main cart area ── */}
@@ -594,20 +589,7 @@ export default function DispensingPage() {
                       </span>
                     </div>
                     <div className="mt-1.5">
-                      <FEFOBatchSelector
-                        medicineId={item.medicine_id}
-                        medicineName={item.medicine_name}
-                        selectedBatchId={item.batch_id}
-                        onSelect={(batch) => {
-                          setCart(prev => prev.map((c, i) => i === idx ? {
-                            ...c,
-                            batch_id:     batch.id,
-                            batch_number: batch.batch_number,
-                            expiry_date:  batch.expiry_date,
-                            rate:         batch.sale_rate,
-                          } : c));
-                        }}
-                      />
+                      
                     </div>
                     {item.is_substituted && item.substitution_reason && (
                       <p className="text-xs text-blue-600 mt-0.5">Reason: {item.substitution_reason}</p>
