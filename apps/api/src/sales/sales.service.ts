@@ -121,6 +121,8 @@ export class SalesService {
         tax_amount: taxAmount,
         total_amount: totalAmount,
         payment_mode: dto.payment_mode,
+        created_by: user.id,
+      tenant_id: user.tenant_id,
         prescription_image_url: dto.prescription_image_url,
         ai_prescription_id: dto.ai_prescription_id,
         notes: dto.notes,
