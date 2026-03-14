@@ -65,7 +65,7 @@ export class StockController {
     return this.stockService.createSupplier(dto, req.user);
   }
 
-  }
+  
 
   @Get(':medicine_id/best-batch')
   @ApiOperation({ summary: 'Get best batch (nearest safe expiry)' })
