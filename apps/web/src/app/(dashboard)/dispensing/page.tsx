@@ -1,5 +1,5 @@
-import PrescriptionScanner from '@/components/ai/PrescriptionScanner';
 'use client';
+import PrescriptionScanner from '@/components/ai/PrescriptionScanner';
 
 import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -158,29 +158,6 @@ function BillSummaryContent({
           Generate Bill
         </button>
       </div>
-      {showBarcodeScanner && (
-        <BarcodeScanner
-          onFound={async (medicine, batch) => {
-            let b = batch;
-            if (!b) {
-              try { const r = await api.get(`/stock/${medicine.id}/best-batch`); b = r.data; } catch {}
-            }
-            if (!b) { return; }
-            setCart(prev => {
-              const ex = prev.findIndex(i => i.medicine_id === medicine.id && i.batch_id === b.id);
-              if (ex !== -1) return prev.map((c, i) => i === ex ? { ...c, qty: c.qty + 1 } : c);
-              return [...prev, {
-                medicine_id: medicine.id, batch_id: b.id,
-                medicine_name: medicine.brand_name, batch_number: b.batch_number,
-                expiry_date: b.expiry_date, qty: 1, rate: b.sale_rate,
-                gst_percent: medicine.gst_percent || 0,
-                is_substituted: false, schedule_class: medicine.schedule_class || 'OTC',
-              }];
-            });
-          }}
-          onClose={() => setShowBarcodeScanner(false)}
-        />
-      )}
     </div>
   );
 }
@@ -822,29 +799,6 @@ export default function DispensingPage() {
             </div>
           </div>
         </div>
-      )}
-      {showBarcodeScanner && (
-        <BarcodeScanner
-          onFound={async (medicine, batch) => {
-            let b = batch;
-            if (!b) {
-              try { const r = await api.get(`/stock/${medicine.id}/best-batch`); b = r.data; } catch {}
-            }
-            if (!b) { return; }
-            setCart(prev => {
-              const ex = prev.findIndex(i => i.medicine_id === medicine.id && i.batch_id === b.id);
-              if (ex !== -1) return prev.map((c, i) => i === ex ? { ...c, qty: c.qty + 1 } : c);
-              return [...prev, {
-                medicine_id: medicine.id, batch_id: b.id,
-                medicine_name: medicine.brand_name, batch_number: b.batch_number,
-                expiry_date: b.expiry_date, qty: 1, rate: b.sale_rate,
-                gst_percent: medicine.gst_percent || 0,
-                is_substituted: false, schedule_class: medicine.schedule_class || 'OTC',
-              }];
-            });
-          }}
-          onClose={() => setShowBarcodeScanner(false)}
-        />
       )}
     </div>
   );
