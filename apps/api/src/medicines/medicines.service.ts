@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
-import { Repository } , DataSource } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { Medicine } from '../database/entities/medicine.entity';
 import { StockBatch } from '../database/entities/stock-batch.entity';
 import { CreateMedicineDto } from './dto/create-medicine.dto';
@@ -17,9 +17,10 @@ export class MedicinesService {
     @InjectRepository(StockBatch)
     private batchRepo: Repository<StockBatch>,
     private auditService: AuditService,
+    private dataSource: DataSource,
   ) {}
 
-  async findAll(tenantId: string, search?: string, category?: string, scheduleClass?: string, withStock?: boolean) {
+  async findAll(tenantId: string, search?: string, category?: string, scheduleClass?: string, withStock?: boolean) { 
     const qb = this.medicinesRepo
       .createQueryBuilder('m')
       .where('m.tenant_id = :tenantId', { tenantId });

@@ -101,6 +101,6 @@ export class StockController {
 
   @Get('medicine/:medicineId')
   getByMedicine(@Param('medicineId') medicineId: string, @Req() req: any) {
-    return this.stockService.getBatches(medicineId, req.user.tenant_id);
+    return this.stockService.getBatchesForMedicine(medicineId, req.user.tenant_id);
   }
 }
