@@ -6,17 +6,18 @@ import Link from 'next/link';
 import { getUser, clearAuth } from '@/lib/auth';
 import {
   LayoutDashboard, CalendarPlus, Users, ClipboardList,
-  LogOut, ChevronRight, Menu, X, ConciergeBell,
+  LogOut, ChevronRight, Menu, X, ConciergeBell, Receipt,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import RoleSwitcher from '@/components/common/RoleSwitcher';
 
 const navItems = [
-  { href: '/receptionist',              label: 'Dashboard',    icon: LayoutDashboard },
-  { href: '/receptionist/book',         label: 'Book Appointment', icon: CalendarPlus },
-  { href: '/receptionist/queue',        label: 'Queue Monitor',    icon: ClipboardList },
-  { href: '/receptionist/patients',     label: 'Patients',         icon: Users },
+  { href: '/receptionist',                      label: 'Dashboard',        icon: LayoutDashboard },
+  { href: '/receptionist/book-appointment',     label: 'Book Appointment', icon: CalendarPlus },
+  { href: '/receptionist/billing',              label: 'Billing',          icon: Receipt },
+  { href: '/receptionist/queue',                label: 'Queue Monitor',    icon: ClipboardList },
+  { href: '/receptionist/patients',             label: 'Patients',         icon: Users },
 ];
 
 export default function ReceptionistLayout({ children }: { children: React.ReactNode }) {
