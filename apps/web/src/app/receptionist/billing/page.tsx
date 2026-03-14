@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import {
@@ -181,7 +181,6 @@ function AddServiceModal({
 
 // ── Main billing page ──────────────────────────────────────────
 export default function ReceptionistBillingPage() {
-  const searchParams = useSearchParams();
   const router = useRouter();
 
   const [patientSearch, setPatientSearch]   = useState('');
