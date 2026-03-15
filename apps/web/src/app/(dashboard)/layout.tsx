@@ -21,6 +21,7 @@ import {
   X,
   HeartPulse,
   ClipboardList,
+  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
@@ -38,6 +39,7 @@ const navItems = [
   { href: '/audit',      label: 'Audit Log',     icon: ClipboardList,   roles: ['owner'] },
   { href: '/bulk',       label: 'Bulk Upload',   icon: Upload,          roles: ['owner'] },
   { href: '/users',      label: 'Users',         icon: Users,           roles: ['owner'] },
+  { href: '/settings',   label: 'Settings',      icon: Settings,        roles: ['owner'] },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
