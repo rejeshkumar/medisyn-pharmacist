@@ -140,4 +140,22 @@ export class BillingController {
        patientId, req.user.tenant_id],
     ).then((rows: any[]) => rows[0]);
   }
+
+  @Get('clinic-bills/summary')
+  async getBillSummary(@Query('date') date: string, @Req() req: any) {
+    const tenantId = req.user.tenant_id;
+    const result = await this.billing['dataSource'].query(
+      `SELECT
+         COUNT(*)::int                                                  AS total_bills,
+         COALESCE(SUM(CASE WHEN status IN ('confirmed','paid')
+                     THEN total_amount END), 0)                        AS total_collected,
+         COUNT(CASE WHEN status = 'draft' THEN 1 END)::int             AS pending_count,
+         COALESCE(SUM(vip_discount_amount + extra_discount_amt), 0)    AS total_discounts
+       FROM clinic_bills
+       WHERE tenant_id = $1
+         AND ($2::date IS NULL OR DATE(created_at) = $2::date)`,
+      [tenantId, date || null],
+    );
+    return result[0] ?? { total_bills: 0, total_collected: 0, pending_count: 0, total_discounts: 0 };
+  }
 }

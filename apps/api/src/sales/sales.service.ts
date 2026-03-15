@@ -294,7 +294,12 @@ export class SalesService {
 
   private async generateBillNumber(tenantId: string): Promise<string> {
     const today = dayjs().format('YYYYMMDD');
-    const count = await this.saleRepo.count({ where: { tenant_id: tenantId } });
+    // Use raw query to avoid transaction isolation issues
+    const result = await this.dataSource.query(
+      `SELECT COUNT(*)::int AS cnt FROM sales WHERE tenant_id = $1`,
+      [tenantId],
+    ).catch(() => [{ cnt: 0 }]);
+    const count = Number(result[0]?.cnt ?? 0);
     return `BILL-${today}-${String(count + 1).padStart(4, '0')}`;
   }
 }
