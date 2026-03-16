@@ -61,8 +61,8 @@ export default function RoleSwitcher() {
 
       {open && (
         <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute left-3 right-3 top-full mt-1 bg-white rounded-xl border border-slate-100 shadow-xl z-20 overflow-hidden">
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute left-3 right-3 bottom-full mb-1 bg-white rounded-xl border border-slate-100 shadow-xl z-50 overflow-hidden">
             <p className="text-xs text-slate-400 px-3 pt-3 pb-1.5 font-semibold uppercase tracking-wider">
               Switch to
             </p>
