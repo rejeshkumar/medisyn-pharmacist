@@ -292,4 +292,62 @@ export class MedicinesService {
 
     return { quantity, alternatives };
   }
+  async searchEnriched(tenantId: string, search: string, limit = 20): Promise<any[]> {
+    // Base medicine search
+    const medicines = await this.dataSource.query(
+      `SELECT
+         m.id, m.brand_name, m.generic_name, m.molecule, m.strength,
+         m.dosage_form, m.schedule_class, m.gst_percent,
+         m.mrp, m.manufacturer, m.is_generic,
+         -- Total stock across all valid batches
+         COALESCE(SUM(sb.quantity) FILTER (
+           WHERE sb.quantity > 0 AND sb.expiry_date > CURRENT_DATE
+         ), 0) AS total_stock,
+         -- FEFO batch (soonest expiry with stock)
+         (SELECT row_to_json(fb) FROM (
+           SELECT b.id, b.batch_number, b.expiry_date, b.sale_rate, b.quantity
+           FROM stock_batches b
+           WHERE b.medicine_id = m.id
+             AND b.tenant_id = $1
+             AND b.quantity > 0
+             AND b.expiry_date > CURRENT_DATE
+           ORDER BY b.expiry_date ASC
+           LIMIT 1
+         ) fb) AS fefo_batch,
+         -- Substitute count (same molecule, different medicine, in stock)
+         (SELECT COUNT(DISTINCT m2.id)
+          FROM medicines m2
+          JOIN stock_batches sb2 ON sb2.medicine_id = m2.id
+            AND sb2.tenant_id = $1
+            AND sb2.quantity > 0
+            AND sb2.expiry_date > CURRENT_DATE
+          WHERE m2.molecule = m.molecule
+            AND m2.molecule IS NOT NULL
+            AND m2.molecule != ''
+            AND m2.id != m.id
+            AND m2.tenant_id = $1
+         ) AS substitute_count
+       FROM medicines m
+       LEFT JOIN stock_batches sb ON sb.medicine_id = m.id
+         AND sb.tenant_id = $1
+         AND sb.quantity > 0
+         AND sb.expiry_date > CURRENT_DATE
+       WHERE m.tenant_id = $1
+         AND m.is_active = true
+         AND (
+           m.brand_name ILIKE $2
+           OR m.generic_name ILIKE $2
+           OR m.molecule ILIKE $2
+         )
+       GROUP BY m.id
+       ORDER BY
+         CASE WHEN m.brand_name ILIKE $3 THEN 0 ELSE 1 END,
+         total_stock DESC,
+         m.brand_name ASC
+       LIMIT $4`,
+      [tenantId, `%${search}%`, `${search}%`, limit]
+    );
+    return medicines;
+  }
+
 }

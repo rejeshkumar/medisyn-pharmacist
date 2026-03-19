@@ -189,7 +189,7 @@ export default function DispensingPage() {
     queryKey: ['medicines-search', search],
     queryFn: () =>
       search.length >= 2
-        ? api.get(`/medicines?search=${search}`).then((r) => r.data)
+        ? api.get(`/medicines/search-enriched?search=${search}&limit=15`).then((r) => r.data)
         : Promise.resolve([]),
     enabled: search.length >= 2,
   });
@@ -467,22 +467,78 @@ export default function DispensingPage() {
                 autoFocus
               />
               {search.length >= 2 && medicines?.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg border border-gray-200 shadow-lg z-50 max-h-72 overflow-y-auto scrollbar-thin">
-                  {medicines.map((med: any) => (
-                    <button
-                      key={med.id}
-                      onClick={() => handleAddMedicine(med)}
-                      className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 text-left border-b border-gray-50 last:border-0"
-                    >
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{med.brand_name}</p>
-                        <p className="text-xs text-gray-400">{med.molecule} · {med.strength} · {med.dosage_form}</p>
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl border border-gray-200 shadow-xl z-50 max-h-[480px] overflow-y-auto">
+                  {medicines.map((med: any) => {
+                    const stock  = Number(med.total_stock ?? 0);
+                    const isOOS  = stock <= 0;
+                    const isLow  = stock > 0 && stock < 10;
+                    const isX    = med.schedule_class === 'X';
+                    const isH    = ['H','H1'].includes(med.schedule_class);
+                    const fefo   = med.fefo_batch;
+                    const subCnt = Number(med.substitute_count ?? 0);
+                    const daysExp = fefo?.expiry_date
+                      ? Math.floor((new Date(fefo.expiry_date).getTime() - Date.now()) / 86400000)
+                      : 999;
+                    return (
+                      <div key={med.id} className={`border-b border-gray-50 last:border-0 ${isOOS ? 'bg-gray-50/70' : ''}`}>
+                        {isX && (
+                          <div className="mx-3 mt-2 px-2.5 py-1.5 bg-red-50 border border-red-200 rounded-lg flex items-center gap-1.5">
+                            <AlertTriangle className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                            <span className="text-xs font-bold text-red-700">Schedule X — Narcotic · Form 17 register required</span>
+                          </div>
+                        )}
+                        {!isX && isH && (
+                          <div className="mx-3 mt-2 px-2.5 py-1.5 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-1.5">
+                            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                            <span className="text-xs font-bold text-amber-700">Schedule {med.schedule_class} — Valid prescription required (Kerala D&C Act)</span>
+                          </div>
+                        )}
+                        <button
+                          onClick={() => !isOOS && handleAddMedicine(med)}
+                          disabled={isOOS}
+                          className={`w-full px-4 py-3 text-left transition-colors ${isOOS ? 'cursor-not-allowed' : 'hover:bg-teal-50/30'}`}
+                        >
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <p className={`text-sm font-semibold truncate ${isOOS ? 'text-gray-400' : 'text-gray-900'}`}>{med.brand_name}</p>
+                              <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold border ${getScheduleClassColor(med.schedule_class)}`}>{med.schedule_class}</span>
+                            </div>
+                            <span className={`shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${isOOS ? 'bg-red-50 text-red-600 border-red-200' : isLow ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${isOOS ? 'bg-red-500' : isLow ? 'bg-amber-500' : 'bg-green-500'}`} />
+                              {isOOS ? 'Out of stock' : isLow ? `Only ${stock} left` : `${stock} in stock`}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 flex-wrap mb-1.5 text-xs">
+                            {med.molecule && <span className="text-[#00475a] font-medium">{med.molecule}</span>}
+                            {med.molecule && (med.strength || med.dosage_form) && <span className="text-gray-300">·</span>}
+                            {med.strength && <span className="text-gray-500">{med.strength}</span>}
+                            {med.dosage_form && <span className="text-gray-400">{med.dosage_form}</span>}
+                            {med.manufacturer && <><span className="text-gray-300">·</span><span className="text-gray-400 italic">{med.manufacturer}</span></>}
+                          </div>
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-3">
+                              {med.mrp && <span className="text-[10px] text-gray-400">MRP <span className="line-through">₹{Number(med.mrp).toFixed(2)}</span></span>}
+                              {fefo?.sale_rate && <span className="text-xs font-bold text-gray-900">₹{Number(fefo.sale_rate).toFixed(2)}</span>}
+                              {Number(med.gst_percent) > 0 && <span className="text-[10px] text-gray-400">+{med.gst_percent}% GST</span>}
+                            </div>
+                            {fefo?.expiry_date && (
+                              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${daysExp < 30 ? 'bg-red-50 text-red-600' : daysExp < 90 ? 'bg-amber-50 text-amber-700' : 'bg-gray-50 text-gray-500'}`}>
+                                Exp {new Date(fefo.expiry_date).toLocaleDateString('en-IN',{month:'short',year:'2-digit'})}
+                                {fefo.batch_number && ` · ${fefo.batch_number}`}
+                                {daysExp < 30 && ' ⚠️'}
+                              </span>
+                            )}
+                          </div>
+                          {(med.is_generic || subCnt > 0) && (
+                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                              {med.is_generic && <span className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded font-semibold">Jan Aushadhi / Generic</span>}
+                              {subCnt > 0 && <span className="text-[10px] text-[#00475a] font-medium">↔ {subCnt} substitute{subCnt > 1 ? 's' : ''} available</span>}
+                            </div>
+                          )}
+                        </button>
                       </div>
-                      <span className={`badge text-xs ${getScheduleClassColor(med.schedule_class)}`}>
-                        {med.schedule_class}
-                      </span>
-                    </button>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

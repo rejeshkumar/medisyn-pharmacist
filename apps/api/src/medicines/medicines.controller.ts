@@ -24,6 +24,20 @@ import { UserRole } from '../database/entities/user.entity';
 export class MedicinesController {
   constructor(private medicinesService: MedicinesService) {}
 
+  
+  @Get('search-enriched')
+  searchEnriched(
+    @Query('search') search: string,
+    @Query('limit') limit: string,
+    @Req() req: any,
+  ) {
+    return this.medicinesService.searchEnriched(
+      req.user.tenant_id,
+      search ?? '',
+      limit ? parseInt(limit) : 20,
+    );
+  }
+
   @Get()
   @ApiOperation({ summary: 'Search medicines by brand/molecule' })
   @ApiQuery({ name: 'search', required: false })
