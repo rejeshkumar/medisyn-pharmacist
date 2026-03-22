@@ -1,6 +1,6 @@
 'use client';
 import { useRouter } from 'next/navigation';
-import { Star, Stethoscope, FlaskConical, ChevronRight, AlertTriangle, Settings } from 'lucide-react';
+import { Star, Stethoscope, FlaskConical, ChevronRight, AlertTriangle, Settings, Shield } from 'lucide-react';
 
 const SETTINGS = [
   {
