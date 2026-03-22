@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { DraftBillsController } from './draft-bills.controller';
 import { MedicinesController } from './medicines.controller';
 import { MedicinesService } from './medicines.service';
 import { Medicine } from '../database/entities/medicine.entity';
@@ -8,7 +9,7 @@ import { AuditModule } from '../audit/audit.module';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Medicine, StockBatch]), AuditModule],
-  controllers: [MedicinesController],
+  controllers: [MedicinesController, DraftBillsController],
   providers: [MedicinesService],
   exports: [MedicinesService],
 })

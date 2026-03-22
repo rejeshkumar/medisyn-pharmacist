@@ -293,11 +293,6 @@ export class MedicinesService {
     return { quantity, alternatives };
   }
   async searchEnriched(tenantId: string, search: string, limit = 20): Promise<any[]> {
-    // Uses ONLY columns that exist on the medicines table
-    // medicines columns: id, brand_name, molecule, strength, dosage_form,
-    //   schedule_class, gst_percent, mrp, sale_rate, manufacturer,
-    //   is_active, tenant_id
-    // NO: generic_name, is_generic (don't exist)
     const medicines = await this.dataSource.query(
       `SELECT
          m.id,
@@ -310,7 +305,18 @@ export class MedicinesService {
          m.mrp,
          m.sale_rate,
          m.manufacturer,
-         false                              AS is_generic,
+         m.rack_location,
+         m.treatment_for,
+         m.reorder_qty,
+         false AS is_generic,
+         -- Human-readable schedule label
+         CASE m.schedule_class
+           WHEN 'OTC'  THEN 'Over the Counter'
+           WHEN 'H'    THEN 'Schedule H — Prescription required'
+           WHEN 'H1'   THEN 'Schedule H1 — Restricted prescription'
+           WHEN 'X'    THEN 'Schedule X — Narcotic (Form 17)'
+           ELSE m.schedule_class
+         END AS schedule_label,
          -- Total valid stock
          COALESCE((
            SELECT SUM(sb.quantity)
@@ -319,7 +325,7 @@ export class MedicinesService {
              AND sb.tenant_id   = $1
              AND sb.quantity    > 0
              AND sb.expiry_date > CURRENT_DATE
-         ), 0)                              AS total_stock,
+         ), 0) AS total_stock,
          -- FEFO batch (soonest expiry with stock)
          (SELECT row_to_json(fb)
           FROM (
@@ -333,8 +339,22 @@ export class MedicinesService {
             ORDER BY b.expiry_date ASC
             LIMIT 1
           ) fb
-         )                                  AS fefo_batch,
-         -- Substitute count (same molecule, different medicine, in stock)
+         ) AS fefo_batch,
+         -- ALL batches with stock (for batch details panel)
+         (SELECT json_agg(ab ORDER BY ab.expiry_date ASC)
+          FROM (
+            SELECT b.id, b.batch_number, b.expiry_date,
+                   b.sale_rate, b.purchase_rate, b.quantity,
+                   EXTRACT(DAY FROM (b.expiry_date - CURRENT_DATE))::int AS days_to_expiry
+            FROM stock_batches b
+            WHERE b.medicine_id  = m.id
+              AND b.tenant_id    = $1
+              AND b.quantity     > 0
+              AND b.expiry_date  > CURRENT_DATE
+            ORDER BY b.expiry_date ASC
+          ) ab
+         ) AS all_batches,
+         -- Substitute count
          COALESCE((
            SELECT COUNT(DISTINCT m2.id)
            FROM medicines m2
@@ -351,13 +371,14 @@ export class MedicinesService {
                  AND sb2.quantity     > 0
                  AND sb2.expiry_date  > CURRENT_DATE
              )
-         ), 0)                              AS substitute_count
+         ), 0) AS substitute_count
        FROM medicines m
        WHERE m.tenant_id  = $1
          AND m.is_active  = true
          AND (
            m.brand_name ILIKE $2
-           OR m.molecule  ILIKE $2
+           OR m.molecule   ILIKE $2
+           OR m.treatment_for ILIKE $2
          )
        ORDER BY
          CASE WHEN m.brand_name ILIKE $3 THEN 0 ELSE 1 END,
