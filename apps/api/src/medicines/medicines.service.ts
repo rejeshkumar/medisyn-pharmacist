@@ -298,7 +298,7 @@ export class MedicinesService {
       `SELECT
          m.id, m.brand_name, m.generic_name, m.molecule, m.strength,
          m.dosage_form, m.schedule_class, m.gst_percent,
-         m.mrp, m.manufacturer, m.is_generic,
+         m.mrp, m.manufacturer, false AS is_generic,
          -- Total stock across all valid batches
          COALESCE(SUM(sb.quantity) FILTER (
            WHERE sb.quantity > 0 AND sb.expiry_date > CURRENT_DATE
