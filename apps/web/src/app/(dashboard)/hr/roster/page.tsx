@@ -8,6 +8,15 @@ import {
 } from 'lucide-react';
 
 const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+const ROLE_BADGE: Record<string, string> = {
+  doctor:       'bg-teal-50 text-teal-700 border-teal-200',
+  pharmacist:   'bg-purple-50 text-purple-700 border-purple-200',
+  receptionist: 'bg-blue-50 text-blue-700 border-blue-200',
+  nurse:        'bg-pink-50 text-pink-700 border-pink-200',
+  assistant:    'bg-slate-50 text-slate-600 border-slate-200',
+};
+
 const ROLES = ['All','doctor','pharmacist','receptionist','nurse'];
 
 function getWeekDates(monday: Date): Date[] {
@@ -227,7 +236,7 @@ export default function RosterPage() {
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-slate-800 truncate">{member.full_name}</p>
-                        <p className="text-[10px] text-slate-400 capitalize">{member.role}</p>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-semibold capitalize ${ROLE_BADGE[member.role] ?? ROLE_BADGE.assistant}`}>{member.role}</span>
                       </div>
                     </div>
                   </td>
