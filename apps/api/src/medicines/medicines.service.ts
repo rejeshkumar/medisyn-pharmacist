@@ -293,59 +293,82 @@ export class MedicinesService {
     return { quantity, alternatives };
   }
   async searchEnriched(tenantId: string, search: string, limit = 20): Promise<any[]> {
-    // Base medicine search
+    // Uses ONLY columns that exist on the medicines table
+    // medicines columns: id, brand_name, molecule, strength, dosage_form,
+    //   schedule_class, gst_percent, mrp, sale_rate, manufacturer,
+    //   is_active, tenant_id
+    // NO: generic_name, is_generic (don't exist)
     const medicines = await this.dataSource.query(
       `SELECT
-         m.id, m.brand_name, m.generic_name, m.molecule, m.strength,
-         m.dosage_form, m.schedule_class, m.gst_percent,
-         m.mrp, m.manufacturer, false AS is_generic,
-         -- Total stock across all valid batches
-         COALESCE(SUM(sb.quantity) FILTER (
-           WHERE sb.quantity > 0 AND sb.expiry_date > CURRENT_DATE
-         ), 0) AS total_stock,
+         m.id,
+         m.brand_name,
+         m.molecule,
+         m.strength,
+         m.dosage_form,
+         m.schedule_class,
+         m.gst_percent,
+         m.mrp,
+         m.sale_rate,
+         m.manufacturer,
+         false                              AS is_generic,
+         -- Total valid stock
+         COALESCE((
+           SELECT SUM(sb.quantity)
+           FROM stock_batches sb
+           WHERE sb.medicine_id = m.id
+             AND sb.tenant_id   = $1
+             AND sb.quantity    > 0
+             AND sb.expiry_date > CURRENT_DATE
+         ), 0)                              AS total_stock,
          -- FEFO batch (soonest expiry with stock)
-         (SELECT row_to_json(fb) FROM (
-           SELECT b.id, b.batch_number, b.expiry_date, b.sale_rate, b.quantity
-           FROM stock_batches b
-           WHERE b.medicine_id = m.id
-             AND b.tenant_id = $1
-             AND b.quantity > 0
-             AND b.expiry_date > CURRENT_DATE
-           ORDER BY b.expiry_date ASC
-           LIMIT 1
-         ) fb) AS fefo_batch,
+         (SELECT row_to_json(fb)
+          FROM (
+            SELECT b.id, b.batch_number, b.expiry_date,
+                   b.sale_rate, b.quantity
+            FROM stock_batches b
+            WHERE b.medicine_id  = m.id
+              AND b.tenant_id    = $1
+              AND b.quantity     > 0
+              AND b.expiry_date  > CURRENT_DATE
+            ORDER BY b.expiry_date ASC
+            LIMIT 1
+          ) fb
+         )                                  AS fefo_batch,
          -- Substitute count (same molecule, different medicine, in stock)
-         (SELECT COUNT(DISTINCT m2.id)
-          FROM medicines m2
-          JOIN stock_batches sb2 ON sb2.medicine_id = m2.id
-            AND sb2.tenant_id = $1
-            AND sb2.quantity > 0
-            AND sb2.expiry_date > CURRENT_DATE
-          WHERE m2.molecule = m.molecule
-            AND m2.molecule IS NOT NULL
-            AND m2.molecule != ''
-            AND m2.id != m.id
-            AND m2.tenant_id = $1
-         ) AS substitute_count
+         COALESCE((
+           SELECT COUNT(DISTINCT m2.id)
+           FROM medicines m2
+           WHERE m2.molecule   = m.molecule
+             AND m2.molecule   IS NOT NULL
+             AND m2.molecule   != ''
+             AND m2.id         != m.id
+             AND m2.tenant_id  = $1
+             AND m2.is_active  = true
+             AND EXISTS (
+               SELECT 1 FROM stock_batches sb2
+               WHERE sb2.medicine_id  = m2.id
+                 AND sb2.tenant_id    = $1
+                 AND sb2.quantity     > 0
+                 AND sb2.expiry_date  > CURRENT_DATE
+             )
+         ), 0)                              AS substitute_count
        FROM medicines m
-       LEFT JOIN stock_batches sb ON sb.medicine_id = m.id
-         AND sb.tenant_id = $1
-         AND sb.quantity > 0
-         AND sb.expiry_date > CURRENT_DATE
-       WHERE m.tenant_id = $1
-         AND m.is_active = true
+       WHERE m.tenant_id  = $1
+         AND m.is_active  = true
          AND (
            m.brand_name ILIKE $2
-           OR m.generic_name ILIKE $2
-           OR m.molecule ILIKE $2
+           OR m.molecule  ILIKE $2
          )
-       GROUP BY m.id
        ORDER BY
          CASE WHEN m.brand_name ILIKE $3 THEN 0 ELSE 1 END,
-         total_stock DESC,
+         CASE WHEN COALESCE((
+           SELECT SUM(sb.quantity) FROM stock_batches sb
+           WHERE sb.medicine_id = m.id AND sb.tenant_id = $1
+             AND sb.quantity > 0 AND sb.expiry_date > CURRENT_DATE
+         ), 0) > 0 THEN 0 ELSE 1 END,
          m.brand_name ASC
        LIMIT $4`,
-      [tenantId, `%${search}%`, `${search}%`, limit]
+      [tenantId, `%${search}%`, `${search}%`, limit],
     );
     return medicines;
   }
