@@ -31,6 +31,7 @@ import { ConsultationModule } from './consultation/consultation.module';
 
 import { PaymentModule } from './payments/payment.module';
 
+import { HrModule } from './hr/hr.module';
 import { BillingModule } from './billing/billing.module';
 
 @Module({
@@ -64,6 +65,7 @@ import { BillingModule } from './billing/billing.module';
     TenantsModule,
     AuditModule,
     BillingModule,
+    HrModule,
     PaymentModule,   // @Global — AuditService available everywhere without importing
 
     // Feature modules

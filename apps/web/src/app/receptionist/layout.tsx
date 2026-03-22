@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { getUser, clearAuth } from '@/lib/auth';
 import {
   LayoutDashboard, CalendarPlus, Users, ClipboardList,
-  LogOut, ChevronRight, Menu, X, ConciergeBell, Receipt, CalendarClock, History,
+  LogOut, ChevronRight, Menu, X, ConciergeBell, Receipt, Clock, CalendarClock, History,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
@@ -15,6 +15,7 @@ import RoleSwitcher from '@/components/common/RoleSwitcher';
 const navItems = [
   { href: '/receptionist',                      label: 'Dashboard',        icon: LayoutDashboard },
   { href: '/receptionist/book-appointment',     label: 'Book Appointment', icon: CalendarPlus },
+  { href: '/receptionist/attendance',           label: 'Attendance',       icon: Clock },
   { href: '/receptionist/billing',              label: 'Billing',          icon: Receipt },
   { href: '/receptionist/bill-history',          label: 'Bill History',     icon: History },
   { href: '/receptionist/schedules',             label: 'Dr. Schedules',    icon: CalendarClock },
