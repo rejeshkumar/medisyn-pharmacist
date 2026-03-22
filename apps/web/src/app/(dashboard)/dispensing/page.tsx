@@ -157,9 +157,11 @@ function BillSummaryContent({
 // ── Enhanced Medicine Search Card ──────────────────────────────────────────
 function MedicineCard({ med, onAdd }: { med: any; onAdd: (med: any) => void }) {
   const [showBatches, setShowBatches] = useState(false);
-  const stock    = Number(med.total_stock ?? 0);
-  const isOOS    = stock <= 0;
-  const isLow    = stock > 0 && stock < 10;
+  const stockRaw  = med.total_stock;
+  const isUnknown = stockRaw === undefined || stockRaw === null;
+  const stock     = isUnknown ? 0 : Number(stockRaw);
+  const isOOS     = !isUnknown && stock <= 0;
+  const isLow     = !isUnknown && stock > 0 && stock < 10;
   const isX      = med.schedule_class === 'X';
   const isH      = ['H', 'H1'].includes(med.schedule_class);
   const fefo     = med.fefo_batch;
@@ -183,7 +185,7 @@ function MedicineCard({ med, onAdd }: { med: any; onAdd: (med: any) => void }) {
         </div>
       )}
 
-      <button onClick={() => !isOOS && onAdd(med)} disabled={isOOS}
+      <button onClick={() => (!isOOS || isUnknown) && onAdd(med)} disabled={isOOS && !isUnknown}
         className={`w-full px-4 py-3 text-left transition-colors ${isOOS ? 'cursor-not-allowed' : 'hover:bg-teal-50/30'}`}>
 
         {/* Row 1: Name + schedule badge + stock */}
@@ -198,12 +200,13 @@ function MedicineCard({ med, onAdd }: { med: any; onAdd: (med: any) => void }) {
             </span>
           </div>
           <span className={`shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
-            isOOS ? 'bg-red-50 text-red-600 border-red-200'
+            isUnknown ? 'bg-slate-50 text-slate-500 border-slate-200'
+            : isOOS ? 'bg-red-50 text-red-600 border-red-200'
             : isLow ? 'bg-amber-50 text-amber-700 border-amber-200'
             : 'bg-green-50 text-green-700 border-green-200'
           }`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${isOOS ? 'bg-red-500' : isLow ? 'bg-amber-500' : 'bg-green-500'}`} />
-            {isOOS ? 'Out of stock' : isLow ? `Only ${stock} left` : `${stock} in stock`}
+            <span className={`w-1.5 h-1.5 rounded-full ${isUnknown ? 'bg-slate-400' : isOOS ? 'bg-red-500' : isLow ? 'bg-amber-500' : 'bg-green-500'}`} />
+            {isUnknown ? 'Tap to add' : isOOS ? 'Out of stock' : isLow ? `Only ${stock} left` : `${stock} in stock`}
           </span>
         </div>
 
