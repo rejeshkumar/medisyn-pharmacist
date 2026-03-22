@@ -15,6 +15,7 @@ import RoleSwitcher from '@/components/common/RoleSwitcher';
 const navItems = [
   { href: '/receptionist',                      label: 'Dashboard',        icon: LayoutDashboard },
   { href: '/receptionist/book-appointment',     label: 'Book Appointment', icon: CalendarPlus },
+  { href: '/receptionist/my-leave',             label: 'My Leave',         icon: Clock },
   { href: '/receptionist/attendance',           label: 'Attendance',       icon: Clock },
   { href: '/receptionist/billing',              label: 'Billing',          icon: Receipt },
   { href: '/receptionist/bill-history',          label: 'Bill History',     icon: History },

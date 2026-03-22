@@ -1,3 +1,5 @@
+import React from 'react';
+import NotificationBell from '@/components/hr/NotificationBell';
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -23,10 +25,38 @@ import {
   ClipboardList,
   Settings,
   Briefcase,
+  Clock2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import RoleSwitcher from '@/components/common/RoleSwitcher';
+
+
+// Pending leave count badge
+function PendingLeaveBadge() {
+  const [count, setCount] = React.useState(0);
+  React.useEffect(() => {
+    const load = () => {
+      fetch('/api/proxy/hr/pending-leave-count', {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` }
+      }).catch(() => {});
+    };
+    // Simple polling won't work without API base URL — use the api module
+    import('@/lib/api').then(({ default: api }) => {
+      const load = () => api.get('/hr/pending-leave-count')
+        .then(r => setCount(r.data?.count ?? 0)).catch(() => {});
+      load();
+      const t = setInterval(load, 60000);
+      return () => clearInterval(t);
+    });
+  }, []);
+  if (count === 0) return null;
+  return (
+    <span className="ml-auto min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+      {count}
+    </span>
+  );
+}
 
 const navItems = [
   { href: '/dashboard',  label: 'Dashboard',    icon: LayoutDashboard, roles: ['owner', 'pharmacist', 'assistant'] },
@@ -40,6 +70,8 @@ const navItems = [
   { href: '/audit',      label: 'Audit Log',     icon: ClipboardList,   roles: ['owner'] },
   { href: '/bulk',       label: 'Bulk Upload',   icon: Upload,          roles: ['owner'] },
   { href: '/users',      label: 'Users',         icon: Users,           roles: ['owner'] },
+  { href: '/attendance',  label: 'Attendance',      icon: Clock2,    roles: ['owner','pharmacist','assistant'] },
+  { href: '/my-leave',  label: 'My Leave',        icon: Calendar,  roles: ['pharmacist','assistant'] },
   { href: '/hr/roster',  label: 'Roster',         icon: Briefcase, roles: ['owner'] },
   { href: '/hr/leaves',  label: 'Leave & Payroll', icon: Briefcase, roles: ['owner'] },
   { href: '/settings',   label: 'Settings',      icon: Settings,        roles: ['owner'] },
@@ -96,12 +128,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <h1 className="font-bold text-[#00475a] text-sm leading-tight">MediSyn</h1>
             <p className="text-xs text-gray-400">Pharmacy System</p>
           </div>
-          <button
-            className="ml-auto lg:hidden text-gray-400 hover:text-gray-600"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="ml-auto flex items-center gap-1">
+            {user && <NotificationBell role={user.role} />}
+            <button className="lg:hidden text-gray-400 hover:text-gray-600" onClick={() => setSidebarOpen(false)}>
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         <nav className="flex-1 overflow-y-auto p-3 space-y-0.5 scrollbar-thin">
@@ -122,6 +154,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               >
                 <Icon className="w-4.5 h-4.5 flex-shrink-0" style={{ width: 18, height: 18 }} />
                 {item.label}
+                {item.href === '/hr/leaves' && <PendingLeaveBadge />}
                 {active && <ChevronRight className="w-4 h-4 ml-auto" />}
               </Link>
             );

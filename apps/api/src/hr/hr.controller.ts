@@ -197,4 +197,31 @@ export class HrController {
       `attachment; filename="payroll-${year}-${month}.csv"`);
     res.send(csv);
   }
+  // ── Notifications ────────────────────────────────────────────
+  @Get('notifications')
+  getNotifications(@Req() req: any) {
+    return this.hr.getNotifications(req.user.tenant_id, req.user.sub);
+  }
+
+  @Get('notifications/unread-count')
+  getUnreadCount(@Req() req: any) {
+    return this.hr.getUnreadCount(req.user.tenant_id, req.user.sub);
+  }
+
+  @Patch('notifications/read-all')
+  markAllRead(@Req() req: any) {
+    return this.hr.markNotificationsRead(req.user.tenant_id, req.user.sub);
+  }
+
+  @Patch('notifications/:id/read')
+  markOneRead(@Param('id') id: string, @Req() req: any) {
+    return this.hr.markNotificationsRead(req.user.tenant_id, req.user.sub, id);
+  }
+
+  @Get('pending-leave-count')
+  getPendingCount(@Req() req: any) {
+    return this.hr.getPendingLeaveCount(req.user.tenant_id)
+      .then(count => ({ count }));
+  }
+
 }

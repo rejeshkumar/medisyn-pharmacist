@@ -1,6 +1,7 @@
 import {
   Injectable, BadRequestException, NotFoundException, ForbiddenException,
 } from '@nestjs/common';
+import { LeaveNotificationService } from './leave-notification.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, Between } from 'typeorm';
 import * as dayjs from 'dayjs';
@@ -9,7 +10,10 @@ const n = (v: any) => Number(v) || 0;
 
 @Injectable()
 export class HrService {
-  constructor(private dataSource: DataSource) {}
+  constructor(
+    private dataSource: DataSource,
+    private leaveNotif: LeaveNotificationService,
+  ) {}
 
   // ── Shift templates ───────────────────────────────────────────────────────
   async getShifts(tenantId: string) {
@@ -124,6 +128,22 @@ export class HrService {
 
     if (days <= 0) throw new BadRequestException('No working days in selected range');
 
+    // Advance notice validation
+    const settings = await this.dataSource.query(
+      `SELECT leave_advance_days FROM hr_settings WHERE tenant_id = $1`,
+      [tenantId],
+    ).catch(() => [{ leave_advance_days: 1 }]);
+    const advanceDays = Number(settings[0]?.leave_advance_days ?? 1);
+    const today       = dayjs().startOf('day');
+    const leaveStart  = dayjs(from_date).startOf('day');
+    const daysNotice  = leaveStart.diff(today, 'day');
+    if (daysNotice < advanceDays) {
+      throw new BadRequestException(
+        `Leave must be applied at least ${advanceDays} day${advanceDays > 1 ? 's' : ''} in advance. ` +
+        `Selected date is ${daysNotice < 0 ? 'in the past' : `only ${daysNotice} day(s) away`}.`
+      );
+    }
+
     // Check balance for CL/SL/EL/CO
     if (leave_type !== 'LOP' && leave_type !== 'ML') {
       const bal = await this.dataSource.query(
@@ -232,6 +252,25 @@ export class HrService {
         }
       }
       await qr.commitTransaction();
+
+      // Notify staff of decision (non-blocking)
+      const approverInfo = await this.dataSource.query(
+        `SELECT full_name FROM users WHERE id = $1`, [approverId]
+      ).catch(() => [{ full_name: 'Manager' }]);
+
+      this.leaveNotif.notifyLeaveDecision(
+        tenantId,
+        leave[0].user_id,
+        leave[0].full_name ?? 'Staff',
+        leave[0].leave_type,
+        leave[0].from_date,
+        leave[0].to_date,
+        action,
+        approverInfo[0]?.full_name ?? 'Manager',
+        note,
+        leaveId,
+      ).catch(e => console.error('[HR] Decision notification failed:', e));
+
       return { ok: true, action };
     } catch (e) { await qr.rollbackTransaction(); throw e; }
     finally { await qr.release(); }
@@ -719,6 +758,30 @@ export class HrService {
       Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
       Math.sin(dLng/2) * Math.sin(dLng/2);
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+
+  // ── Notifications ─────────────────────────────────────────────────────
+  async getNotifications(tenantId: string, userId: string) {
+    return this.leaveNotif.getNotifications(tenantId, userId);
+  }
+
+  async getUnreadCount(tenantId: string, userId: string) {
+    return { count: await this.leaveNotif.getUnreadCount(tenantId, userId) };
+  }
+
+  async markNotificationsRead(tenantId: string, userId: string, notifId?: string) {
+    await this.leaveNotif.markRead(tenantId, userId, notifId);
+    return { ok: true };
+  }
+
+  // ── Pending leave count (for owner badge) ────────────────────────────
+  async getPendingLeaveCount(tenantId: string): Promise<number> {
+    const r = await this.dataSource.query(
+      `SELECT COUNT(*)::int AS cnt FROM staff_leaves
+       WHERE tenant_id = $1 AND status = 'pending'`,
+      [tenantId],
+    );
+    return Number(r[0]?.cnt ?? 0);
   }
 
 }
