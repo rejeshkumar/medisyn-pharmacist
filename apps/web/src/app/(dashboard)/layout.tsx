@@ -35,21 +35,16 @@ import RoleSwitcher from '@/components/common/RoleSwitcher';
 
 // Pending leave count badge
 function PendingLeaveBadge() {
-  const [count, setCount] = React.useState(0);
-  React.useEffect(() => {
-    const load = () => {
-      fetch('/api/proxy/hr/pending-leave-count', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` }
-      }).catch(() => {});
-    };
-    // Simple polling won't work without API base URL — use the api module
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
     import('@/lib/api').then(({ default: api }) => {
       const load = () => api.get('/hr/pending-leave-count')
-        .then(r => setCount(r.data?.count ?? 0)).catch(() => {});
+        .then((r: any) => setCount(r.data?.count ?? 0)).catch(() => {});
       load();
-      const t = setInterval(load, 60000);
-      return () => clearInterval(t);
+      interval = setInterval(load, 60000);
     });
+    return () => clearInterval(interval);
   }, []);
   if (count === 0) return null;
   return (
