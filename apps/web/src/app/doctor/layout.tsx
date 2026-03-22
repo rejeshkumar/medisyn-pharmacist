@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { getUser, clearAuth } from '@/lib/auth';
 import {
-  LayoutDashboard, Users, ClipboardList, Clock,
+  LayoutDashboard, Users, ClipboardList, Clock, Calendar,
   LogOut, ChevronRight, Menu, X, Stethoscope,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -17,6 +17,8 @@ const navItems = [
   { href: '/doctor/patients', label: 'Patients',      icon: Users },
   { href: '/doctor/history',  label: 'Consultations', icon: ClipboardList },
   { href: '/doctor/availability', label: 'My Availability', icon: Clock },
+  { href: '/doctor/attendance',   label: 'Attendance',      icon: Clock },
+  { href: '/doctor/my-leave',     label: 'My Leave',        icon: Calendar },
 ];
 
 export default function DoctorLayout({ children }: { children: React.ReactNode }) {
