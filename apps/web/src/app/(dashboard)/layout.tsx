@@ -1,6 +1,5 @@
-import React from 'react';
-import NotificationBell from '@/components/hr/NotificationBell';
 'use client';
+import NotificationBell from '@/components/hr/NotificationBell';
 
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
