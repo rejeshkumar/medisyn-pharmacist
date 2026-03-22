@@ -25,6 +25,13 @@ const SETTINGS = [
     color: 'text-purple-600 bg-purple-50',
   },
   {
+    href: '/settings/hr',
+    icon: Shield,
+    label: 'HR settings',
+    desc: 'Geo-fence, check-in rules, remote work reasons',
+    color: 'text-teal-600 bg-teal-50',
+  },
+  {
     href: '/settings/expiry-threshold',
     icon: AlertTriangle,
     label: 'Expiry warning threshold',

@@ -503,4 +503,222 @@ export class HrService {
       cur = cur.add(1, 'day');
     }
   }
+  // ── HR Settings (geo-fence config) ───────────────────────────────────────
+  async getHrSettings(tenantId: string) {
+    const rows = await this.dataSource.query(
+      `SELECT * FROM hr_settings WHERE tenant_id = $1`,
+      [tenantId],
+    );
+    return rows[0] ?? {
+      tenant_id: tenantId,
+      geo_fence_enabled: false,
+      fence_radius_m: 200,
+      checkin_early_min: 30,
+      late_threshold_min: 15,
+      office_lat: null,
+      office_lng: null,
+      office_name: 'Clinic',
+      remote_reasons: [],
+    };
+  }
+
+  async saveHrSettings(tenantId: string, dto: any) {
+    await this.dataSource.query(
+      `INSERT INTO hr_settings (
+         tenant_id, office_lat, office_lng, office_name,
+         fence_radius_m, checkin_early_min, late_threshold_min,
+         geo_fence_enabled, remote_reasons, updated_at
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,NOW())
+       ON CONFLICT (tenant_id) DO UPDATE SET
+         office_lat          = $2,
+         office_lng          = $3,
+         office_name         = $4,
+         fence_radius_m      = $5,
+         checkin_early_min   = $6,
+         late_threshold_min  = $7,
+         geo_fence_enabled   = $8,
+         remote_reasons      = $9::jsonb,
+         updated_at          = NOW()`,
+      [
+        tenantId,
+        dto.office_lat        ?? null,
+        dto.office_lng        ?? null,
+        dto.office_name       ?? 'Clinic',
+        dto.fence_radius_m    ?? 200,
+        dto.checkin_early_min ?? 30,
+        dto.late_threshold_min?? 15,
+        dto.geo_fence_enabled ?? false,
+        JSON.stringify(dto.remote_reasons ?? []),
+      ],
+    );
+    return this.getHrSettings(tenantId);
+  }
+
+  // ── Geo-fence check-in (replaces base checkIn) ───────────────────────────
+  async checkInWithGeo(
+    tenantId: string,
+    userId: string,
+    payload: {
+      lat?: number;
+      lng?: number;
+      accuracy?: number;
+      remote_reason?: string;
+      remote_sub_reason?: string;
+      remote_note?: string;
+      notes?: string;
+    },
+  ) {
+    const today = dayjs().format('YYYY-MM-DD');
+    const now   = new Date();
+
+    // ── Prevent double check-in ──────────────────────────────────
+    const existing = await this.dataSource.query(
+      `SELECT id, check_in_time FROM staff_attendance
+       WHERE tenant_id=$1 AND user_id=$2 AND attend_date=$3`,
+      [tenantId, userId, today],
+    );
+    if (existing[0]?.check_in_time) {
+      throw new Error('Already checked in today');
+    }
+
+    // ── Load settings + roster ────────────────────────────────────
+    const [settings, roster] = await Promise.all([
+      this.getHrSettings(tenantId),
+      this.dataSource.query(
+        `SELECT r.*, s.start_time, s.end_time, s.name AS shift_name
+         FROM staff_rosters r
+         JOIN staff_shifts s ON s.id = r.shift_id
+         WHERE r.tenant_id=$1 AND r.user_id=$2 AND r.roster_date=$3`,
+        [tenantId, userId, today],
+      ),
+    ]);
+
+    const shift = roster[0];
+
+    // ── Strict window check ───────────────────────────────────────
+    if (shift?.start_time) {
+      const [h, m] = shift.start_time.split(':').map(Number);
+      const shiftStart  = dayjs().hour(h).minute(m).second(0);
+      const earliestIn  = shiftStart.subtract(settings.checkin_early_min ?? 30, 'minute');
+      const minutesDiff = dayjs(now).diff(shiftStart, 'minute');
+
+      if (dayjs(now).isBefore(earliestIn)) {
+        const waitMin = earliestIn.diff(dayjs(now), 'minute');
+        throw new Error(
+          `Too early to check in. Your shift (${shift.start_time}) starts in ${Math.abs(minutesDiff)} minutes. ` +
+          `Check-in opens ${settings.checkin_early_min} minutes before shift start. Please wait ${waitMin} more minutes.`
+        );
+      }
+    }
+
+    // ── Geo-fence check ───────────────────────────────────────────
+    let distanceFromOffice: number | null = null;
+    let isRemote = false;
+
+    if (settings.geo_fence_enabled && settings.office_lat && settings.office_lng) {
+      if (!payload.lat || !payload.lng) {
+        throw new Error('Location required. Please enable location access to check in.');
+      }
+
+      // Haversine distance in metres
+      distanceFromOffice = this._haversineMetres(
+        payload.lat, payload.lng,
+        Number(settings.office_lat), Number(settings.office_lng),
+      );
+
+      const radius = settings.fence_radius_m ?? 200;
+      if (distanceFromOffice > radius) {
+        // Outside fence — remote reason required
+        if (!payload.remote_reason) {
+          throw new Error(
+            JSON.stringify({
+              code: 'OUTSIDE_FENCE',
+              distance: Math.round(distanceFromOffice),
+              radius,
+              message: `You are ${Math.round(distanceFromOffice)}m from the office (allowed: ${radius}m). Please provide a reason.`,
+            })
+          );
+        }
+        isRemote = true;
+      }
+    }
+
+    // ── Calculate lateness ────────────────────────────────────────
+    let isLate = false;
+    let lateMinutes = 0;
+    if (shift?.start_time) {
+      const [h, m] = shift.start_time.split(':').map(Number);
+      const shiftStart = dayjs().hour(h).minute(m).second(0);
+      const diff = dayjs(now).diff(shiftStart, 'minute');
+      const threshold = settings.late_threshold_min ?? 15;
+      if (diff > threshold) { isLate = true; lateMinutes = diff; }
+    }
+
+    // ── Save attendance ───────────────────────────────────────────
+    await this.dataSource.query(
+      `INSERT INTO staff_attendance (
+         tenant_id, user_id, roster_id, attend_date,
+         check_in_time, status, is_late, late_minutes,
+         check_in_lat, check_in_lng, check_in_accuracy,
+         distance_from_office, is_remote,
+         remote_reason, remote_sub_reason, remote_note, notes
+       ) VALUES ($1,$2,$3,$4,$5,'present',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+       ON CONFLICT (tenant_id, user_id, attend_date)
+       DO UPDATE SET
+         check_in_time       = $5,
+         status              = 'present',
+         is_late             = $6,
+         late_minutes        = $7,
+         check_in_lat        = $8,
+         check_in_lng        = $9,
+         check_in_accuracy   = $10,
+         distance_from_office= $11,
+         is_remote           = $12,
+         remote_reason       = $13,
+         remote_sub_reason   = $14,
+         remote_note         = $15,
+         notes               = $16,
+         updated_at          = NOW()`,
+      [
+        tenantId, userId, shift?.id ?? null, today, now,
+        isLate, lateMinutes,
+        payload.lat         ?? null,
+        payload.lng         ?? null,
+        payload.accuracy    ?? null,
+        distanceFromOffice  !== null ? Math.round(distanceFromOffice) : null,
+        isRemote,
+        payload.remote_reason     ?? null,
+        payload.remote_sub_reason ?? null,
+        payload.remote_note       ?? null,
+        payload.notes             ?? null,
+      ],
+    );
+
+    return {
+      checked_in_at:        now,
+      is_late:              isLate,
+      late_minutes:         lateMinutes,
+      is_remote:            isRemote,
+      distance_from_office: distanceFromOffice ? Math.round(distanceFromOffice) : null,
+      shift:                shift ? `${shift.shift_name} (${shift.start_time}–${shift.end_time})` : null,
+      message: isRemote
+        ? `Checked in remotely (${payload.remote_reason})`
+        : isLate
+        ? `Checked in — ${lateMinutes} minutes late`
+        : 'Checked in on time ✓',
+    };
+  }
+
+  // ── Haversine distance ────────────────────────────────────────────────────
+  private _haversineMetres(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const R = 6371000; // Earth radius in metres
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a =
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLng/2) * Math.sin(dLng/2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+
 }

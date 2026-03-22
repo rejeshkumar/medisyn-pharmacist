@@ -108,7 +108,27 @@ export class HrController {
   // ── Attendance ───────────────────────────────────────────────
   @Post('hr/attendance/check-in')
   checkIn(@Body() body: any, @Req() req: any) {
-    return this.hr.checkIn(req.user.tenant_id, req.user.sub, body.notes);
+    // Route to geo-aware version — handles strict window + geo-fence
+    return this.hr.checkInWithGeo(req.user.tenant_id, req.user.sub, {
+      lat:              body.lat,
+      lng:              body.lng,
+      accuracy:         body.accuracy,
+      remote_reason:    body.remote_reason,
+      remote_sub_reason:body.remote_sub_reason,
+      remote_note:      body.remote_note,
+      notes:            body.notes,
+    });
+  }
+
+  @Get('hr/settings')
+  getHrSettings(@Req() req: any) {
+    return this.hr.getHrSettings(req.user.tenant_id);
+  }
+
+  @Post('hr/settings')
+  saveHrSettings(@Body() body: any, @Req() req: any) {
+    if (!['owner'].includes(req.user.role)) throw new Error('Only owner can update HR settings');
+    return this.hr.saveHrSettings(req.user.tenant_id, body);
   }
 
   @Post('hr/attendance/check-out')
