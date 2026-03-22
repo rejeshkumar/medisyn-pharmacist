@@ -507,7 +507,9 @@ export default function DispensingPage() {
     queryKey: ['medicines-search', search],
     queryFn: () =>
       search.length >= 2
-        ? api.get(`/medicines/search-enriched?search=${search}&limit=15`).then((r) => r.data)
+        ? api.get(`/medicines/search-enriched?search=${search}&limit=15`)
+            .then((r) => r.data)
+            .catch(() => api.get(`/medicines?search=${search}&limit=15`).then((r) => r.data))
         : Promise.resolve([]),
     enabled: search.length >= 2,
   });
