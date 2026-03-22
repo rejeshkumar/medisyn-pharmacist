@@ -24,7 +24,9 @@ import {
   ClipboardList,
   Settings,
   Briefcase,
-  Clock2,
+  Clock,
+  Calendar,
+  Bell,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
@@ -69,7 +71,7 @@ const navItems = [
   { href: '/audit',      label: 'Audit Log',     icon: ClipboardList,   roles: ['owner'] },
   { href: '/bulk',       label: 'Bulk Upload',   icon: Upload,          roles: ['owner'] },
   { href: '/users',      label: 'Users',         icon: Users,           roles: ['owner'] },
-  { href: '/attendance',  label: 'Attendance',      icon: Clock2,    roles: ['owner','pharmacist','assistant'] },
+  { href: '/attendance',  label: 'Attendance',      icon: Clock,    roles: ['owner','pharmacist','assistant'] },
   { href: '/my-leave',  label: 'My Leave',        icon: Calendar,  roles: ['pharmacist','assistant'] },
   { href: '/hr/roster',  label: 'Roster',         icon: Briefcase, roles: ['owner'] },
   { href: '/hr/leaves',  label: 'Leave & Payroll', icon: Briefcase, roles: ['owner'] },
