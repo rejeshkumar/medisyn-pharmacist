@@ -175,7 +175,7 @@ function MedicineCard({ med, onAdd }: { med: any; onAdd: (med: any) => void }) {
     : 999;
 
   return (
-    <div className={`border-b border-gray-50 last:border-0 ${isOOS ? 'bg-gray-50/70' : ''}`}>
+    <div className={`border-b border-gray-50 last:border-0 ${isOOS ? 'bg-red-50/60 border-l-4 border-l-red-400' : ''}`}>
       {/* Schedule banners */}
       {(isX || isH) && (
         <div className="mx-3 mt-2 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5"
@@ -191,7 +191,7 @@ function MedicineCard({ med, onAdd }: { med: any; onAdd: (med: any) => void }) {
         {/* Row 1: Name + schedule badge + stock */}
         <div className="flex items-center justify-between gap-2 mb-1.5">
           <div className="flex items-center gap-2 min-w-0">
-            <p className={`text-sm font-bold truncate ${isOOS ? 'text-gray-400' : 'text-gray-900'}`}>
+            <p className={`text-sm font-bold truncate ${isOOS ? 'text-red-400' : 'text-gray-900'}`}>
               {med.brand_name}
             </p>
             <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold border"
@@ -220,11 +220,12 @@ function MedicineCard({ med, onAdd }: { med: any; onAdd: (med: any) => void }) {
 
         {/* Row 3: Manufacturer + rack + treatment */}
         <div className="flex items-center gap-3 flex-wrap text-[10px] mb-1.5">
-          {med.manufacturer && (
-            <span className="flex items-center gap-1 text-gray-500">
-              <Tag className="w-2.5 h-2.5" />{med.manufacturer}
-            </span>
-          )}
+          {med.manufacturer
+              ? <span className="flex items-center gap-1 text-gray-600 font-medium">
+                  <Tag className="w-2.5 h-2.5" />{med.manufacturer}
+                </span>
+              : <span className="text-gray-300 italic text-[10px]">Manufacturer not set</span>
+            }
           {med.rack_location && (
             <span className="flex items-center gap-1 text-blue-600 font-medium">
               <MapPin className="w-2.5 h-2.5" />Rack: {med.rack_location}
