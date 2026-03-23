@@ -344,7 +344,7 @@ export class MedicinesService {
          (SELECT json_agg(ab ORDER BY ab.expiry_date ASC)
           FROM (
             SELECT b.id, b.batch_number, b.expiry_date,
-                   b.sale_rate, b.purchase_rate, b.quantity,
+                   b.sale_rate, b.quantity,
                    EXTRACT(DAY FROM (b.expiry_date - CURRENT_DATE))::int AS days_to_expiry
             FROM stock_batches b
             WHERE b.medicine_id  = m.id
