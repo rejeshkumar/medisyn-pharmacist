@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { StockAdjustmentController } from './stock-adjustment.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { StockController } from './stock.controller';
 import { StockService } from './stock.service';
@@ -10,7 +11,7 @@ import { AuditModule } from '../audit/audit.module';
 
 @Module({
   imports: [TypeOrmModule.forFeature([StockBatch, StockAdjustment, Supplier, Medicine]), AuditModule],
-  controllers: [StockController],
+  controllers: [StockAdjustmentController, StockController],
   providers: [StockService],
   exports: [StockService],
 })
