@@ -282,7 +282,7 @@ export class ReportsController {
       SELECT
         m.brand_name, m.molecule, m.strength, m.schedule_class, m.manufacturer,
         sb.batch_number, sb.expiry_date,
-        EXTRACT(DAY FROM (sb.expiry_date - CURRENT_DATE))::int AS days_left,
+        (sb.expiry_date - CURRENT_DATE)::int AS days_left,
         sb.quantity,
         ROUND(sb.quantity * sb.purchase_price, 2) AS purchase_value,
         ROUND(sb.quantity * sb.mrp, 2)            AS mrp_value,
