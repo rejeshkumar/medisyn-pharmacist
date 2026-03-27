@@ -215,7 +215,7 @@ export class ReportsController {
         ROUND(SUM(s.total_amount)::numeric, 2)           AS total_spent,
         ROUND(AVG(s.total_amount)::numeric, 2)           AS avg_bill
       FROM sales s
-      LEFT JOIN patients p ON p.id = s.patient_id
+      LEFT JOIN patients p ON p.mobile = s.customer_phone OR p.first_name || ' ' || COALESCE(p.last_name,'') = s.customer_name
       WHERE s.tenant_id = $1
         AND s.created_at BETWEEN $2 AND $3
       GROUP BY
@@ -386,14 +386,14 @@ export class ReportsController {
         COUNT(CASE WHEN a.status = 'absent'  THEN 1 END)::int           AS absent,
         COUNT(CASE WHEN a.status = 'on_leave' THEN 1 END)::int          AS leave,
         COUNT(CASE WHEN a.status = 'lop'     THEN 1 END)::int           AS lop,
-        COUNT(CASE WHEN a.is_late = true      THEN 1 END)::int          AS late_count,
+        COUNT(CASE WHEN a.check_in_time > (CURRENT_DATE + INTERVAL '9 hours') THEN 1 END)::int AS late_count,
         ROUND(COALESCE(SUM(
           EXTRACT(EPOCH FROM (a.check_out_time - a.check_in_time)) / 3600
         ), 0)::numeric, 1)                                               AS total_hours
       FROM users u
       LEFT JOIN staff_attendance a
         ON a.user_id = u.id
-        AND a.attendance_date BETWEEN $2::date AND $3::date
+        AND a.date BETWEEN $2::date AND $3::date
         AND a.tenant_id = $1
       WHERE u.tenant_id = $1
         AND u.is_active  = true
