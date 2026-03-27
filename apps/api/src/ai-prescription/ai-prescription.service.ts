@@ -84,63 +84,6 @@ export class AiPrescriptionService {
     await this.aiRxRepo.save(prescription);
   }
 
-  private async extractWithOpenAI(filePath: string): Promise<any> {
-    const imageBuffer = fs.readFileSync(filePath);
-    const base64Image = imageBuffer.toString('base64');
-    const ext = path.extname(filePath).toLowerCase();
-    const mimeType = ext === '.pdf' ? 'image/jpeg' : `image/${ext.replace('.', '')}`;
-
-    const response = await this.openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: `You are a pharmacy assistant. Extract all medicine details from this prescription image.
-
-Return a JSON object with this exact structure:
-{
-  "patient_name": "string or null",
-  "doctor_name": "string or null",
-  "medicines": [
-    {
-      "name": "medicine brand or generic name",
-      "strength": "e.g. 500mg, 10mg",
-      "dose": "e.g. 1 tablet, 5ml",
-      "frequency": "e.g. twice daily, TID, OD",
-      "duration": "e.g. 5 days, 1 month",
-      "notes": "e.g. after food, before bed",
-      "confidence": "high | medium | low"
-    }
-  ],
-  "raw_text": "full text extracted from prescription"
-}
-
-Rules for confidence:
-- high: name clearly readable and recognizable
-- medium: partially readable or common abbreviation
-- low: unclear, blurry or unrecognizable
-
-Return only valid JSON. No markdown.`,
-            },
-            {
-              type: 'image_url',
-              image_url: {
-                url: `data:${mimeType};base64,${base64Image}`,
-                detail: 'high',
-              },
-            },
-          ],
-        },
-      ],
-      max_tokens: 2000,
-      response_format: { type: 'json_object' },
-    });
-
-    return JSON.parse(response.choices[0].message.content);
-  }
 
   private mockExtraction() {
     return {
