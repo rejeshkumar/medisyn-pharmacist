@@ -40,10 +40,10 @@ function PendingLeaveBadge() {
 // ── Role-based tab definitions ────────────────────────────────
 const ROLE_TABS: Record<string, Array<{ href: string; label: string; icon: any; badge?: string }>> = {
   pharmacist: [
+    { href: '/dashboard',          label: 'Home',        icon: LayoutDashboard },
     { href: '/dispensing',         label: 'Dispense',    icon: ShoppingCart },
     { href: '/billing',            label: 'Bills',       icon: ReceiptText  },
     { href: '/stock',              label: 'Stock',       icon: Package      },
-    { href: '/procurement',        label: 'Reorder',     icon: ShoppingBag  },
   ],
   assistant: [
     { href: '/dispensing',         label: 'Dispense',    icon: ShoppingCart },
@@ -76,11 +76,12 @@ const OWNER_NAV = [
 
 // ── More menu items for pharmacist (overflow) ─────────────────
 const PHARMACIST_MORE = [
-  { href: '/medicines',       label: 'Medicines',       icon: Pill       },
-  { href: '/stock-adjustments',label: 'Adjustments',   icon: RefreshCcw },
-  { href: '/compliance',      label: 'Schedule Log',    icon: Shield     },
-  { href: '/attendance',      label: 'Attendance',      icon: Clock      },
-  { href: '/my-leave',        label: 'My Leave',        icon: Calendar   },
+  { href: '/procurement',      label: 'Reorder',        icon: ShoppingBag },
+  { href: '/medicines',        label: 'Medicines',      icon: Pill        },
+  { href: '/stock-adjustments',label: 'Adjustments',   icon: RefreshCcw  },
+  { href: '/compliance',       label: 'Schedule Log',   icon: Shield      },
+  { href: '/attendance',       label: 'Attendance',     icon: Clock       },
+  { href: '/my-leave',         label: 'My Leave',       icon: Calendar    },
 ];
 
 // ── Bottom tab bar layout (pharmacist/assistant) ──────────────
@@ -127,6 +128,13 @@ function BottomTabLayout({
 
         {/* Notification bell */}
         <NotificationBell role={user?.role} />
+
+        {/* Logout — always visible */}
+        <button onClick={handleLogout}
+          className="w-8 h-8 bg-white/10 hover:bg-red-500/80 rounded-lg flex items-center justify-center transition-colors flex-shrink-0"
+          title="Sign out">
+          <LogOut className="w-4 h-4 text-white" />
+        </button>
 
         {/* User avatar + name */}
         <button
