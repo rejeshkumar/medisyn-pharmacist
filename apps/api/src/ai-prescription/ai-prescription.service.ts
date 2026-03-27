@@ -6,7 +6,7 @@ import { AiPrescription, ExtractionStatus } from '../database/entities/ai-prescr
 import { Medicine } from '../database/entities/medicine.entity';
 import * as fs from 'fs';
 import * as path from 'path';
-import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
 
 export interface ExtractedMedicine {
   name: string;
@@ -22,7 +22,7 @@ export interface ExtractedMedicine {
 
 @Injectable()
 export class AiPrescriptionService {
-  private openai: OpenAI;
+  private anthropic: Anthropic;
 
   constructor(
     @InjectRepository(AiPrescription)
@@ -31,10 +31,9 @@ export class AiPrescriptionService {
     private medicineRepo: Repository<Medicine>,
     private configService: ConfigService,
   ) {
-    const apiKey = this.configService.get('OPENAI_API_KEY');
-    if (apiKey) {
-      this.openai = new OpenAI({ apiKey });
-    }
+    this.anthropic = new Anthropic({
+      apiKey: this.configService.get('ANTHROPIC_API_KEY') || process.env.ANTHROPIC_API_KEY,
+    });
   }
 
   async uploadAndParse(file: Express.Multer.File, userId: string) {
@@ -61,11 +60,7 @@ export class AiPrescriptionService {
     try {
       let extractedData: any;
 
-      if (this.openai) {
-        extractedData = await this.extractWithOpenAI(filePath);
-      } else {
-        extractedData = this.mockExtraction();
-      }
+      extractedData = await this.extractWithClaude(filePath);
 
       const mappedMedicines = await this.mapMedicinesToMaster(
         extractedData.medicines,
