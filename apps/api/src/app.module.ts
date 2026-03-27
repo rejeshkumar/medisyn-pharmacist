@@ -32,6 +32,7 @@ import { ConsultationModule } from './consultation/consultation.module';
 import { PaymentModule } from './payments/payment.module';
 
 import { HrModule } from './hr/hr.module';
+import { ReportsController } from './reports/reports.controller';
 import { BillingModule } from './billing/billing.module';
 
 @Module({
