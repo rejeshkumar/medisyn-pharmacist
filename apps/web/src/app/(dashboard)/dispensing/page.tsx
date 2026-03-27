@@ -106,8 +106,8 @@ function MedSearchDropdown({
             const cfg    = SCHEDULE_CONFIG[med.schedule_class] ?? SCHEDULE_CONFIG.OTC;
             return (
               <button key={med.id}
-                onClick={() => { onSelect(med); setOpen(false); onChange(''); }}
-                className={`w-full px-3 py-2.5 text-left border-b border-gray-50 last:border-0 hover:bg-teal-50/40 transition-colors ${isOOS ? 'opacity-60' : ''}`}>
+                onClick={() => { if (!isOOS) { onSelect(med); setOpen(false); onChange(''); } }}
+                className={`w-full px-3 py-2.5 text-left border-b border-gray-50 last:border-0 transition-colors ${isOOS ? 'bg-red-50 cursor-not-allowed border-l-4 border-l-red-400' : 'hover:bg-teal-50/40 cursor-pointer'}`}>
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="text-sm font-semibold text-gray-900 truncate">{med.brand_name}</span>
@@ -122,12 +122,14 @@ function MedSearchDropdown({
                     {med.total_stock !== undefined ? (isOOS ? 'OOS' : `${stock} left`) : ''}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 text-[10px] text-gray-400 mt-0.5">
-                  <span className="text-[#00475a]">{med.molecule}</span>
+                <div className="flex items-center gap-2 text-[10px] text-gray-400 mt-0.5 flex-wrap">
+                  <span className="text-[#00475a] font-medium">{med.molecule}</span>
                   <span>·</span><span>{med.strength}</span>
                   <span>·</span><span>{med.dosage_form}</span>
-                  {med.rack_location && <><span>·</span><span className="text-blue-600">📍{med.rack_location}</span></>}
+                  {med.manufacturer && <><span>·</span><span className="text-slate-500 italic">{med.manufacturer}</span></>}
+                  {med.rack_location && <><span>·</span><span className="text-blue-600 font-medium">📍{med.rack_location}</span></>}
                   {fefo?.sale_rate && <><span>·</span><span className="font-semibold text-gray-700">₹{Number(fefo.sale_rate).toFixed(2)}</span></>}
+                  {isOOS && <><span>·</span><span className="text-red-500 font-bold">OUT OF STOCK</span></>}
                 </div>
               </button>
             );
@@ -394,6 +396,11 @@ export default function DispensingPage() {
 
   const handleBill = () => {
     if (cart.length === 0) { toast.error('Cart is empty'); return; }
+    const overQty = cart.filter(i => i.avl_qty > 0 && i.qty > i.avl_qty);
+    if (overQty.length > 0) {
+      toast.error(`Quantity exceeds available stock for: ${overQty.map(i => i.medicine_name).join(', ')}}`);
+      return;
+    }
     if (hasScheduledDrugs && (!compliance.patient_name || !compliance.doctor_name)) {
       setShowCompliance(true); setShowBillPanel(true);
       toast.error('Compliance details required'); return;
@@ -627,6 +634,9 @@ export default function DispensingPage() {
                         : 'text-green-600'
                       }`}>
                         {item.avl_qty}
+                        {item.qty > item.avl_qty && item.avl_qty > 0 && (
+                          <span className="block text-[9px] text-red-500 font-bold">⚠ Exceeds stock</span>
+                        )}
                       </span>
                     </td>
                     <td className="px-3 py-2">
