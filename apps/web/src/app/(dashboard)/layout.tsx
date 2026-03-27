@@ -61,7 +61,7 @@ const navItems = [
   { href: '/dispensing', label: 'Dispense',      icon: ShoppingCart,    roles: ['owner', 'pharmacist'] },
   { href: '/medicines',  label: 'Medicines',     icon: Pill,            roles: ['owner', 'pharmacist', 'assistant'] },
   { href: '/stock',      label: 'Stock',         icon: Package,         roles: ['owner','pharmacist','assistant'] },
-  { href: '/stock-adjustments', label: 'Adjustments', icon: RefreshCcw,      roles: ['owner','pharmacist'] },         icon: Package,         roles: ['owner', 'pharmacist', 'assistant'] },
+  { href: '/stock-adjustments', label: 'Adjustments', icon: RefreshCcw,      roles: ['owner','pharmacist'] },
   { href: '/billing',    label: 'Bills',         icon: FileText,        roles: ['owner', 'pharmacist'] },
   { href: '/compliance', label: 'Schedule Log',  icon: Shield,          roles: ['owner', 'pharmacist'] },
   { href: '/reports',    label: 'Reports',       icon: BarChart3,       roles: ['owner', 'pharmacist'] },
