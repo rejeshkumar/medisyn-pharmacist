@@ -754,8 +754,8 @@ export default function DispensingPage() {
           )}
         </div>
 
-        {/* ── Bill summary panel ── */}
-        <div className="w-72 border-l border-slate-200 bg-white flex flex-col flex-shrink-0">
+        {/* ── Bill summary panel — hidden on mobile, visible on desktop ── */}
+        <div className="hidden lg:flex w-72 border-l border-slate-200 bg-white flex-col flex-shrink-0">
           {/* Totals */}
           <div className="flex-1 p-4 space-y-2 text-sm">
             <div className="flex justify-between text-slate-600">
@@ -835,7 +835,7 @@ export default function DispensingPage() {
       </div>
 
       {/* ── Mobile bottom bar ── */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 px-4 py-3 bg-white border-t border-slate-200 shadow-lg">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 px-4 py-3 bg-white border-t border-slate-200 shadow-lg" style={{paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))"}}>
         <button onClick={() => setShowBillPanel(true)}
           className="w-full py-3 bg-[#00475a] text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2">
           <ShoppingCart className="w-4 h-4" />
