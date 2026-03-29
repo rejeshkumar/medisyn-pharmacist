@@ -33,10 +33,12 @@ import { PaymentModule } from './payments/payment.module';
 
 import { HrModule } from './hr/hr.module';
 import { ReportsController } from './reports/reports.controller';
+import { AiCareModule } from './ai-care/ai-care.module';
 import { BillingModule } from './billing/billing.module';
 
 @Module({
   imports: [
+    AiCareModule,
     ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRootAsync({
       imports:    [ConfigModule],
