@@ -308,15 +308,35 @@ export class BulkService {
       .map((l) => l.trim())
       .filter((l) => l.length > 0);
 
-    const supplier = this.extractSupplierName(lines);
-    const invoiceNo = this.extractInvoiceNo(lines);
+    const format = this.detectFormat(lines);
+    const supplier = this.extractSupplierName(lines, format);
+    const invoiceNo = this.extractInvoiceNo(lines, format);
     const invoiceDate = this.extractInvoiceDate(lines);
-    const items = this.extractInvoiceItems(lines);
-
-    return { supplier, invoiceNo, invoiceDate, items };
+    const items = this.extractInvoiceItems(lines, fo  // ─── FORMAT DETECTION ────────────────────────────────────────────────────
+  //
+  // Supports two invoice formats:
+  //   1. MARG ERP  – each product is ONE line:
+  //        "1. DULOTAB-20 TAB 300490 10*10 BATCH 4/27 1 MRP PTR … IGST AMT NET"
+  //   2. Reliable Software (Goa) – each field on its OWN line, expiry "MM/YY" as anchor
+  //
+  private detectFormat(lines: string[]): 'marg' | 'reliable' {
+    // MARG invoices have a line matching the numbered-row pattern within first 60 lines
+    const margRowRe = /^\d+\.\s+\S+.*\d{1,2}\/\d{2}\s+\d+\s+[\d.]+/;
+    for (const line of lines.slice(0, 60)) {
+      if (margRowRe.test(line)) return 'marg';
+    }
+    return 'reliable';
   }
 
-  private extractSupplierName(lines: string[]): string {
+  private extractSupplierName(lines: string[], format: 'marg' | 'reliable'): string {
+    if (format === 'marg') {
+      // MARG: first non-empty line is always the supplier/company name
+      for (const line of lines.slice(0, 5)) {
+        if (line.length > 3 && line.length < 80) return line.trim();
+      }
+      return '';
+    }
+    // Reliable Software original logic
     for (const line of lines.slice(0, 25)) {
       if (
         /PHARMACY|MEDICAL|DISTRIBUTOR|WHOLESALE|CHEMIST|MEDICINES/i.test(line) &&
@@ -331,19 +351,21 @@ export class BulkService {
     return '';
   }
 
-  private extractInvoiceNo(lines: string[]): string {
+  private extractInvoiceNo(lines: string[], format: 'marg' | 'reliable'): string {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      const match = line.match(/Invoice\s*No[.:]?\s*:?\s*(\w+)/i);
+      const match = line.match(/Invoice\s*No[.:]?\s*:?\s*([A-Z0-9]+)/i);
       if (match) return match[1];
       if (/^Invoice\s*No/i.test(lines[i - 1] || '')) {
-        const m = line.match(/^(\d+)/);
+        const m = line.match(/^([A-Z0-9]+)/i);
         if (m) return m[1];
       }
     }
-    for (const line of lines.slice(0, 20)) {
-      const m = line.match(/^(\d{4,8})$/);
-      if (m) return m[1];
+    if (format === 'reliable') {
+      for (const line of lines.slice(0, 20)) {
+        const m = line.match(/^(\d{4,8})$/);
+        if (m) return m[1];
+      }
     }
     return '';
   }
@@ -356,92 +378,114 @@ export class BulkService {
     return '';
   }
 
-  private extractInvoiceItems(lines: string[]) {
+  private extractInvoiceItems(lines: string[], format: 'marg' | 'reliable') {
+    return format === 'marg'
+      ? this.parseMargItems(lines)
+      : this.parseReliableItems(lines);
+  }
+
+  // ─── MARG ERP PARSER ──────────────────────────────────────────────────────
+  // Row example (from pdf-parse output, single line per medicine):
+  //   "1. DULOTAB-20 TAB 300490 10*10 T-2505088A 4/27 1 1078.10 805.00 0.00 0.00 5.00 0.00 805.00 845.25"
+  //
+  // Column order: S# | Name | HSN | Pack | Batch | Exp(M/YY) | Qty | MRP | PTR | PTS | DISC | IGST% | ... | Amt | Net
+  //
+  private parseMargItems(lines: string[]) {
     const items: Array<{
-      medicineName: string;
-      batchNo: string;
-      expiry: string;
-      qty: number;
-      purchasePrice: number;
-      mrp: number;
-      gstPercent: number;
+      medicineName: string; batchNo: string; expiry: string;
+      qty: number; purchasePrice: number; mrp: number; gstPercent: number;
     }> = [];
 
-    // In Reliable Software (Goa) invoices, pdf-parse splits each field onto its own line.
-    // Per medicine the structure is:
-    //   [name line]           e.g. "WYSOLONE=10MG=DT TABLETS"
-    //   [(MRP) line]          e.g. "(20.2900)"  — optional, present for strip-pack items
-    //   [batch line]          e.g. "MP7382"
-    //   [expiry line]         e.g. "04/27"       ← anchor point
-    //   [pack line]           e.g. "5"
-    //   [totalValue+qty line] e.g. "156.2015"   (value 156.20 concatenated with qty 15)
-    //   [discount% line]      e.g. "10"
-    //   [saleRate line]       e.g. "15.62"
-    //   [mrp+HSN+extra line]  e.g. "19.0230043912D2PFIZE"
-    //   [page ref line]       e.g. "3"
+    // Matches: "1. NAME ... BATCH EXP QTY MRP PTR ..."
+    // Batch: alphanumeric with optional hyphens, 4-20 chars
+    // Exp: M/YY or MM/YY
+    const rowRe = /^(\d+)\.\s+(.+?)\s+(\d{5,6})\s+[\d*x]+\s+([A-Z0-9][A-Z0-9\-]{2,18})\s+(\d{1,2}\/\d{2})\s+(\d+)\s+([\d.]+)\s+([\d.]+)/i;
 
-    const standaloneExpPattern = /^\d{2}\/\d{2}$/; // exactly "MM/YY"
+    for (const line of lines) {
+      const m = line.match(rowRe);
+      if (!m) continue;
+
+      const medicineName  = m[2].trim();
+      // HSN is m[3], pack is already consumed
+      const batchNo       = m[4].trim().toUpperCase();
+      const expRaw        = m[5];   // e.g. "4/27"
+      const qty           = parseInt(m[6], 10);
+      const mrp           = parseFloat(m[7]);
+      const purchasePrice = parseFloat(m[8]);  // PTR (Price To Retailer)
+
+      // Convert "4/27" → "04/2027"
+      const [rawMM, rawYY] = expRaw.split('/');
+      const expiry = `${rawMM.padStart(2, '0')}/20${rawYY}`;
+
+      // GST%: try to find it in the remaining tail of the line
+      // Tail after PTR: "PTS DISC IGST_PCT ..."
+      const tail = line.slice(line.indexOf(m[8]) + m[8].length);
+      const gstMatch = tail.match(/\b(5|12|18|28)\.00\b/);
+      const gstPercent = gstMatch ? parseFloat(gstMatch[1]) : 5;
+
+      // Skip bad rows
+      if (!medicineName || medicineName.length < 2) continue;
+      if (qty <= 0 || purchasePrice <= 0) continue;
+
+      items.push({ medicineName, batchNo, expiry, qty, purchasePrice, mrp, gstPercent });
+    }
+
+    return items;
+  }
+
+  // ─── RELIABLE SOFTWARE PARSER (unchanged logic) ───────────────────────────
+  private parseReliableItems(lines: string[]) {
+    const items: Array<{
+      medicineName: string; batchNo: string; expiry: string;
+      qty: number; purchasePrice: number; mrp: number; gstPercent: number;
+    }> = [];
+
+    const standaloneExpPattern = /^\d{2}\/\d{2}$/;
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-
-      // Only standalone expiry date lines (MM/YY) are the anchor
       if (!standaloneExpPattern.test(line)) continue;
 
       const expRaw = line;
       const [expMM, expYY] = expRaw.split('/');
       const expiry = `${expMM}/20${expYY}`;
 
-      // Batch is the line immediately before the expiry
       const batchNo = lines[i - 1]?.trim() ?? '';
       if (!batchNo || !/^[A-Z0-9]{4,15}$/i.test(batchNo)) continue;
 
-      // Medicine name: check 2 lines back; if that's a bracketed MRP, go 3 lines back
-      const twoBack = lines[i - 2]?.trim() ?? '';
+      const twoBack   = lines[i - 2]?.trim() ?? '';
       const threeBack = lines[i - 3]?.trim() ?? '';
 
       let medicineName = '';
       if (/^\([\d.]+\)$/.test(twoBack)) {
-        // "(20.2900)" pattern — name is 3 lines back
         medicineName = threeBack.replace(/=/g, ' ').trim();
       } else {
         medicineName = twoBack.replace(/=/g, ' ').trim();
       }
 
-      // Skip if name looks like header/footer content
       if (
         !medicineName ||
         medicineName.length < 3 ||
         /^(GST|HSN|Value|Pack|Qty|Batch|Exp|Mfr|Rate|TOTAL|SUB|NET|DISC|Round|CRN|Invoice|Drug|Phone|Email|Food|Rep|State|Trans|Pin|LR|Order|Despatch|RACK|Rack|Pd)/i.test(medicineName)
-      )
-        continue;
+      ) continue;
 
-      // Lines after expiry
-      const packLine       = lines[i + 1]?.trim() ?? '';  // e.g. "5"
-      const totalQtyLine   = lines[i + 2]?.trim() ?? '';  // e.g. "156.2015"
-      const discountLine   = lines[i + 3]?.trim() ?? '';  // e.g. "10"
-      const saleRateLine   = lines[i + 4]?.trim() ?? '';  // e.g. "15.62"
-      const mrpExtraLine   = lines[i + 5]?.trim() ?? '';  // e.g. "19.0230043912D2PFIZE"
+      const totalQtyLine = lines[i + 2]?.trim() ?? '';
+      const saleRateLine = lines[i + 4]?.trim() ?? '';
+      const mrpExtraLine = lines[i + 5]?.trim() ?? '';
 
-      // Extract qty from "156.2015" → value=156.20, qty=15
-      // Pattern: decimal with exactly 2 decimal places followed by integer digits
       const totalQtyMatch = totalQtyLine.match(/^(\d+\.\d{2})(\d+)$/);
       const qty = totalQtyMatch ? parseInt(totalQtyMatch[2], 10) : parseInt(totalQtyLine, 10);
-
       const purchasePrice = parseFloat(saleRateLine) || 0;
 
-      // Extract MRP from "19.0230043912D2PFIZE" — first decimal with exactly 2 places
       const mrpLineMatch = mrpExtraLine.match(/^(\d+\.\d{2})/);
       const mrpFromLine = mrpLineMatch ? parseFloat(mrpLineMatch[1]) : 0;
 
-      // If there's a bracketed unit-MRP line between name and batch, use that
       let mrp = mrpFromLine;
       if (/^\([\d.]+\)$/.test(twoBack)) {
         const unitMrp = parseFloat(twoBack.replace(/[()]/g, ''));
         if (unitMrp > 0) mrp = unitMrp;
       }
 
-      // GST% — default to 5% (most pharma items); could be refined from GST summary
       const gstPercent = 5;
 
       if (!medicineName || !batchNo || qty <= 0 || purchasePrice <= 0) continue;
@@ -449,10 +493,16 @@ export class BulkService {
       items.push({
         medicineName: medicineName.replace(/\s+/g, ' ').trim(),
         batchNo: batchNo.toUpperCase(),
-        expiry,
-        qty,
-        purchasePrice,
+        expiry, qty, purchasePrice,
         mrp: mrp > 0 ? mrp : purchasePrice * 1.2,
+        gstPercent,
+      });
+    }
+
+    return items;
+  }
+
+  * 1.2,
         gstPercent,
       });
     }
