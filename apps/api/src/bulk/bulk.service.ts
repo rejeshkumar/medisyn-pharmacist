@@ -56,8 +56,9 @@ export class BulkService {
       if (!dosageForm) return errors.push({ row: rowNumber, error: 'Dosage Form is required', data: row.values });
       if (!scheduleClass) return errors.push({ row: rowNumber, error: 'Schedule Class is required', data: row.values });
 
+      const normalizedSchedule = this.normalizeSchedule(scheduleClass);
       const validSchedule = ['OTC', 'H', 'H1', 'X'];
-      if (!validSchedule.includes(scheduleClass.toUpperCase())) {
+      if (!validSchedule.includes(normalizedSchedule)) {
         return errors.push({ row: rowNumber, error: `Invalid Schedule Class: ${scheduleClass}`, data: row.values });
       }
 
@@ -70,7 +71,7 @@ export class BulkService {
         molecule,
         strength,
         dosage_form: dosageForm as DosageForm,
-        schedule_class: scheduleClass.toUpperCase() as ScheduleClass,
+        schedule_class: normalizedSchedule as ScheduleClass,
         substitute_group_key: groupKey,
         gst_percent: gstPercent ? Number(gstPercent) : 0,
         mrp: mrp ? Number(mrp) : null,
@@ -312,7 +313,12 @@ export class BulkService {
     const supplier = this.extractSupplierName(lines, format);
     const invoiceNo = this.extractInvoiceNo(lines, format);
     const invoiceDate = this.extractInvoiceDate(lines);
-    const items = this.extractInvoiceItems(lines, fo  // ── FORMAT DETECTION ───────────────────────────────────────────────────────
+    const items = this.extractInvoiceItems(lines, format);
+
+    return { supplier, invoiceNo, invoiceDate, items };
+  }
+
+  // ── FORMAT DETECTION ────────────────────────────────────────────────────────
   private detectFormat(lines: string[]): string {
     const margRowRe = /^\d+\.\s+\S+.*\d{1,2}\/\d{2}\s+\d+\s+[\d.]+/;
     for (const line of lines.slice(0, 60)) {
@@ -378,14 +384,12 @@ export class BulkService {
 
   // ── MARG ERP PARSER ─────────────────────────────────────────────────────────
   // Row: "1. DULOTAB-20 TAB 300490 10*10 T-2505088A 4/27 1 1078.10 805.00 ..."
-  // Cols: S# | Name | HSN | Pack | Batch | Exp | Qty | MRP | PTR | PTS | DISC | IGST% | ... | Amt | Net
   private parseMargItems(lines: string[]) {
     const items: Array<{
       medicineName: string; batchNo: string; expiry: string;
       qty: number; purchasePrice: number; mrp: number; gstPercent: number;
     }> = [];
 
-    // Matches numbered rows with at least batch+expiry+qty+price fields
     const rowRe = /^(\d+)\.\s+(.+?)\s+(\d{5,6})\s+[\d*x]+\s+([A-Z0-9][A-Z0-9\-]{2,18})\s+(\d{1,2}\/\d{2})\s+(\d+)\s+([\d.]+)\s+([\d.]+)/i;
 
     for (const line of lines) {
@@ -397,13 +401,11 @@ export class BulkService {
       const expRaw        = m[5];
       const qty           = parseInt(m[6], 10);
       const mrp           = parseFloat(m[7]);
-      const purchasePrice = parseFloat(m[8]); // PTR
+      const purchasePrice = parseFloat(m[8]);
 
-      // Convert "4/27" → "04/2027"
       const parts = expRaw.split('/');
       const expiry = `${parts[0].padStart(2, '0')}/20${parts[1]}`;
 
-      // GST% from tail of line
       const afterPtr = line.slice(line.indexOf(m[8]) + m[8].length);
       const gstMatch = afterPtr.match(/\b(5|12|18|28)\.00\b/);
       const gstPercent = gstMatch ? parseFloat(gstMatch[1]) : 5;
@@ -484,7 +486,10 @@ export class BulkService {
     return items;
   }
 
-    private normalizeSchedule(raw: string): string {
+  // ── SCHEDULE NORMALIZER ──────────────────────────────────────────────────────
+  // Accepts any variant ("Over the Counter", "Schedule H", "OTC", "H" etc.)
+  // and returns the DB enum value: OTC | H | H1 | X
+  private normalizeSchedule(raw: string): string {
     const map: Record<string, string> = {
       'over the counter': 'OTC',
       'otc': 'OTC',
@@ -538,7 +543,7 @@ export class BulkService {
               molecule: item.medicineName,
               strength: 'As per label',
               dosage_form: DosageForm.TABLET,
-              schedule_class: this.normalizeSchedule('OTC') as ScheduleClass,
+              schedule_class: ScheduleClass.OTC,
               gst_percent: item.gstPercent,
               mrp: item.mrp,
               sale_rate: item.purchasePrice * 1.15,
