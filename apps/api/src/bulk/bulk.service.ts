@@ -312,15 +312,8 @@ export class BulkService {
     const supplier = this.extractSupplierName(lines, format);
     const invoiceNo = this.extractInvoiceNo(lines, format);
     const invoiceDate = this.extractInvoiceDate(lines);
-    const items = this.extractInvoiceItems(lines, fo  // ─── FORMAT DETECTION ────────────────────────────────────────────────────
-  //
-  // Supports two invoice formats:
-  //   1. MARG ERP  – each product is ONE line:
-  //        "1. DULOTAB-20 TAB 300490 10*10 BATCH 4/27 1 MRP PTR … IGST AMT NET"
-  //   2. Reliable Software (Goa) – each field on its OWN line, expiry "MM/YY" as anchor
-  //
-  private detectFormat(lines: string[]): 'marg' | 'reliable' {
-    // MARG invoices have a line matching the numbered-row pattern within first 60 lines
+    const items = this.extractInvoiceItems(lines, fo  // ── FORMAT DETECTION ───────────────────────────────────────────────────────
+  private detectFormat(lines: string[]): string {
     const margRowRe = /^\d+\.\s+\S+.*\d{1,2}\/\d{2}\s+\d+\s+[\d.]+/;
     for (const line of lines.slice(0, 60)) {
       if (margRowRe.test(line)) return 'marg';
@@ -328,15 +321,13 @@ export class BulkService {
     return 'reliable';
   }
 
-  private extractSupplierName(lines: string[], format: 'marg' | 'reliable'): string {
+  private extractSupplierName(lines: string[], format: string): string {
     if (format === 'marg') {
-      // MARG: first non-empty line is always the supplier/company name
       for (const line of lines.slice(0, 5)) {
         if (line.length > 3 && line.length < 80) return line.trim();
       }
       return '';
     }
-    // Reliable Software original logic
     for (const line of lines.slice(0, 25)) {
       if (
         /PHARMACY|MEDICAL|DISTRIBUTOR|WHOLESALE|CHEMIST|MEDICINES/i.test(line) &&
@@ -351,7 +342,7 @@ export class BulkService {
     return '';
   }
 
-  private extractInvoiceNo(lines: string[], format: 'marg' | 'reliable'): string {
+  private extractInvoiceNo(lines: string[], format: string): string {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       const match = line.match(/Invoice\s*No[.:]?\s*:?\s*([A-Z0-9]+)/i);
@@ -378,27 +369,23 @@ export class BulkService {
     return '';
   }
 
-  private extractInvoiceItems(lines: string[], format: 'marg' | 'reliable') {
-    return format === 'marg'
-      ? this.parseMargItems(lines)
-      : this.parseReliableItems(lines);
+  private extractInvoiceItems(lines: string[], format: string) {
+    if (format === 'marg') {
+      return this.parseMargItems(lines);
+    }
+    return this.parseReliableItems(lines);
   }
 
-  // ─── MARG ERP PARSER ──────────────────────────────────────────────────────
-  // Row example (from pdf-parse output, single line per medicine):
-  //   "1. DULOTAB-20 TAB 300490 10*10 T-2505088A 4/27 1 1078.10 805.00 0.00 0.00 5.00 0.00 805.00 845.25"
-  //
-  // Column order: S# | Name | HSN | Pack | Batch | Exp(M/YY) | Qty | MRP | PTR | PTS | DISC | IGST% | ... | Amt | Net
-  //
+  // ── MARG ERP PARSER ─────────────────────────────────────────────────────────
+  // Row: "1. DULOTAB-20 TAB 300490 10*10 T-2505088A 4/27 1 1078.10 805.00 ..."
+  // Cols: S# | Name | HSN | Pack | Batch | Exp | Qty | MRP | PTR | PTS | DISC | IGST% | ... | Amt | Net
   private parseMargItems(lines: string[]) {
     const items: Array<{
       medicineName: string; batchNo: string; expiry: string;
       qty: number; purchasePrice: number; mrp: number; gstPercent: number;
     }> = [];
 
-    // Matches: "1. NAME ... BATCH EXP QTY MRP PTR ..."
-    // Batch: alphanumeric with optional hyphens, 4-20 chars
-    // Exp: M/YY or MM/YY
+    // Matches numbered rows with at least batch+expiry+qty+price fields
     const rowRe = /^(\d+)\.\s+(.+?)\s+(\d{5,6})\s+[\d*x]+\s+([A-Z0-9][A-Z0-9\-]{2,18})\s+(\d{1,2}\/\d{2})\s+(\d+)\s+([\d.]+)\s+([\d.]+)/i;
 
     for (const line of lines) {
@@ -406,24 +393,21 @@ export class BulkService {
       if (!m) continue;
 
       const medicineName  = m[2].trim();
-      // HSN is m[3], pack is already consumed
       const batchNo       = m[4].trim().toUpperCase();
-      const expRaw        = m[5];   // e.g. "4/27"
+      const expRaw        = m[5];
       const qty           = parseInt(m[6], 10);
       const mrp           = parseFloat(m[7]);
-      const purchasePrice = parseFloat(m[8]);  // PTR (Price To Retailer)
+      const purchasePrice = parseFloat(m[8]); // PTR
 
       // Convert "4/27" → "04/2027"
-      const [rawMM, rawYY] = expRaw.split('/');
-      const expiry = `${rawMM.padStart(2, '0')}/20${rawYY}`;
+      const parts = expRaw.split('/');
+      const expiry = `${parts[0].padStart(2, '0')}/20${parts[1]}`;
 
-      // GST%: try to find it in the remaining tail of the line
-      // Tail after PTR: "PTS DISC IGST_PCT ..."
-      const tail = line.slice(line.indexOf(m[8]) + m[8].length);
-      const gstMatch = tail.match(/\b(5|12|18|28)\.00\b/);
+      // GST% from tail of line
+      const afterPtr = line.slice(line.indexOf(m[8]) + m[8].length);
+      const gstMatch = afterPtr.match(/\b(5|12|18|28)\.00\b/);
       const gstPercent = gstMatch ? parseFloat(gstMatch[1]) : 5;
 
-      // Skip bad rows
       if (!medicineName || medicineName.length < 2) continue;
       if (qty <= 0 || purchasePrice <= 0) continue;
 
@@ -433,7 +417,7 @@ export class BulkService {
     return items;
   }
 
-  // ─── RELIABLE SOFTWARE PARSER (unchanged logic) ───────────────────────────
+  // ── RELIABLE SOFTWARE PARSER ─────────────────────────────────────────────────
   private parseReliableItems(lines: string[]) {
     const items: Array<{
       medicineName: string; batchNo: string; expiry: string;
@@ -447,8 +431,8 @@ export class BulkService {
       if (!standaloneExpPattern.test(line)) continue;
 
       const expRaw = line;
-      const [expMM, expYY] = expRaw.split('/');
-      const expiry = `${expMM}/20${expYY}`;
+      const parts = expRaw.split('/');
+      const expiry = `${parts[0]}/20${parts[1]}`;
 
       const batchNo = lines[i - 1]?.trim() ?? '';
       if (!batchNo || !/^[A-Z0-9]{4,15}$/i.test(batchNo)) continue;
@@ -486,8 +470,6 @@ export class BulkService {
         if (unitMrp > 0) mrp = unitMrp;
       }
 
-      const gstPercent = 5;
-
       if (!medicineName || !batchNo || qty <= 0 || purchasePrice <= 0) continue;
 
       items.push({
@@ -495,22 +477,14 @@ export class BulkService {
         batchNo: batchNo.toUpperCase(),
         expiry, qty, purchasePrice,
         mrp: mrp > 0 ? mrp : purchasePrice * 1.2,
-        gstPercent,
+        gstPercent: 5,
       });
     }
 
     return items;
   }
 
-  * 1.2,
-        gstPercent,
-      });
-    }
-
-    return items;
-  }
-
-  async importInvoiceItems(
+    async importInvoiceItems(
     items: Array<{
       medicineName: string;
       batchNo: string;
