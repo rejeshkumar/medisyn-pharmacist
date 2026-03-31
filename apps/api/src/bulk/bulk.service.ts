@@ -484,7 +484,21 @@ export class BulkService {
     return items;
   }
 
-    async importInvoiceItems(
+    private normalizeSchedule(raw: string): string {
+    const map: Record<string, string> = {
+      'over the counter': 'OTC',
+      'otc': 'OTC',
+      'schedule h': 'H',
+      'h': 'H',
+      'schedule h1': 'H1',
+      'h1': 'H1',
+      'schedule x': 'X',
+      'x': 'X',
+    };
+    return map[raw?.toLowerCase()?.trim()] ?? 'OTC';
+  }
+
+  async importInvoiceItems(
     items: Array<{
       medicineName: string;
       batchNo: string;
@@ -524,7 +538,7 @@ export class BulkService {
               molecule: item.medicineName,
               strength: 'As per label',
               dosage_form: DosageForm.TABLET,
-              schedule_class: ScheduleClass.OTC,
+              schedule_class: this.normalizeSchedule('OTC') as ScheduleClass,
               gst_percent: item.gstPercent,
               mrp: item.mrp,
               sale_rate: item.purchasePrice * 1.15,

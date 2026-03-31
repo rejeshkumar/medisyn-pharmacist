@@ -125,9 +125,9 @@ export class AiCareService {
          FROM sale_items si
          JOIN sales s ON s.id = si.sale_id
          WHERE si.medicine_id=$1 AND s.tenant_id=$2
-           AND (s.customer_name = (
+           AND s.customer_name = (
              SELECT first_name||' '||COALESCE(last_name,'') FROM patients WHERE id=$3
-           ) OR s.patient_id=$3)`,
+           )`,
         [medicineId, tenantId, patientId],
       );
       const lastPurchase = lastPurchaseR[0]?.last_date;

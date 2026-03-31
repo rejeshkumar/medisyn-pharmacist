@@ -60,6 +60,11 @@ export class MedicinesController {
     return this.medicinesService.getWithStock(req.tenantId);
   }
 
+  @Get('stock-check')
+  async stockCheck(@Query('name') name: string, @Req() req: any) {
+    return this.medicinesService.stockCheck(name, req.user.tenant_id);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get medicine by ID' })
   findOne(@Param('id') id: string, @Request() req) {
@@ -114,9 +119,4 @@ export class MedicinesController {
     });
   }
 
-  // GET /medicines/stock-check?name=... — check stock and suggest alternatives
-  @Get('stock-check')
-  async stockCheck(@Query('name') name: string, @Req() req: any) {
-    return this.medicinesService.stockCheck(name, req.user.tenant_id);
-  }
-}
+  // GET /medicines/stock-check?name=... — check stock and suggest alternatives}
