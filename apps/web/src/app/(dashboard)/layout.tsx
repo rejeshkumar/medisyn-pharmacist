@@ -71,7 +71,7 @@ const OWNER_NAV = [
   { href: '/attendance',      label: 'Attendance',      icon: Clock           },
   { href: '/hr/roster',       label: 'Roster',          icon: Briefcase       },
   { href: '/hr/leaves',       label: 'Leave & Payroll', icon: Briefcase       },
-  { href: '/ai-care',   label: 'AI Care Engine', icon: Brain },
+  { href: '/ai-care',   label: 'AI Care Engine', icon: Cpu },
   { href: '/settings',        label: 'Settings',        icon: Settings        },
 ];
 

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { getToken } from '@/lib/auth';
-import { Brain, Loader2, ChevronDown, ChevronUp, AlertTriangle, FlaskConical, Zap, X } from 'lucide-react';
+import { Cpu, Loader2, ChevronDown, ChevronUp, AlertTriangle, FlaskConical, Zap, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -77,7 +77,7 @@ export default function DiagnosisSuggestions({ patientContext }: Props) {
       <button onClick={() => setOpen(!open)}
         className="w-full px-4 py-3 bg-purple-50 flex items-center gap-3 hover:bg-purple-100 transition-colors">
         <div className="w-7 h-7 rounded-lg bg-purple-600 flex items-center justify-center flex-shrink-0">
-          <Brain className="w-4 h-4 text-white" />
+          <Cpu className="w-4 h-4 text-white" />
         </div>
         <span className="text-sm font-semibold text-purple-800 flex-1 text-left">AI Diagnosis Assistant</span>
         <span className="text-xs text-purple-500 mr-2">Powered by Claude</span>
@@ -102,7 +102,7 @@ export default function DiagnosisSuggestions({ patientContext }: Props) {
             </div>
             <button onClick={getAISuggestions} disabled={loading || !symptoms.trim()}
               className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50 transition-colors">
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Brain className="w-4 h-4" />}
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Cpu className="w-4 h-4" />}
               {loading ? 'Analysing...' : 'Get AI Suggestions'}
             </button>
           </div>
