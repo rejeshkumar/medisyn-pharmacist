@@ -58,9 +58,7 @@ export class AiPrescriptionService {
     if (!prescription) return;
 
     try {
-      let extractedData: any;
-
-      extractedData = await this.extractWithClaude(filePath);
+      const extractedData = await this.extractWithClaude(filePath);
 
       const mappedMedicines = await this.mapMedicinesToMaster(
         extractedData.medicines,
@@ -84,6 +82,83 @@ export class AiPrescriptionService {
     await this.aiRxRepo.save(prescription);
   }
 
+  private async extractWithClaude(filePath: string): Promise<{
+    patient_name: string;
+    doctor_name: string;
+    medicines: ExtractedMedicine[];
+    raw_text: string;
+  }> {
+    const imageBuffer = fs.readFileSync(filePath);
+    const base64Image = imageBuffer.toString('base64');
+    const ext = path.extname(filePath).toLowerCase();
+    const mediaType = ext === '.png' ? 'image/png' : 'image/jpeg';
+
+    const prompt = `You are a medical prescription parser specializing in Indian handwritten prescriptions.
+Analyze this prescription image and extract ALL information accurately.
+
+Return ONLY a valid JSON object in this exact format (no markdown, no explanation):
+{
+  "patient_name": "patient name or null",
+  "doctor_name": "doctor name or null",
+  "raw_text": "all visible text from prescription",
+  "medicines": [
+    {
+      "name": "medicine brand or generic name",
+      "strength": "dosage strength e.g. 500mg",
+      "dose": "e.g. 1 tablet",
+      "frequency": "e.g. TID, BD, OD, SOS",
+      "duration": "e.g. 5 days",
+      "notes": "any special instructions or null",
+      "confidence": "high|medium|low"
+    }
+  ]
+}
+
+Rules:
+- Extract every medicine listed, even if partially readable
+- For unclear text use confidence "low"
+- Indian prescription abbreviations: OD=once daily, BD=twice daily, TID=three times daily, QID=four times daily, SOS=as needed, HS=at bedtime
+- Include all medicines even if dosage is unclear`;
+
+    const response = await this.anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 2048,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: mediaType,
+                data: base64Image,
+              },
+            },
+            {
+              type: 'text',
+              text: prompt,
+            },
+          ],
+        },
+      ],
+    });
+
+    const text = response.content[0].type === 'text' ? response.content[0].text : '';
+    const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+    try {
+      return JSON.parse(cleaned);
+    } catch {
+      // If JSON parse fails, return a structured fallback
+      return {
+        patient_name: null,
+        doctor_name: null,
+        medicines: [],
+        raw_text: text,
+      };
+    }
+  }
 
   private mockExtraction() {
     return {
@@ -109,7 +184,7 @@ export class AiPrescriptionService {
           confidence: 'high',
         },
       ],
-      raw_text: 'Mock prescription text (OpenAI API key not configured)',
+      raw_text: 'Mock prescription text (API key not configured)',
     };
   }
 

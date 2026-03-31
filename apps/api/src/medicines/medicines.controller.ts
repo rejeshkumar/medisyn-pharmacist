@@ -24,7 +24,6 @@ import { UserRole } from '../database/entities/user.entity';
 export class MedicinesController {
   constructor(private medicinesService: MedicinesService) {}
 
-  
   @Get('search-enriched')
   searchEnriched(
     @Query('search') search: string,
@@ -43,7 +42,7 @@ export class MedicinesController {
   @ApiQuery({ name: 'search', required: false })
   @ApiQuery({ name: 'category', required: false })
   @ApiQuery({ name: 'schedule_class', required: false })
-  @ApiQuery({ name: 'with_stock', required: false, description: 'Include real-time stock availability (for prescription autocomplete)' })
+  @ApiQuery({ name: 'with_stock', required: false, description: 'Include real-time stock availability' })
   findAll(
     @Request() req,
     @Query('search') search?: string,
@@ -60,9 +59,20 @@ export class MedicinesController {
     return this.medicinesService.getWithStock(req.tenantId);
   }
 
+  // Must be ABOVE @Get(':id') — otherwise NestJS treats 'stock-check' as a UUID param
   @Get('stock-check')
   async stockCheck(@Query('name') name: string, @Req() req: any) {
     return this.medicinesService.stockCheck(name, req.user.tenant_id);
+  }
+
+  @Get('barcode-mappings')
+  getBarcodeMappings(@Req() req: any) {
+    return this.medicinesService.getBarcodeMappings(req.user.tenant_id);
+  }
+
+  @Get('barcode/:code')
+  lookupBarcode(@Param('code') code: string, @Req() req: any) {
+    return this.medicinesService.lookupBarcode(decodeURIComponent(code), req.user.tenant_id);
   }
 
   @Get(':id')
@@ -101,16 +111,6 @@ export class MedicinesController {
     return this.medicinesService.deactivate(id, req.user);
   }
 
-  @Get('barcode-mappings')
-  getBarcodeMappings(@Req() req: any) {
-    return this.medicinesService.getBarcodeMappings(req.user.tenant_id);
-  }
-
-  @Get('barcode/:code')
-  lookupBarcode(@Param('code') code: string, @Req() req: any) {
-    return this.medicinesService.lookupBarcode(decodeURIComponent(code), req.user.tenant_id);
-  }
-
   @Post('barcode-mappings')
   createBarcodeMapping(@Body() body: { barcode: string; medicine_id: string }, @Req() req: any) {
     return this.medicinesService.createBarcodeMapping(body, {
@@ -118,5 +118,4 @@ export class MedicinesController {
       role: req.user.role, tenant_id: req.user.tenant_id,
     });
   }
-
-  // GET /medicines/stock-check?name=... — check stock and suggest alternatives}
+}
