@@ -10,7 +10,7 @@ import {
   BarChart3, Users, Upload, Shield, LogOut, ChevronRight,
   Menu, X, HeartPulse, ClipboardList, Settings, Briefcase,
   RefreshCcw, ShoppingBag, Clock, Calendar, Bell,
-  Stethoscope, ReceiptText, ArrowLeftRight, ChevronUp,
+  Stethoscope, ReceiptText, ArrowLeftRight, ChevronUp, Cpu,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
