@@ -142,7 +142,26 @@ export class BulkService {
     for (const item of toInsert) {
       try {
         const medicine = await this.medicineRepo.findOne({ where: { brand_name: item.brandName } });
-        if (!medicine) { errors.push({ row: 0, error: `Medicine not found: ${item.brandName}`, data: item }); continue; }
+        if (!medicine) {
+          // Auto-create medicine so stock import never fails on missing master
+          try {
+            medicine = await this.medicineRepo.save(this.medicineRepo.create({
+              brand_name: item.brandName,
+              molecule: item.brandName,
+              strength: 'As per label',
+              dosage_form: DosageForm.TABLET,
+              schedule_class: ScheduleClass.OTC,
+              gst_percent: 5,
+              mrp: item.saleRate ? item.saleRate * 1.1 : 0,
+              sale_rate: item.saleRate || 0,
+              substitute_group_key: item.brandName
+                .toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''),
+            }));
+          } catch (createErr) {
+            errors.push({ row: 0, error: `Could not create medicine: ${item.brandName}`, data: item });
+            continue;
+          }
+        }
 
         let supplierId = null;
         if (item.supplierName) {
@@ -164,7 +183,16 @@ export class BulkService {
     }
 
     await this.logActivity({ action_type: BulkActionType.BULK_IMPORT_STOCK, file_name: fileName, total_rows: toInsert.length, success_rows: successCount, failed_rows: errors.length, performed_by: userId });
-    return { success: successCount > 0, total_rows: toInsert.length, success_rows: successCount, failed_rows: errors.length };
+    return {
+      success: successCount > 0,
+      total_rows: toInsert.length,
+      success_rows: successCount,
+      failed_rows: errors.length,
+      errors: errors.map(e => ({ row: e.row ?? 0, error: e.error ?? String(e) })),
+      message: successCount > 0
+        ? `${successCount} stock batches imported successfully.`
+        : `Import failed. ${errors.length} rows had errors.`,
+    };
   }
 
   async getLogs(userId?: string) {

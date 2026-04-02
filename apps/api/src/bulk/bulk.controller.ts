@@ -21,12 +21,12 @@ import { UserRole } from '../database/entities/user.entity';
 @ApiTags('Bulk Upload')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.OWNER)
 @Controller('bulk')
 export class BulkController {
   constructor(private bulkService: BulkService) {}
 
   @Get('template/medicines')
+  @Roles(UserRole.OWNER, UserRole.PHARMACIST)
   @ApiOperation({ summary: 'Download medicine master import template' })
   async getMedicineTemplate(@Res() res: Response) {
     const buffer = await this.bulkService.getMedicineTemplate();
@@ -36,6 +36,7 @@ export class BulkController {
   }
 
   @Get('template/stock')
+  @Roles(UserRole.OWNER, UserRole.PHARMACIST)
   @ApiOperation({ summary: 'Download stock batch import template' })
   async getStockTemplate(@Res() res: Response) {
     const buffer = await this.bulkService.getStockTemplate();
@@ -45,6 +46,7 @@ export class BulkController {
   }
 
   @Post('medicines/import')
+  @Roles(UserRole.OWNER, UserRole.PHARMACIST)
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Import medicine master from Excel' })
@@ -53,6 +55,7 @@ export class BulkController {
   }
 
   @Post('stock/import')
+  @Roles(UserRole.OWNER, UserRole.PHARMACIST)
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Import stock batches from Excel' })
@@ -61,6 +64,7 @@ export class BulkController {
   }
 
   @Post('invoice/parse')
+  @Roles(UserRole.OWNER, UserRole.PHARMACIST)
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Parse a supplier PDF invoice and extract medicine/stock data' })
@@ -70,6 +74,7 @@ export class BulkController {
   }
 
   @Post('invoice/import')
+  @Roles(UserRole.OWNER, UserRole.PHARMACIST)
   @ApiOperation({ summary: 'Import reviewed invoice items into stock' })
   importInvoice(@Body() body: any, @Request() req) {
     const { items, supplier, invoiceNo } = body;
@@ -77,6 +82,7 @@ export class BulkController {
   }
 
   @Get('logs')
+  @Roles(UserRole.OWNER, UserRole.PHARMACIST)
   @ApiOperation({ summary: 'Get bulk activity logs' })
   getLogs(@Request() req) {
     return this.bulkService.getLogs();
