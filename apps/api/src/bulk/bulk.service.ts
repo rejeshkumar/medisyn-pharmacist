@@ -172,7 +172,7 @@ export class BulkService {
 
         await this.batchRepo.save(this.batchRepo.create({
           medicine_id: medicine.id, batch_number: item.batchNo,
-          expiry_date: new Date(`01/${item.expiry}`),
+          expiry_date: (() => { const [mm,yyyy] = item.expiry.split('/'); return new Date(parseInt(yyyy), parseInt(mm)-1, 1); })(),
           quantity: item.qty, purchase_price: item.purchasePrice,
           mrp: item.saleRate * 1.1, sale_rate: item.saleRate, supplier_id: supplierId,
         }));
