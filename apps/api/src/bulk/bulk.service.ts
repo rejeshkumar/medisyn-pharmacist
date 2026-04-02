@@ -141,7 +141,7 @@ export class BulkService {
     let successCount = 0;
     for (const item of toInsert) {
       try {
-        const medicine = await this.medicineRepo.findOne({ where: { brand_name: item.brandName } });
+        let medicine = await this.medicineRepo.findOne({ where: { brand_name: item.brandName } });
         if (!medicine) {
           // Auto-create medicine so stock import never fails on missing master
           try {
