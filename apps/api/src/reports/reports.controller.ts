@@ -541,4 +541,25 @@ export class ReportsController {
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(csv);
   }
+  // ── GET /settings/expiry-threshold ────────────────────────
+  @Get('/settings/expiry-threshold')
+  async getExpiryThreshold(@Req() req: any) {
+    const rows = await this.ds.query(
+      `SELECT expiry_warning_days FROM tenants WHERE id = $1`,
+      [req.user.tenant_id]
+    );
+    return { expiry_warning_days: rows[0]?.expiry_warning_days ?? 60 };
+  }
+
+  // ── PATCH /settings/expiry-threshold ───────────────────────
+  @Patch('/settings/expiry-threshold')
+  async setExpiryThreshold(@Req() req: any, @Body() body: { expiry_warning_days: number }) {
+    const days = Math.min(365, Math.max(1, Number(body.expiry_warning_days) || 60));
+    await this.ds.query(
+      `UPDATE tenants SET expiry_warning_days = $1, updated_at = NOW() WHERE id = $2`,
+      [days, req.user.tenant_id]
+    );
+    return { expiry_warning_days: days };
+  }
+
 }
