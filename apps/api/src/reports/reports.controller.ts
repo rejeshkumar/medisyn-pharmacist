@@ -34,6 +34,60 @@ export class ReportsController {
   }
 
   // ── GET /reports/registry ──────────────────────────────────
+  // ── GET /reports/dashboard ────────────────────────────────
+  @Get('dashboard')
+  async getDashboard(@Req() req: any) {
+    const tenantId = req.user.tenant_id;
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayEnd   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+    const d90 = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+
+    const [todaySales, todayCount, lowStock, nearExpiry, topMeds] = await Promise.all([
+      this.ds.query(
+        `SELECT COALESCE(SUM(total_amount),0) AS total FROM sales
+         WHERE tenant_id=$1 AND is_voided=false
+           AND created_at BETWEEN $2 AND $3`,
+        [tenantId, todayStart, todayEnd]
+      ),
+      this.ds.query(
+        `SELECT COUNT(*)::int AS cnt FROM sales
+         WHERE tenant_id=$1 AND is_voided=false
+           AND created_at BETWEEN $2 AND $3`,
+        [tenantId, todayStart, todayEnd]
+      ),
+      this.ds.query(
+        `SELECT COUNT(*)::int AS cnt FROM stock_batches
+         WHERE tenant_id=$1 AND quantity<=10 AND quantity>0 AND is_active=true`,
+        [tenantId]
+      ),
+      this.ds.query(
+        `SELECT COUNT(*)::int AS cnt FROM stock_batches
+         WHERE tenant_id=$1 AND expiry_date<=$2 AND expiry_date>NOW()
+           AND quantity>0 AND is_active=true`,
+        [tenantId, d90]
+      ),
+      this.ds.query(
+        `SELECT si.medicine_name, SUM(si.qty)::int AS total_qty,
+                SUM(si.item_total) AS total_revenue
+         FROM sale_items si
+         JOIN sales s ON s.id=si.sale_id
+         WHERE s.tenant_id=$1 AND s.is_voided=false
+         GROUP BY si.medicine_name
+         ORDER BY total_qty DESC LIMIT 10`,
+        [tenantId]
+      ),
+    ]);
+
+    return {
+      today_sales:       parseFloat(todaySales[0]?.total || '0'),
+      today_bill_count:  todayCount[0]?.cnt || 0,
+      low_stock_count:   lowStock[0]?.cnt || 0,
+      near_expiry_count: nearExpiry[0]?.cnt || 0,
+      top_medicines:     topMeds,
+    };
+  }
+
   @Get('registry')
   async getRegistry(@Req() req: any) {
     const configs = await this.ds.query(
