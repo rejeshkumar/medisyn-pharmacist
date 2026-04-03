@@ -6,14 +6,14 @@ import api from '@/lib/api';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
-import { Search, Plus, X, Loader2, Users, Crown, CalendarClock, AlertCircle, Eye, Phone, MapPin } from 'lucide-react';
+import { Search, Plus, X, Loader2, Users, Crown, CalendarClock, AlertCircle, Eye, Phone, MapPin, Shield, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 
 const SALUTATIONS = ['Mr','Mrs','Ms','Dr','Baby','Other'];
 const GENDERS = ['male','female','other'];
 const CATEGORIES = ['general','insurance','corporate','senior'];
 const today = () => new Date().toISOString().split('T')[0];
 const oneYearFromDate = (d: string) => { const dt=new Date(d); dt.setFullYear(dt.getFullYear()+1); return dt.toISOString().split('T')[0]; };
-const EMPTY_FORM = { salutation:'Mr',first_name:'',last_name:'',gender:'male',dob:'',age:'',mobile:'',email:'',area:'',address:'',category:'general',ref_by:'',residence_number:'',is_first_visit:true,notes:'',is_vip:false,vip_start_date:'',vip_end_date:'' };
+const EMPTY_FORM = { salutation:'Mr',first_name:'',last_name:'',gender:'male',dob:'',age:'',mobile:'',email:'',area:'',address:'',category:'general',ref_by:'',residence_number:'',is_first_visit:true,notes:'',is_vip:false,vip_start_date:'',vip_end_date:'',consent_given:false,consent_version:'1.0' };
 
 export default function PatientsPage() {
   const [search, setSearch] = useState('');
@@ -22,6 +22,7 @@ export default function PatientsPage() {
   const [form, setForm] = useState<any>({ ...EMPTY_FORM });
   const qc = useQueryClient();
   const set = (f: string, v: any) => setForm((p: any) => ({ ...p, [f]: v }));
+  const [consentExpanded, setConsentExpanded] = useState(false);
 
   const { data: stats } = useQuery({ queryKey: ['patient-stats'], queryFn: () => api.get('/patients/stats').then((r) => r.data) });
   const { data: patients, isLoading } = useQuery({
@@ -171,10 +172,40 @@ export default function PatientsPage() {
               </div>
               <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={form.is_first_visit} onChange={(e) => set('is_first_visit',e.target.checked)} className="w-4 h-4 accent-primary-600" /><span className="text-sm text-gray-700">Is First Visit</span></label>
               <div><label className="label">Notes</label><textarea className="input resize-none" rows={2} value={form.notes} onChange={(e) => set('notes',e.target.value)} placeholder="Any notes..." /></div>
+
+              {/* ── DPDPA Consent ── */}
+              <div className={`rounded-xl border-2 p-4 transition-all ${form.consent_given ? 'border-[#00475a] bg-[#00475a]/5' : 'border-amber-300 bg-amber-50'}`}>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input type="checkbox" checked={form.consent_given} onChange={(e) => set('consent_given', e.target.checked)} className="mt-0.5 w-4 h-4 accent-[#00475a] cursor-pointer flex-shrink-0" />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <Shield className="w-4 h-4 text-[#00475a] flex-shrink-0" />
+                      <span className="text-sm font-semibold text-gray-900">Data Privacy Consent <span className="text-red-500">*</span></span>
+                    </div>
+                    <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+                      I consent to MediSyn Speciality Clinic collecting and processing my personal and health data for pharmacy and medical services, as described in the{' '}
+                      <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-[#00475a] underline inline-flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+                        Privacy Policy <ExternalLink className="w-3 h-3" />
+                      </a>.
+                    </p>
+                  </div>
+                </label>
+                <button type="button" onClick={() => setConsentExpanded(!consentExpanded)} className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 mt-2 ml-7">
+                  {consentExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  {consentExpanded ? 'Hide details' : 'What data do we collect?'}
+                </button>
+                {consentExpanded && (
+                  <div className="ml-7 mt-2 text-xs text-gray-600 space-y-1 bg-white rounded-lg p-3 border border-gray-100">
+                    <p className="font-medium">We collect: Name, mobile, DOB, address, prescriptions, visit history, billing records.</p>
+                    <p className="font-medium mt-1">Your rights (DPDPA 2023): Access, correct, delete your data. Reply STOP to opt out of WhatsApp.</p>
+                  </div>
+                )}
+                {!form.consent_given && <p className="text-xs text-amber-600 mt-2 ml-7">⚠️ Consent is required to register</p>}
+              </div>
             </div>
             <div className="p-5 border-t flex gap-3 flex-shrink-0">
               <button onClick={() => setShowForm(false)} className="btn-secondary flex-1">Cancel</button>
-              <button onClick={handleSubmit} disabled={createMutation.isPending} className="btn-primary flex-1">{createMutation.isPending?<Loader2 className="w-4 h-4 animate-spin inline mr-1" />:null}Register Patient</button>
+              <button onClick={handleSubmit} disabled={createMutation.isPending || !form.consent_given} className="btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed">{createMutation.isPending?<Loader2 className="w-4 h-4 animate-spin inline mr-1" />:null}Register Patient</button>
             </div>
           </div>
         </div>
