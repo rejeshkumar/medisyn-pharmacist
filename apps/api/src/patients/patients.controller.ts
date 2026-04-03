@@ -1,8 +1,8 @@
 import {
-  Controller, Get, Post, Patch, Body, Param, Query,
-  UseGuards, Request,
+  Controller, Get, Post, Patch, Delete, Body, Param, Query,
+  UseGuards, Request, HttpCode, HttpStatus, Req,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags, ApiQuery } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags, ApiQuery, ApiOperation } from '@nestjs/swagger';
 import { PatientsService } from './patients.service';
 import { CreatePatientDto, VipRegisterDto } from './dto/create-patient.dto';
 import { CreateAppointmentDto, UpdateAppointmentDto } from './dto/create-appointment.dto';
@@ -16,9 +16,6 @@ export class PatientsController {
   constructor(private readonly patientsService: PatientsService) {}
 
   // ── Public endpoint — VIP self-registration (no auth) ─────────────────────
-  // NOTE: vip-register is public but has no tenant context from JWT.
-  // It uses a fixed default tenant for walk-in kiosk registrations.
-  // In Phase 2 this will accept a tenant slug as a query param.
   @Public()
   @Post('vip-register')
   vipRegister(@Body() dto: VipRegisterDto) {
@@ -51,6 +48,13 @@ export class PatientsController {
     return this.patientsService.getDueReminders(req.tenantId);
   }
 
+  // ── DPDPA: Consent status report ──────────────────────────────────────────
+  @Get('consent-report')
+  @ApiOperation({ summary: 'DPDPA — get consent stats for all patients' })
+  getConsentReport(@Request() req) {
+    return this.patientsService.getConsentReport(req.tenantId);
+  }
+
   @ApiQuery({ name: 'search', required: false })
   @ApiQuery({ name: 'is_vip', required: false })
   @ApiQuery({ name: 'category', required: false })
@@ -78,6 +82,40 @@ export class PatientsController {
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: Partial<CreatePatientDto>, @Request() req) {
     return this.patientsService.update(id, dto, req.user);
+  }
+
+  // ── DPDPA: Record patient consent ─────────────────────────────────────────
+  @Post(':id/consent')
+  @ApiOperation({ summary: 'DPDPA — record patient data consent' })
+  recordConsent(
+    @Param('id') id: string,
+    @Body() body: { consent_given: boolean; consent_version?: string },
+    @Req() req: any,
+  ) {
+    const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+    return this.patientsService.recordConsent(id, req.tenantId, body.consent_given, ip, body.consent_version);
+  }
+
+  // ── DPDPA: Patient data deletion request ─────────────────────────────────
+  @Post(':id/deletion-request')
+  @ApiOperation({ summary: 'DPDPA — patient requests data deletion (Right to Erasure)' })
+  requestDeletion(
+    @Param('id') id: string,
+    @Body() body: { reason?: string },
+    @Request() req,
+  ) {
+    return this.patientsService.requestDataDeletion(id, req.tenantId, req.user, body.reason);
+  }
+
+  // ── DPDPA: Anonymise patient (Owner only — irreversible) ──────────────────
+  @Delete(':id/anonymise')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'DPDPA — anonymise patient data (Owner only, irreversible)' })
+  anonymisePatient(
+    @Param('id') id: string,
+    @Request() req,
+  ) {
+    return this.patientsService.anonymisePatient(id, req.tenantId, req.user);
   }
 
   // ── Appointments ───────────────────────────────────────────────────────────

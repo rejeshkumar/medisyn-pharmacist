@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as dayjs from 'dayjs';
@@ -65,13 +65,19 @@ export class PatientsService {
       if (!vip_end)   vip_end   = dayjs(vip_start).add(1, 'year').format('YYYY-MM-DD');
     }
 
+    // DPDPA: record consent at registration if provided
+    const consentTimestamp = dto.consent_given ? new Date() : null;
+
     const patient = this.patientRepo.create({
       ...dto,
       uhid,
-      tenant_id:      tenantId,
-      created_by:     userId,
-      vip_start_date: vip_start,
-      vip_end_date:   vip_end,
+      tenant_id:         tenantId,
+      created_by:        userId,
+      vip_start_date:    vip_start,
+      vip_end_date:      vip_end,
+      consent_given:     dto.consent_given ?? false,
+      consent_timestamp: consentTimestamp,
+      consent_version:   dto.consent_given ? (dto.consent_version ?? '1.0') : null,
     });
     const saved = await this.patientRepo.save(patient);
 
@@ -83,7 +89,7 @@ export class PatientsService {
       entity:    'Patient',
       entityId:  saved.id,
       entityRef: `${saved.first_name} ${saved.last_name || ''} — ${saved.uhid}`,
-      newValue:  { uhid: saved.uhid, mobile: saved.mobile, is_vip: saved.is_vip },
+      newValue:  { uhid: saved.uhid, mobile: saved.mobile, is_vip: saved.is_vip, consent_given: saved.consent_given },
     });
 
     return saved;
@@ -121,6 +127,131 @@ export class PatientsService {
     });
 
     return saved;
+  }
+
+  // ── DPDPA: Record consent ──────────────────────────────────────────────────
+  async recordConsent(
+    patientId: string,
+    tenantId: string,
+    consentGiven: boolean,
+    ip: string,
+    version = '1.0',
+  ) {
+    const patient = await this.findOne(patientId, tenantId);
+    patient.consent_given     = consentGiven;
+    patient.consent_timestamp = consentGiven ? new Date() : null;
+    patient.consent_ip        = ip;
+    patient.consent_version   = consentGiven ? version : null;
+    await this.patientRepo.save(patient);
+    return {
+      id:                patientId,
+      consent_given:     patient.consent_given,
+      consent_timestamp: patient.consent_timestamp,
+      consent_version:   patient.consent_version,
+    };
+  }
+
+  // ── DPDPA: Request data deletion ──────────────────────────────────────────
+  async requestDataDeletion(
+    patientId: string,
+    tenantId: string,
+    user: UserContext,
+    reason?: string,
+  ) {
+    const patient = await this.findOne(patientId, tenantId);
+    patient.data_deletion_requested_at = new Date();
+    patient.data_deletion_reason       = reason || 'Patient requested data erasure (DPDPA Right to Erasure)';
+    await this.patientRepo.save(patient);
+
+    await this.auditService.log({
+      tenantId,
+      userId:   user.id,
+      userName: user.full_name,
+      userRole: user.role,
+      action:   AuditAction.UPDATE,
+      entity:   'Patient',
+      entityId: patientId,
+      entityRef: `${patient.first_name} ${patient.last_name || ''} — ${patient.uhid}`,
+      newValue: { data_deletion_requested: true, reason },
+    });
+
+    return {
+      message: 'Data deletion request recorded. Patient data will be anonymised within 30 days as per DPDPA.',
+      requested_at: patient.data_deletion_requested_at,
+    };
+  }
+
+  // ── DPDPA: Anonymise patient (irreversible) ────────────────────────────────
+  // Replaces all PII with anonymised values while preserving billing/audit records
+  async anonymisePatient(patientId: string, tenantId: string, user: UserContext) {
+    if (user.role !== 'owner') {
+      throw new ForbiddenException('Only Owner can anonymise patient data');
+    }
+
+    const patient = await this.findOne(patientId, tenantId);
+    const uhid    = patient.uhid; // preserve UHID for billing record linkage
+
+    // Replace all PII with anonymised placeholders
+    patient.first_name    = 'ANONYMISED';
+    patient.last_name     = null;
+    patient.mobile        = `ANON-${Date.now()}`;
+    patient.email         = null;
+    patient.dob           = null;
+    patient.age           = null;
+    patient.address       = null;
+    patient.area          = null;
+    patient.notes         = null;
+    patient.ref_by        = null;
+    patient.profile_photo_url = null;
+    patient.is_active     = false;
+    patient.consent_given = false;
+    patient.updated_by    = user.id;
+
+    await this.patientRepo.save(patient);
+
+    await this.auditService.log({
+      tenantId,
+      userId:   user.id,
+      userName: user.full_name,
+      userRole: user.role,
+      action:   AuditAction.DELETE,
+      entity:   'Patient',
+      entityId: patientId,
+      entityRef: `ANONYMISED — ${uhid}`,
+      newValue: { anonymised: true, reason: 'DPDPA Right to Erasure' },
+    });
+
+    return {
+      message: 'Patient data has been anonymised. Billing records retained for legal compliance.',
+      uhid,
+    };
+  }
+
+  // ── DPDPA: Consent report ──────────────────────────────────────────────────
+  async getConsentReport(tenantId: string) {
+    const [total, consented, pending] = await Promise.all([
+      this.patientRepo.count({ where: { tenant_id: tenantId, is_active: true } }),
+      this.patientRepo.count({ where: { tenant_id: tenantId, is_active: true, consent_given: true } }),
+      this.patientRepo.count({ where: { tenant_id: tenantId, is_active: true, consent_given: false } }),
+    ]);
+
+    // Patients with pending deletion requests
+    const deletionRequests = await this.patientRepo
+      .createQueryBuilder('p')
+      .where('p.tenant_id = :tenantId', { tenantId })
+      .andWhere('p.data_deletion_requested_at IS NOT NULL')
+      .andWhere('p.is_active = true')
+      .select(['p.id', 'p.uhid', 'p.first_name', 'p.last_name', 'p.data_deletion_requested_at', 'p.data_deletion_reason'])
+      .getMany();
+
+    return {
+      total_patients:    total,
+      consent_given:     consented,
+      consent_pending:   pending,
+      consent_rate_pct:  total > 0 ? Math.round((consented / total) * 100) : 0,
+      deletion_requests: deletionRequests.length,
+      pending_deletions: deletionRequests,
+    };
   }
 
   async vipRegister(dto: VipRegisterDto, tenantId: string) {
