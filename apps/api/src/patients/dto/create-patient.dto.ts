@@ -98,6 +98,17 @@ export class CreatePatientDto {
   @IsDateString()
   @IsOptional()
   vip_end_date?: string;
+
+  // ── DPDPA Consent ─────────────────────────────────────────────────────────
+  @ApiPropertyOptional({ description: 'DPDPA 2023 — patient consent to data processing' })
+  @IsBoolean()
+  @IsOptional()
+  consent_given?: boolean;
+
+  @ApiPropertyOptional({ description: 'Privacy policy version accepted' })
+  @IsString()
+  @IsOptional()
+  consent_version?: string;
 }
 
 export class VipRegisterDto {

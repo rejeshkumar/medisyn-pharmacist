@@ -84,6 +84,26 @@ export class Patient {
   @Column({ default: true })
   is_active: boolean;
 
+  // ── DPDPA 2023 Consent ────────────────────────────────────────────────────
+  @Column({ default: false })
+  consent_given: boolean;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  consent_timestamp: Date;
+
+  @Column({ type: 'varchar', length: 45, nullable: true })
+  consent_ip: string;
+
+  @Column({ type: 'varchar', length: 10, nullable: true })
+  consent_version: string;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  data_deletion_requested_at: Date;
+
+  @Column({ type: 'text', nullable: true })
+  data_deletion_reason: string;
+
+  // ── Audit ──────────────────────────────────────────────────────────────────
   @Column({ nullable: true })
   created_by: string;
 
@@ -97,12 +117,12 @@ export class Patient {
   @OneToMany(() => PatientReminder, (r) => r.patient)
   reminders: PatientReminder[];
 
-
   @Column({ default: '00000000-0000-0000-0000-000000000001' })
   tenant_id: string;
 
   @Column({ nullable: true })
   updated_by: string;
+
   @CreateDateColumn()
   created_at: Date;
 

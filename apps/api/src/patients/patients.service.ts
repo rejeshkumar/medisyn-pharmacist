@@ -79,7 +79,7 @@ export class PatientsService {
       consent_timestamp: consentTimestamp,
       consent_version:   dto.consent_given ? (dto.consent_version ?? '1.0') : null,
     });
-    const saved = await this.patientRepo.save(patient);
+    const saved = await this.patientRepo.save(patient) as Patient;
 
     await this.auditService.log({
       tenantId, userId,
