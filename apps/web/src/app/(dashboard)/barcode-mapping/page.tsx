@@ -6,8 +6,10 @@ import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import {
   Scan, ArrowLeft, CheckCircle2, X, Search,
-  Loader2, Link2, AlertTriangle, Save, RotateCcw,
+  Loader2, Link2, AlertTriangle, Save, RotateCcw, Camera,
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
+const CameraScanner = dynamic(() => import('@/components/dispensing/CameraScanner'), { ssr: false });
 
 interface QueueItem {
   id: number;
@@ -36,6 +38,7 @@ export default function BulkBarcodeMappingPage() {
   const [saving, setSaving]           = useState(false);
   const [savedCount, setSavedCount]   = useState(0);
   const [lastMapped, setLastMapped]   = useState<QueueItem | null>(null);
+  const [showCamera, setShowCamera]   = useState(false);
 
   // Auto-focus barcode input in scan mode
   useEffect(() => {
@@ -55,18 +58,14 @@ export default function BulkBarcodeMappingPage() {
     return () => clearTimeout(t);
   }, [search]);
 
-  // Handle barcode Enter (USB scanners send Enter after scan)
-  const handleBarcodeKey = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key !== 'Enter' || !barcode.trim()) return;
-    const code = barcode.trim();
-    setBarcode('');
+  // Process any barcode — from USB scanner or camera
+  const processBarcode = useCallback((code: string) => {
     setCurrentBarcode(code);
     setMatchedMed(null);
     setShowSearch(false);
     setSelectedMed(null);
     setSearch('');
 
-    // Try to find medicine by barcode from existing mappings first
     api.get(`/medicines/barcode/${encodeURIComponent(code)}`)
       .then(r => {
         if (r.data?.medicine) {
@@ -80,7 +79,22 @@ export default function BulkBarcodeMappingPage() {
         setShowSearch(true);
         setTimeout(() => searchRef.current?.focus(), 100);
       });
-  }, [barcode]);
+  }, []);
+
+  // Handle camera scan
+  const handleCameraScan = useCallback((code: string) => {
+    setShowCamera(false);
+    setBarcode('');
+    processBarcode(code);
+  }, [processBarcode]);
+
+  // Handle barcode Enter (USB scanners send Enter after scan)
+  const handleBarcodeKey = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== 'Enter' || !barcode.trim()) return;
+    const code = barcode.trim();
+    setBarcode('');
+    processBarcode(code);
+  }, [barcode, processBarcode]);
 
   const confirmMatch = () => {
     if (!matchedMed || !currentBarcode) return;
@@ -146,7 +160,15 @@ export default function BulkBarcodeMappingPage() {
   const pendingCount = queue.filter(x => x.status === 'pending').length;
 
   return (
-    <div className="p-4 md:p-6 max-w-2xl">
+    <>
+      {showCamera && (
+        <CameraScanner
+          onScan={handleCameraScan}
+          onClose={() => setShowCamera(false)}
+          title="Scan Medicine Barcode"
+        />
+      )}
+      <div className="p-4 md:p-6 max-w-2xl">
       <button onClick={() => router.back()}
         className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 mb-5">
         <ArrowLeft className="w-4 h-4" /> Back
@@ -198,18 +220,28 @@ export default function BulkBarcodeMappingPage() {
               <span className="text-sm font-medium text-slate-700">Scanner ready</span>
             </div>
             <label className="label">Barcode</label>
-            <input
-              ref={barcodeRef}
-              type="text"
-              value={barcode}
-              onChange={e => setBarcode(e.target.value)}
-              onKeyDown={handleBarcodeKey}
-              placeholder="Scan or type barcode, press Enter..."
-              className="input font-mono tracking-widest"
-              autoComplete="off"
-            />
+            <div className="flex gap-2">
+              <input
+                ref={barcodeRef}
+                type="text"
+                value={barcode}
+                onChange={e => setBarcode(e.target.value)}
+                onKeyDown={handleBarcodeKey}
+                placeholder="Scan or type barcode, press Enter..."
+                className="input font-mono tracking-widest flex-1"
+                autoComplete="off"
+              />
+              <button
+                onClick={() => setShowCamera(true)}
+                className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#00475a] text-white text-sm font-medium hover:bg-[#003d4d] transition-colors"
+                title="Use phone camera to scan"
+              >
+                <Camera className="w-4 h-4" />
+                <span className="hidden sm:inline">Camera</span>
+              </button>
+            </div>
             <p className="text-xs text-slate-400 mt-2">
-              USB scanners automatically press Enter — just point and scan
+              USB scanner: just plug in and scan · Phone: tap Camera button
             </p>
           </div>
 
@@ -378,5 +410,6 @@ export default function BulkBarcodeMappingPage() {
         </div>
       )}
     </div>
+    </>
   );
 }
