@@ -8,7 +8,7 @@ import {
   Search, Plus, Minus, Trash2, ShoppingCart, Check,
   AlertTriangle, X, FileText, Loader2, Camera,
   ChevronUp, ClipboardList, MapPin, Tag, Info,
-  RefreshCw, UserPlus, Stethoscope, Merge, Scan,
+  RefreshCw, UserPlus, Stethoscope, Merge, Scan, Activity,
 } from 'lucide-react';
 import BillDocument, { type BillData } from '@/components/billing/BillDocument';
 import dynamic from 'next/dynamic';
