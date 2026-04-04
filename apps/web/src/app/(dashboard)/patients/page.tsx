@@ -23,8 +23,6 @@ export default function PatientsPage() {
   const qc = useQueryClient();
   const set = (f: string, v: any) => setForm((p: any) => ({ ...p, [f]: v }));
   const [consentExpanded, setConsentExpanded] = useState(false);
-  const [consentExpanded, setConsentExpanded] = useState(false);
-  const [consentExpanded, setConsentExpanded] = useState(false);
 
   const { data: stats } = useQuery({ queryKey: ['patient-stats'], queryFn: () => api.get('/patients/stats').then((r) => r.data) });
   const { data: patients, isLoading } = useQuery({
