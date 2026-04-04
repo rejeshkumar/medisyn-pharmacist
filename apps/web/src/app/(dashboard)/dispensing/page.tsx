@@ -11,6 +11,8 @@ import {
   RefreshCw, UserPlus, Stethoscope, Merge, Heart, Scan,
 } from 'lucide-react';
 import BillDocument, { type BillData } from '@/components/billing/BillDocument';
+import dynamic from 'next/dynamic';
+const BarcodeScanner = dynamic(() => import('@/components/dispensing/BarcodeScanner'), { ssr: false });
 import { cn } from '@/lib/utils';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -236,6 +238,7 @@ export default function DispensingPage() {
   // UI state
   const [showBillPanel, setShowBillPanel] = useState(false);
   const [showCompliance, setShowCompliance] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [completedSale, setCompletedSale] = useState<any>(null);
   const [aiExtracting, setAiExtracting] = useState(false);
@@ -754,7 +757,8 @@ export default function DispensingPage() {
                   <tr key={`search-${idx}`} className="border-b border-slate-100 bg-white">
                     <td className="px-3 py-2 text-xs text-slate-300 text-center">{cart.length + 1}</td>
                     <td className="px-3 py-2" colSpan={6}>
-                      <div id={`search-${idx}`}>
+                      <div id={`search-${idx}`} className="flex items-center gap-2">
+                        <div className="flex-1">
                         <MedSearchDropdown
                           value={sv}
                           onChange={v => {
@@ -765,6 +769,12 @@ export default function DispensingPage() {
                           onSelect={med => handleSelectMedicine(med, idx)}
                           autoFocus={idx === 0 && cart.length === 0}
                         />
+                        </div>
+                        <button onClick={() => setShowScanner(true)}
+                          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#00475a]/10 hover:bg-[#00475a] hover:text-white text-[#00475a] text-xs font-medium transition-colors border border-[#00475a]/20">
+                          <Scan className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Scan</span>
+                        </button>
                       </div>
                     </td>
                     <td></td>
@@ -901,6 +911,17 @@ export default function DispensingPage() {
       </div>
 
       {/* ── Modals ── */}
+      {showScanner && (
+        <BarcodeScanner
+          onFound={(medicine, batch) => {
+            if (!medicine || !batch) return;
+            handleSelectMedicine({ ...medicine, fefo_batch: batch, total_stock: batch.quantity }, cart.length);
+            setShowScanner(false);
+          }}
+          onClose={() => setShowScanner(false)}
+        />
+      )}
+
       {showPreview && (
         <BillDocument
           data={{
