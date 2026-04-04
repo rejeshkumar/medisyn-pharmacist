@@ -5,6 +5,7 @@ import {
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { TenantGuard } from '../common/guards/tenant.guard';
 import { AiCareService } from './ai-care.service';
+import { DailyAlertService } from './daily-alert.service'; from './ai-care.service';
 
 @Controller('ai-care')
 @UseGuards(JwtAuthGuard, TenantGuard)
@@ -86,6 +87,12 @@ export class AiCareController {
   runEscalation(@Req() req: any) {
     if (req.user.role !== 'owner') throw new ForbiddenException();
     return this.svc.runEscalationJob(req.user.tenant_id);
+  }
+
+  @Post('jobs/daily-alert')
+  triggerDailyAlert(@Req() req: any) {
+    if (req.user.role !== 'owner') throw new ForbiddenException();
+    return this.dailyAlert.triggerManual(req.user.tenant_id);
   }
 
   // ══════════════════════════════════════════════════════════
