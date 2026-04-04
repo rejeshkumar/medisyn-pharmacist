@@ -78,8 +78,8 @@ const OWNER_NAV_SECTIONS = [
   {
     section: 'Reports & Compliance',
     items: [
-      { href: '/compliance',  label: 'Schedule Log',  icon: Shield      },
-      { href: '/reports',     label: 'Reports',       icon: BarChart3   },
+      { href: '/compliance',         label: 'Compliance',    icon: Shield      },
+      { href: '/reports',            label: 'Reports',       icon: BarChart3   },
     ],
   },
   {
