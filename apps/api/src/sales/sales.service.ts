@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
@@ -14,6 +15,7 @@ import { CreateSaleDto } from './dto/create-sale.dto';
 import { AuditService, AuditEntry } from '../audit/audit.service';
 import { AuditAction } from '../database/entities/audit-log.entity';
 import * as dayjs from 'dayjs';
+import { AutoCarePlanService } from '../ai-care/auto-care-plan.service';
 
 export interface UserContext {
   id: string;
@@ -24,6 +26,8 @@ export interface UserContext {
 
 @Injectable()
 export class SalesService {
+  private readonly logger = new Logger(SalesService.name);
+
   constructor(
     @InjectRepository(Sale)
     private saleRepo: Repository<Sale>,
@@ -37,6 +41,7 @@ export class SalesService {
     private scheduleLogRepo: Repository<ScheduleDrugLog>,
     private dataSource: DataSource,
     private auditService: AuditService,
+    private autoCarePlan: AutoCarePlanService,
   ) {}
 
   async createSale(dto: CreateSaleDto, user: UserContext) {
@@ -171,6 +176,24 @@ export class SalesService {
       }
 
       await queryRunner.commitTransaction();
+
+      // ── Auto AI Care plans — fire & forget, don't block sale ─────────
+      this.autoCarePlan.createPlansFromSale(
+        savedSale.id,
+        tenantId,
+        dto.patient_id || null,
+        dto.customer_name || '',
+        '',
+        dto.doctor_name || '',
+        dto.items.map(i => ({
+          medicine_id:      i.medicine_id,
+          medicine_name:    saleItemsData.find(s => s.medicine_id === i.medicine_id)?.medicine_name || '',
+          qty:              i.qty,
+          create_care_plan: (i as any).create_care_plan,
+          is_chronic:       (i as any).is_chronic,
+          chronic_category: (i as any).chronic_category,
+        })),
+      ).catch(err => this.logger.warn(`Auto care plan failed: ${err.message}`));
 
       // Audit log AFTER successful commit
       await this.auditService.log({
