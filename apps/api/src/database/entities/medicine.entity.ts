@@ -135,6 +135,16 @@ export class Medicine {
   @Column({ default: true })
   is_active: boolean;
 
+  // ── DPDPA / Chronic medicine flags ───────────────────────────────────────
+  @Column({ default: false })
+  is_chronic: boolean;
+
+  @Column({ nullable: true })
+  chronic_category: string;
+
+  @Column({ nullable: true })
+  hsn_code: string;
+
   @OneToMany(() => StockBatch, (batch) => batch.medicine)
   batches: StockBatch[];
 
