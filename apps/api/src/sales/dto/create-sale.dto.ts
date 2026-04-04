@@ -51,6 +51,22 @@ export class SaleItemDto {
   @IsString()
   @IsOptional()
   substitution_reason?: string;
+
+  // ── AI Care plan flags (set at billing time) ───────────────
+  @ApiPropertyOptional()
+  @IsBoolean()
+  @IsOptional()
+  create_care_plan?: boolean;
+
+  @ApiPropertyOptional()
+  @IsBoolean()
+  @IsOptional()
+  is_chronic?: boolean;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  chronic_category?: string;
 }
 
 export class ComplianceDataDto {
