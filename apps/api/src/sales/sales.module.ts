@@ -8,7 +8,6 @@ import { StockBatch } from '../database/entities/stock-batch.entity';
 import { Medicine } from '../database/entities/medicine.entity';
 import { ScheduleDrugLog } from '../database/entities/schedule-drug-log.entity';
 import { AuditModule } from '../audit/audit.module';
-import { AutoCarePlanService } from '../ai-care/auto-care-plan.service';
 
 @Module({
   imports: [
@@ -16,7 +15,7 @@ import { AutoCarePlanService } from '../ai-care/auto-care-plan.service';
     AuditModule,
   ],
   controllers: [SalesController],
-  providers: [SalesService, AutoCarePlanService],
+  providers: [SalesService],
   exports: [SalesService],
 })
 export class SalesModule {}
