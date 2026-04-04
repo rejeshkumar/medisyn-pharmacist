@@ -75,7 +75,6 @@ function MedSearchDropdown({
     queryFn: () => value.length >= 2
       ? api.get(`/medicines/search-enriched?search=${value}&limit=12`)
           .then(r => r.data)
-          .catch(() => api.get(`/medicines?search=${value}&limit=12`).then(r => r.data))
       : Promise.resolve([]),
     enabled: value.length >= 2,
   });
