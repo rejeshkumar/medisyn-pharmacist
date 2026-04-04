@@ -719,8 +719,9 @@ export default function DispensingPage() {
                         <button
                           onClick={() => setShowScanner(true)}
                           title="Scan barcode"
-                          className="flex-shrink-0 w-7 h-7 rounded-lg bg-slate-100 hover:bg-[#00475a] hover:text-white text-slate-400 flex items-center justify-center transition-colors">
+                          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#00475a]/10 hover:bg-[#00475a] hover:text-white text-[#00475a] text-xs font-medium transition-colors border border-[#00475a]/20">
                           <Scan className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Scan</span>
                         </button>
                       </div>
                     </td>
