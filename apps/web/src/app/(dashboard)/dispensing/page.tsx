@@ -8,11 +8,9 @@ import {
   Search, Plus, Minus, Trash2, ShoppingCart, Check,
   AlertTriangle, X, FileText, Loader2, Camera,
   ChevronUp, ClipboardList, MapPin, Tag, Info,
-  RefreshCw, UserPlus, Stethoscope, Merge, Scan, Activity,
+  RefreshCw, UserPlus, Stethoscope, Merge, Heart, Scan,
 } from 'lucide-react';
 import BillDocument, { type BillData } from '@/components/billing/BillDocument';
-import dynamic from 'next/dynamic';
-const BarcodeScanner = dynamic(() => import('@/components/dispensing/BarcodeScanner'), { ssr: false });
 import { cn } from '@/lib/utils';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -33,6 +31,9 @@ interface CartItem {
   original_medicine_id?: string;
   substitution_reason?: string;
   schedule_class: string;
+  is_chronic: boolean;
+  chronic_category?: string;
+  create_care_plan: boolean;  // doctor/pharmacist flag at billing
 }
 
 interface DraftBill {
@@ -100,39 +101,61 @@ function MedSearchDropdown({
         className="w-full px-2 py-1 text-sm border-0 bg-transparent focus:outline-none focus:ring-1 focus:ring-[#00475a] rounded"
       />
       {open && results?.length > 0 && (
-        <div className="absolute top-full left-0 z-50 w-96 bg-white border border-gray-200 rounded-xl shadow-2xl max-h-80 overflow-y-auto">
+        <div className="absolute top-full left-0 z-50 w-[420px] bg-white border border-gray-200 rounded-xl shadow-2xl max-h-80 overflow-y-auto">
           {results.map((med: any) => {
             const stock  = Number(med.total_stock ?? med.available_stock ?? 0);
-            const isOOS  = stock <= 0 && med.total_stock !== undefined && med.total_stock !== null;
+            const hasStockData = med.total_stock !== undefined && med.total_stock !== null;
+            const isOOS  = hasStockData && stock <= 0;
+            const isLow  = hasStockData && stock > 0 && stock <= 10;
+            const isGood = hasStockData && stock > 10;
             const fefo   = med.fefo_batch;
             const cfg    = SCHEDULE_CONFIG[med.schedule_class] ?? SCHEDULE_CONFIG.OTC;
             return (
               <button key={med.id}
                 onClick={() => { if (!isOOS) { onSelect(med); setOpen(false); onChange(''); } }}
-                className={`w-full px-3 py-2.5 text-left border-b border-gray-50 last:border-0 transition-colors ${isOOS ? 'bg-red-50 cursor-not-allowed border-l-4 border-l-red-400' : 'hover:bg-teal-50/40 cursor-pointer'}`}>
+                className={`w-full px-3 py-2.5 text-left border-b border-gray-50 last:border-0 transition-colors
+                  ${isOOS  ? 'bg-red-50 cursor-not-allowed border-l-[3px] border-l-red-400'
+                  : isLow  ? 'bg-amber-50 cursor-pointer border-l-[3px] border-l-amber-400 hover:bg-amber-100'
+                  : 'hover:bg-teal-50/40 cursor-pointer'}`}>
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-sm font-semibold text-gray-900 truncate">{med.brand_name}</span>
+                    <span className={`text-sm font-semibold truncate ${isOOS ? 'text-red-700' : isLow ? 'text-amber-800' : 'text-gray-900'}`}>
+                      {med.brand_name}
+                    </span>
                     <span className="text-[10px] px-1.5 py-0.5 rounded font-bold border flex-shrink-0"
                       style={{ background: cfg.bg, color: cfg.color, borderColor: cfg.border }}>
                       {med.schedule_class}
                     </span>
                   </div>
-                  <span className={`text-[10px] font-semibold flex-shrink-0 ${
-                    isOOS ? 'text-red-500' : stock <= 10 ? 'text-amber-600' : 'text-green-600'
-                  }`}>
-                    {med.total_stock !== undefined ? (isOOS ? 'OOS' : `${stock} left`) : ''}
-                  </span>
+                  {hasStockData && (
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
+                      isOOS  ? 'bg-red-100 text-red-700'
+                      : isLow  ? 'bg-amber-100 text-amber-700'
+                      : 'bg-green-100 text-green-700'
+                    }`}>
+                      {isOOS ? 'OUT OF STOCK' : `${stock} left`}
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 text-[10px] text-gray-400 mt-0.5 flex-wrap">
                   <span className="text-[#00475a] font-medium">{med.molecule}</span>
                   <span>·</span><span>{med.strength}</span>
                   <span>·</span><span>{med.dosage_form}</span>
-                  {med.manufacturer && <><span>·</span><span className="text-slate-500 italic">{med.manufacturer}</span></>}
+                  {med.manufacturer && <><span>·</span><span className="italic">{med.manufacturer}</span></>}
                   {med.rack_location && <><span>·</span><span className="text-blue-600 font-medium">📍{med.rack_location}</span></>}
                   {fefo?.sale_rate && <><span>·</span><span className="font-semibold text-gray-700">₹{Number(fefo.sale_rate).toFixed(2)}</span></>}
-                  {isOOS && <><span>·</span><span className="text-red-500 font-bold">OUT OF STOCK</span></>}
                 </div>
+                {isOOS && (
+                  <p className="text-[10px] text-red-600 font-semibold mt-0.5">
+                    Cannot dispense — no stock available
+                    {med.substitute_count > 0 && ` · ${med.substitute_count} substitute(s) available`}
+                  </p>
+                )}
+                {isLow && (
+                  <p className="text-[10px] text-amber-700 font-semibold mt-0.5">
+                    Low stock — reorder soon
+                  </p>
+                )}
               </button>
             );
           })}
@@ -219,7 +242,6 @@ export default function DispensingPage() {
   const [aiResult, setAiResult] = useState<any>(null);
   const [showAiReview, setShowAiReview] = useState(false);
   const [showSubstitutes, setShowSubstitutes] = useState<string | null>(null);
-  const [showScanner, setShowScanner] = useState(false);
   const [aiPrescriptionId, setAiPrescriptionId] = useState<string | null>(null);
   const [activePrescriptionId, setActivePrescriptionId] = useState<string | null>(null);
 
@@ -252,6 +274,14 @@ export default function DispensingPage() {
         toast('No stock — showing substitutes', { icon: '⚠️' });
         return;
       }
+      // ── 3-signal chronic detection ─────────────────────────────
+      const isChronicByMolecule = med.is_chronic === true;
+      const isChronicByQtySchedule = (
+        Number(bestBatch.quantity) >= 20 &&
+        ['H', 'H1'].includes(med.schedule_class)
+      );
+      const isChronicDetected = isChronicByMolecule || isChronicByQtySchedule;
+
       const newItem: CartItem = {
         medicine_id:       med.id,
         batch_id:          bestBatch.id,
@@ -267,6 +297,9 @@ export default function DispensingPage() {
         rack_location:     med.rack_location || '',
         is_substituted:    false,
         schedule_class:    med.schedule_class,
+        is_chronic:        isChronicDetected,
+        chronic_category:  med.chronic_category || '',
+        create_care_plan:  isChronicDetected,  // auto-check if chronic detected
       };
 
       if (rowIdx < cart.length) {
@@ -423,6 +456,9 @@ export default function DispensingPage() {
       discount_percent: i.line_discount_pct,
       is_substituted: i.is_substituted,
       original_medicine_id: i.original_medicine_id,
+      create_care_plan: i.create_care_plan,
+      is_chronic: i.is_chronic,
+      chronic_category: i.chronic_category,
     })),
     discount_amount:   overallDiscAmt + lineDiscTotal,
     payment_mode:      paymentMode,
@@ -626,6 +662,19 @@ export default function DispensingPage() {
                               <span className="text-blue-600 font-medium">📍 {item.rack_location}</span>
                             )}
                             {item.is_substituted && <span className="text-blue-500">Substituted</span>}
+                            {item.is_chronic && (
+                              <button
+                                onClick={() => updateItem(idx, 'create_care_plan', !item.create_care_plan)}
+                                title={item.create_care_plan ? 'AI Care plan will be created — click to disable' : 'Click to create AI Care refill plan'}
+                                className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold border transition-all ${
+                                  item.create_care_plan
+                                    ? 'bg-purple-100 text-purple-700 border-purple-300'
+                                    : 'bg-gray-100 text-gray-400 border-gray-200'
+                                }`}>
+                                <Heart className="w-2.5 h-2.5" />
+                                {item.create_care_plan ? `AI Care · ${item.chronic_category || 'Chronic'}` : 'Add to AI Care?'}
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -704,8 +753,8 @@ export default function DispensingPage() {
                 idx >= cart.length && (
                   <tr key={`search-${idx}`} className="border-b border-slate-100 bg-white">
                     <td className="px-3 py-2 text-xs text-slate-300 text-center">{cart.length + 1}</td>
-                    <td className="px-3 py-2" colSpan={5}>
-                      <div id={`search-${idx}`} className="flex items-center gap-2">
+                    <td className="px-3 py-2" colSpan={6}>
+                      <div id={`search-${idx}`}>
                         <MedSearchDropdown
                           value={sv}
                           onChange={v => {
@@ -716,13 +765,6 @@ export default function DispensingPage() {
                           onSelect={med => handleSelectMedicine(med, idx)}
                           autoFocus={idx === 0 && cart.length === 0}
                         />
-                        <button
-                          onClick={() => setShowScanner(true)}
-                          title="Scan barcode"
-                          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#00475a]/10 hover:bg-[#00475a] hover:text-white text-[#00475a] text-xs font-medium transition-colors border border-[#00475a]/20">
-                          <Scan className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">Scan</span>
-                        </button>
                       </div>
                     </td>
                     <td></td>
@@ -903,21 +945,6 @@ export default function DispensingPage() {
             hasScheduledDrugs: completedSale.has_scheduled_drugs,
           }}
           mode="print" onClose={() => setCompletedSale(null)} />
-      )}
-
-      {showScanner && (
-        <BarcodeScanner
-          onFound={(medicine, batch) => {
-            if (!medicine || !batch) return;
-            handleSelectMedicine({
-              ...medicine,
-              fefo_batch: batch,
-              total_stock: batch.quantity,
-            }, cart.length);
-            setShowScanner(false);
-          }}
-          onClose={() => setShowScanner(false)}
-        />
       )}
 
       {showSubstitutes && (
