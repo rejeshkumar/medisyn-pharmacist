@@ -5,12 +5,15 @@ import {
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { TenantGuard } from '../common/guards/tenant.guard';
 import { AiCareService } from './ai-care.service';
-import { DailyAlertService } from './daily-alert.service'; from './ai-care.service';
+import { DailyAlertService } from './daily-alert.service';
 
 @Controller('ai-care')
 @UseGuards(JwtAuthGuard, TenantGuard)
 export class AiCareController {
-  constructor(private svc: AiCareService) {}
+  constructor(
+    private readonly svc: AiCareService,
+    private readonly dailyAlert: DailyAlertService,
+  ) {}
 
   // ── Dashboard stats ───────────────────────────────────────
   @Get('dashboard')
@@ -138,7 +141,10 @@ import { Response } from 'express';
 
 @Ctrl('whatsapp')
 export class WhatsAppWebhookController {
-  constructor(private svc: AiCareService) {}
+  constructor(
+    private readonly svc: AiCareService,
+    private readonly dailyAlert: DailyAlertService,
+  ) {}
 
   // Meta webhook verification
   @G('webhook')
