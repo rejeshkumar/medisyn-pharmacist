@@ -8,9 +8,11 @@ import {
   Search, Plus, Minus, Trash2, ShoppingCart, Check,
   AlertTriangle, X, FileText, Loader2, Camera,
   ChevronUp, ClipboardList, MapPin, Tag, Info,
-  RefreshCw, UserPlus, Stethoscope, Merge,
+  RefreshCw, UserPlus, Stethoscope, Merge, Scan,
 } from 'lucide-react';
 import BillDocument, { type BillData } from '@/components/billing/BillDocument';
+import dynamic from 'next/dynamic';
+const BarcodeScanner = dynamic(() => import('@/components/dispensing/BarcodeScanner'), { ssr: false });
 import { cn } from '@/lib/utils';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -217,6 +219,7 @@ export default function DispensingPage() {
   const [aiResult, setAiResult] = useState<any>(null);
   const [showAiReview, setShowAiReview] = useState(false);
   const [showSubstitutes, setShowSubstitutes] = useState<string | null>(null);
+  const [showScanner, setShowScanner] = useState(false);
   const [aiPrescriptionId, setAiPrescriptionId] = useState<string | null>(null);
   const [activePrescriptionId, setActivePrescriptionId] = useState<string | null>(null);
 
@@ -701,8 +704,8 @@ export default function DispensingPage() {
                 idx >= cart.length && (
                   <tr key={`search-${idx}`} className="border-b border-slate-100 bg-white">
                     <td className="px-3 py-2 text-xs text-slate-300 text-center">{cart.length + 1}</td>
-                    <td className="px-3 py-2" colSpan={6}>
-                      <div id={`search-${idx}`}>
+                    <td className="px-3 py-2" colSpan={5}>
+                      <div id={`search-${idx}`} className="flex items-center gap-2">
                         <MedSearchDropdown
                           value={sv}
                           onChange={v => {
@@ -713,6 +716,12 @@ export default function DispensingPage() {
                           onSelect={med => handleSelectMedicine(med, idx)}
                           autoFocus={idx === 0 && cart.length === 0}
                         />
+                        <button
+                          onClick={() => setShowScanner(true)}
+                          title="Scan barcode"
+                          className="flex-shrink-0 w-7 h-7 rounded-lg bg-slate-100 hover:bg-[#00475a] hover:text-white text-slate-400 flex items-center justify-center transition-colors">
+                          <Scan className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </td>
                     <td></td>
@@ -893,6 +902,21 @@ export default function DispensingPage() {
             hasScheduledDrugs: completedSale.has_scheduled_drugs,
           }}
           mode="print" onClose={() => setCompletedSale(null)} />
+      )}
+
+      {showScanner && (
+        <BarcodeScanner
+          onFound={(medicine, batch) => {
+            if (!medicine || !batch) return;
+            handleSelectMedicine({
+              ...medicine,
+              fefo_batch: batch,
+              total_stock: batch.quantity,
+            }, cart.length);
+            setShowScanner(false);
+          }}
+          onClose={() => setShowScanner(false)}
+        />
       )}
 
       {showSubstitutes && (
