@@ -308,6 +308,8 @@ export class MedicinesService {
          m.rack_location,
          m.treatment_for,
          m.reorder_qty,
+         COALESCE(m.is_chronic, false) AS is_chronic,
+         m.chronic_category,
          false AS is_generic,
          -- Human-readable schedule label
          CASE m.schedule_class
@@ -345,7 +347,7 @@ export class MedicinesService {
           FROM (
             SELECT b.id, b.batch_number, b.expiry_date,
                    b.sale_rate, b.mrp, b.purchase_price, b.quantity, b.barcode,
-                   EXTRACT(DAY FROM (b.expiry_date - CURRENT_DATE))::int AS days_to_expiry
+                   (b.expiry_date - CURRENT_DATE)::int AS days_to_expiry
             FROM stock_batches b
             WHERE b.medicine_id  = m.id
               AND b.tenant_id    = $1
