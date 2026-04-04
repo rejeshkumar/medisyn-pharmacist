@@ -10,7 +10,7 @@ import {
   BarChart3, Users, Upload, Shield, LogOut, ChevronRight,
   Menu, X, HeartPulse, ClipboardList, Settings, Briefcase,
   RefreshCcw, ShoppingBag, Clock, Calendar, Bell,
-  Stethoscope, ReceiptText, ArrowLeftRight, ChevronUp, Cpu,
+  Stethoscope, ReceiptText, ArrowLeftRight, ChevronUp, Cpu, Scan,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
@@ -53,27 +53,57 @@ const ROLE_TABS: Record<string, Array<{ href: string; label: string; icon: any; 
   ],
 };
 
-// Owner sidebar items (labelled)
-const OWNER_NAV = [
-  { href: '/dashboard',       label: 'Dashboard',      icon: LayoutDashboard },
-  { href: '/patients',        label: 'Patients',        icon: HeartPulse      },
-  { href: '/dispensing',      label: 'Dispense',        icon: ShoppingCart    },
-  { href: '/medicines',       label: 'Medicines',       icon: Pill            },
-  { href: '/stock',           label: 'Stock',           icon: Package         },
-  { href: '/stock-adjustments',label: 'Adjustments',   icon: RefreshCcw      },
-  { href: '/procurement',     label: 'Procurement',     icon: ShoppingBag     },
-  { href: '/billing',         label: 'Bills',           icon: FileText        },
-  { href: '/compliance',      label: 'Schedule Log',    icon: Shield          },
-  { href: '/reports',         label: 'Reports',         icon: BarChart3       },
-  { href: '/audit',           label: 'Audit Log',       icon: ClipboardList   },
-  { href: '/bulk',            label: 'Bulk Upload',     icon: Upload          },
-  { href: '/users',           label: 'Users',           icon: Users           },
-  { href: '/attendance',      label: 'Attendance',      icon: Clock           },
-  { href: '/hr/roster',       label: 'Roster',          icon: Briefcase       },
-  { href: '/hr/leaves',       label: 'Leave & Payroll', icon: Briefcase       },
-  { href: '/ai-care',   label: 'AI Care Engine', icon: Cpu },
-  { href: '/settings',        label: 'Settings',        icon: Settings        },
+// ── Owner sidebar — grouped sections ─────────────────────────
+// section: null = no header (top-level items)
+const OWNER_NAV_SECTIONS = [
+  {
+    section: null,
+    items: [
+      { href: '/dashboard',    label: 'Dashboard',      icon: LayoutDashboard },
+      { href: '/patients',     label: 'Patients',       icon: HeartPulse      },
+      { href: '/dispensing',   label: 'Dispense',       icon: ShoppingCart    },
+      { href: '/billing',      label: 'Bills',          icon: FileText        },
+      { href: '/ai-care',      label: 'AI Care Engine', icon: Cpu             },
+    ],
+  },
+  {
+    section: 'Inventory',
+    items: [
+      { href: '/medicines',         label: 'Medicines',    icon: Pill        },
+      { href: '/stock',             label: 'Stock',        icon: Package     },
+      { href: '/stock-adjustments', label: 'Adjustments',  icon: RefreshCcw  },
+      { href: '/procurement',       label: 'Procurement',  icon: ShoppingBag },
+    ],
+  },
+  {
+    section: 'Reports & Compliance',
+    items: [
+      { href: '/compliance',  label: 'Schedule Log',  icon: Shield      },
+      { href: '/reports',     label: 'Reports',       icon: BarChart3   },
+    ],
+  },
+  {
+    section: 'Administration',
+    items: [
+      { href: '/users',           label: 'Users',           icon: Users        },
+      { href: '/bulk',            label: 'Bulk Upload',     icon: Upload       },
+      { href: '/barcode-mapping', label: 'Barcode Mapping', icon: Scan         },
+      { href: '/audit',           label: 'Audit Log',       icon: ClipboardList},
+      { href: '/settings',        label: 'Settings',        icon: Settings     },
+    ],
+  },
+  {
+    section: 'HR',
+    items: [
+      { href: '/attendance',  label: 'Attendance',      icon: Clock     },
+      { href: '/hr/roster',   label: 'Roster',          icon: Briefcase },
+      { href: '/hr/leaves',   label: 'Leave & Payroll', icon: Briefcase },
+    ],
+  },
 ];
+
+// Flat list for any code that iterates OWNER_NAV directly
+const OWNER_NAV = OWNER_NAV_SECTIONS.flatMap(s => s.items);
 
 // ── More menu items for pharmacist (overflow) ─────────────────
 const PHARMACIST_MORE = [
@@ -110,7 +140,6 @@ function BottomTabLayout({
     <div className="flex flex-col h-screen bg-slate-50">
       {/* ── Top header ── */}
       <header className="flex-shrink-0 h-14 bg-[#00475a] flex items-center px-4 gap-3 z-20">
-        {/* Logo */}
         <div className="flex items-center gap-2 flex-shrink-0">
           <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="white">
@@ -121,23 +150,16 @@ function BottomTabLayout({
           <span className="text-white font-semibold text-sm hidden sm:block">MediSyn</span>
         </div>
 
-        {/* Role badge */}
         <span className="text-white/60 text-xs capitalize hidden sm:block">{user?.role}</span>
-
-        {/* Spacer */}
         <div className="flex-1" />
-
-        {/* Notification bell */}
         <NotificationBell role={user?.role} />
 
-        {/* Logout — always visible */}
         <button onClick={handleLogout}
           className="w-8 h-8 bg-white/10 hover:bg-red-500/80 rounded-lg flex items-center justify-center transition-colors flex-shrink-0"
           title="Sign out">
           <LogOut className="w-4 h-4 text-white" />
         </button>
 
-        {/* User avatar + name */}
         <button
           onClick={() => setShowMore(v => !v)}
           className="flex items-center gap-2 bg-white/10 hover:bg-white/20 rounded-xl px-3 py-1.5 transition-colors"
@@ -158,7 +180,6 @@ function BottomTabLayout({
           <div className="fixed inset-0 z-30" onClick={() => setShowMore(false)} />
           <div className="fixed top-14 right-0 left-0 z-40 bg-white border-b border-slate-200 shadow-lg">
             <div className="max-w-lg mx-auto">
-              {/* User info */}
               <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100">
                 <div className="w-9 h-9 bg-teal-100 rounded-full flex items-center justify-center text-[#00475a] font-bold text-sm">
                   {user?.full_name?.[0]?.toUpperCase() || 'U'}
@@ -173,7 +194,6 @@ function BottomTabLayout({
                 </button>
               </div>
 
-              {/* More nav items */}
               <div className="grid grid-cols-4 gap-0 py-2">
                 {moreTabs.map(item => {
                   const Icon = item.icon;
@@ -188,44 +208,31 @@ function BottomTabLayout({
                   );
                 })}
               </div>
-
-              {/* Role switcher */}
-              <div className="px-4 py-2 border-t border-slate-100">
-                <RoleSwitcher />
-              </div>
             </div>
           </div>
         </>
       )}
 
       {/* ── Main content ── */}
-      <main className="flex-1 overflow-y-auto overflow-x-hidden pb-16">
+      <main className="flex-1 overflow-y-auto scrollbar-thin pb-16">
         {children}
       </main>
 
       {/* ── Bottom tab bar ── */}
-      <nav className="fixed bottom-0 left-0 right-0 z-20 h-16 bg-white border-t border-slate-200 flex items-stretch safe-area-inset-bottom">
+      <nav className="fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-slate-200 flex h-16">
         {tabs.map(tab => {
           const Icon = tab.icon;
           const active = isActive(tab.href);
           return (
             <Link key={tab.href} href={tab.href}
-              className={`flex-1 flex flex-col items-center justify-center gap-1 relative transition-colors ${
+              className={`flex-1 flex flex-col items-center justify-center gap-1 transition-colors ${
                 active ? 'text-[#00475a]' : 'text-slate-400 hover:text-slate-600'
               }`}>
-              {/* Active indicator */}
-              {active && (
-                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-[#00475a] rounded-b-full" />
-              )}
-              <Icon className={`w-5 h-5 ${active ? 'text-[#00475a]' : ''}`} />
-              <span className={`text-[10px] font-medium ${active ? 'text-[#00475a]' : 'text-slate-400'}`}>
-                {tab.label}
-              </span>
+              <Icon className="w-5 h-5" />
+              <span className="text-[10px] font-medium">{tab.label}</span>
             </Link>
           );
         })}
-
-        {/* More tab */}
         <button
           onClick={() => setShowMore(v => !v)}
           className={`flex-1 flex flex-col items-center justify-center gap-1 transition-colors ${
@@ -239,7 +246,7 @@ function BottomTabLayout({
   );
 }
 
-// ── Owner sidebar layout (labelled) ───────────────────────────
+// ── Owner sidebar layout (labelled, grouped) ───────────────────
 function SidebarLayout({
   user, children, pathname,
 }: {
@@ -289,28 +296,43 @@ function SidebarLayout({
           </button>
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-0.5 scrollbar-thin">
-          {OWNER_NAV.map(item => {
-            const Icon = item.icon;
-            const active = isActive(item.href);
-            return (
-              <Link key={item.href} href={item.href}
-                onClick={() => setSidebarOpen(false)}
-                className={cn(
-                  'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all',
-                  active
-                    ? 'bg-[#00475a] text-white'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
-                )}>
-                <Icon className="w-4 h-4 flex-shrink-0" />
-                <span className="truncate">{item.label}</span>
-                {item.href === '/hr/leaves' && <PendingLeaveBadge />}
-                {active && <ChevronRight className="w-3.5 h-3.5 ml-auto flex-shrink-0" />}
-              </Link>
-            );
-          })}
-          <div className="pt-1">
+        {/* Nav — grouped sections */}
+        <nav className="flex-1 overflow-y-auto py-2 px-2 scrollbar-thin">
+          {OWNER_NAV_SECTIONS.map((section, si) => (
+            <div key={si} className={si > 0 ? 'mt-1' : ''}>
+              {/* Section label */}
+              {section.section && (
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-3 pt-3 pb-1">
+                  {section.section}
+                </p>
+              )}
+              {/* Section items */}
+              <div className="space-y-0.5">
+                {section.items.map(item => {
+                  const Icon = item.icon;
+                  const active = isActive(item.href);
+                  return (
+                    <Link key={item.href} href={item.href}
+                      onClick={() => setSidebarOpen(false)}
+                      className={cn(
+                        'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all',
+                        active
+                          ? 'bg-[#00475a] text-white'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
+                      )}>
+                      <Icon className="w-4 h-4 flex-shrink-0" />
+                      <span className="truncate">{item.label}</span>
+                      {item.href === '/hr/leaves' && <PendingLeaveBadge />}
+                      {active && <ChevronRight className="w-3.5 h-3.5 ml-auto flex-shrink-0" />}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+
+          {/* Divider before role switcher */}
+          <div className="pt-2 mt-1 border-t border-gray-100">
             <RoleSwitcher />
           </div>
         </nav>
