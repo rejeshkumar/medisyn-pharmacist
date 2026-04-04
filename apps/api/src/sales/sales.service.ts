@@ -181,7 +181,7 @@ export class SalesService {
       this.autoCarePlan.createPlansFromSale(
         savedSale.id,
         tenantId,
-        dto.patient_id || null,
+        null,
         dto.customer_name || '',
         '',
         dto.doctor_name || '',
