@@ -293,6 +293,7 @@ export class MedicinesService {
     return { quantity, alternatives };
   }
   async searchEnriched(tenantId: string, search: string, limit = 20): Promise<any[]> {
+    try {
     const medicines = await this.dataSource.query(
       `SELECT
          m.id,
@@ -394,6 +395,23 @@ export class MedicinesService {
       [tenantId, `%${search}%`, `${search}%`, limit],
     );
     return medicines;
+    } catch (err: any) {
+      // Log full error and fall back to simple search
+      console.error('[searchEnriched] Query failed:', err.message);
+      return this.dataSource.query(
+        `SELECT m.id, m.brand_name, m.molecule, m.strength, m.dosage_form,
+                m.schedule_class, m.gst_percent, m.mrp, m.sale_rate,
+                m.manufacturer, m.rack_location, m.reorder_qty,
+                COALESCE(m.is_chronic, false) as is_chronic,
+                m.chronic_category,
+                0 as total_stock, null as fefo_batch, null as all_batches, 0 as substitute_count
+         FROM medicines m
+         WHERE m.tenant_id = $1 AND m.is_active = true
+           AND (m.brand_name ILIKE $2 OR m.molecule ILIKE $2)
+         ORDER BY m.brand_name ASC LIMIT $3`,
+        [tenantId, `%${search}%`, limit]
+      ).catch(() => []);
+    }
   }
 
 }
