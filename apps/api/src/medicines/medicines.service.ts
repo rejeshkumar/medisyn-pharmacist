@@ -293,96 +293,61 @@ export class MedicinesService {
     return { quantity, alternatives };
   }
   async searchEnriched(tenantId: string, search: string, limit = 20): Promise<any[]> {
-    try {
-    const medicines = await this.dataSource.query(
+    return this.dataSource.query(
       `SELECT
-         m.id,
-         m.brand_name,
-         m.molecule,
-         m.strength,
-         m.dosage_form,
-         m.schedule_class,
-         m.gst_percent,
-         m.mrp,
-         m.sale_rate,
-         m.manufacturer,
-         m.rack_location,
-         m.treatment_for,
-         m.reorder_qty,
+         m.id, m.brand_name, m.molecule, m.strength, m.dosage_form,
+         m.schedule_class::text AS schedule_class,
+         m.gst_percent, m.mrp, m.sale_rate, m.manufacturer,
+         m.rack_location, m.treatment_for, m.reorder_qty,
          COALESCE(m.is_chronic, false) AS is_chronic,
          m.chronic_category,
          false AS is_generic,
-         -- Human-readable schedule label
-         CASE m.schedule_class
-           WHEN 'OTC'  THEN 'Over the Counter'
-           WHEN 'H'    THEN 'Schedule H — Prescription required'
-           WHEN 'H1'   THEN 'Schedule H1 — Restricted prescription'
-           WHEN 'X'    THEN 'Schedule X — Narcotic (Form 17)'
-           ELSE m.schedule_class
+         CASE m.schedule_class::text
+           WHEN 'OTC' THEN 'Over the Counter'
+           WHEN 'H'   THEN 'Schedule H — Prescription required'
+           WHEN 'H1'  THEN 'Schedule H1 — Restricted prescription'
+           WHEN 'X'   THEN 'Schedule X — Narcotic (Form 17)'
+           ELSE m.schedule_class::text
          END AS schedule_label,
-         -- Total valid stock
          COALESCE((
            SELECT SUM(sb.quantity)
            FROM stock_batches sb
-           WHERE sb.medicine_id = m.id
-             AND sb.tenant_id   = $1
-             AND sb.quantity    > 0
-             AND sb.expiry_date > CURRENT_DATE
+           WHERE sb.medicine_id = m.id AND sb.tenant_id = $1
+             AND sb.quantity > 0 AND sb.expiry_date > CURRENT_DATE
          ), 0) AS total_stock,
-         -- FEFO batch (soonest expiry with stock)
          (SELECT row_to_json(fb)
           FROM (
-            SELECT b.id, b.batch_number, b.expiry_date,
-                   b.sale_rate, b.quantity
+            SELECT b.id, b.batch_number, b.expiry_date, b.sale_rate, b.quantity
             FROM stock_batches b
-            WHERE b.medicine_id  = m.id
-              AND b.tenant_id    = $1
-              AND b.quantity     > 0
-              AND b.expiry_date  > CURRENT_DATE
-            ORDER BY b.expiry_date ASC
-            LIMIT 1
-          ) fb
-         ) AS fefo_batch,
-         -- ALL batches with stock (for batch details panel)
+            WHERE b.medicine_id = m.id AND b.tenant_id = $1
+              AND b.quantity > 0 AND b.expiry_date > CURRENT_DATE
+            ORDER BY b.expiry_date ASC LIMIT 1
+          ) fb) AS fefo_batch,
          (SELECT json_agg(ab ORDER BY ab.expiry_date ASC)
           FROM (
             SELECT b.id, b.batch_number, b.expiry_date,
                    b.sale_rate, b.mrp, b.purchase_price, b.quantity, b.barcode,
                    (b.expiry_date - CURRENT_DATE)::int AS days_to_expiry
             FROM stock_batches b
-            WHERE b.medicine_id  = m.id
-              AND b.tenant_id    = $1
-              AND b.quantity     > 0
-              AND b.expiry_date  > CURRENT_DATE
+            WHERE b.medicine_id = m.id AND b.tenant_id = $1
+              AND b.quantity > 0 AND b.expiry_date > CURRENT_DATE
             ORDER BY b.expiry_date ASC
-          ) ab
-         ) AS all_batches,
-         -- Substitute count
+          ) ab) AS all_batches,
          COALESCE((
            SELECT COUNT(DISTINCT m2.id)
            FROM medicines m2
-           WHERE m2.molecule   = m.molecule
-             AND m2.molecule   IS NOT NULL
-             AND m2.molecule   != ''
-             AND m2.id         != m.id
-             AND m2.tenant_id  = $1
-             AND m2.is_active  = true
+           WHERE m2.molecule = m.molecule AND m2.molecule IS NOT NULL
+             AND m2.molecule != '' AND m2.id != m.id
+             AND m2.tenant_id = $1 AND m2.is_active = true
              AND EXISTS (
                SELECT 1 FROM stock_batches sb2
-               WHERE sb2.medicine_id  = m2.id
-                 AND sb2.tenant_id    = $1
-                 AND sb2.quantity     > 0
-                 AND sb2.expiry_date  > CURRENT_DATE
+               WHERE sb2.medicine_id = m2.id AND sb2.tenant_id = $1
+                 AND sb2.quantity > 0 AND sb2.expiry_date > CURRENT_DATE
              )
          ), 0) AS substitute_count
        FROM medicines m
-       WHERE m.tenant_id  = $1
-         AND m.is_active  = true
-         AND (
-           m.brand_name ILIKE $2
-           OR m.molecule   ILIKE $2
-           OR m.treatment_for ILIKE $2
-         )
+       WHERE m.tenant_id = $1 AND m.is_active = true
+         AND (m.brand_name ILIKE $2 OR m.molecule ILIKE $2 OR m.treatment_for ILIKE $2)
        ORDER BY
          CASE WHEN m.brand_name ILIKE $3 THEN 0 ELSE 1 END,
          CASE WHEN COALESCE((
@@ -393,25 +358,10 @@ export class MedicinesService {
          m.brand_name ASC
        LIMIT $4`,
       [tenantId, `%${search}%`, `${search}%`, limit],
-    );
-    return medicines;
-    } catch (err: any) {
-      // Log full error and fall back to simple search
-      console.error('[searchEnriched] Query failed:', err.message);
-      return this.dataSource.query(
-        `SELECT m.id, m.brand_name, m.molecule, m.strength, m.dosage_form,
-                m.schedule_class, m.gst_percent, m.mrp, m.sale_rate,
-                m.manufacturer, m.rack_location, m.reorder_qty,
-                COALESCE(m.is_chronic, false) as is_chronic,
-                m.chronic_category,
-                0 as total_stock, null as fefo_batch, null as all_batches, 0 as substitute_count
-         FROM medicines m
-         WHERE m.tenant_id = $1 AND m.is_active = true
-           AND (m.brand_name ILIKE $2 OR m.molecule ILIKE $2)
-         ORDER BY m.brand_name ASC LIMIT $3`,
-        [tenantId, `%${search}%`, limit]
-      ).catch(() => []);
-    }
+    ).catch((err: any) => {
+      console.error('[searchEnriched] failed:', err.message);
+      return [];
+    });
   }
 
 }
