@@ -7,7 +7,7 @@ import {
   RefreshCw, Plus, Check, X, Loader2, Download,
   AlertTriangle, Package, Truck, ShoppingBag,
   ChevronRight, Eye, Send, ReceiptText, Search,
-  Building2, Phone, Mail, Trash2,
+  Building2, Phone, Mail, Trash2, TrendingUp, Flame,
 } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -811,14 +811,168 @@ function SuppliersTab() {
   );
 }
 
+
+// ── In Demand Tab ─────────────────────────────────────────────────────────
+function DemandTab() {
+  const [items, setItems]         = useState<any[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [threshold, setThreshold] = useState(3);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await api.get(`/demand?threshold=${threshold}&days=30`);
+      setItems(r.data?.all || []);
+    } catch { toast.error('Failed to load demand data'); }
+    finally { setLoading(false); }
+  }, [threshold]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const markOrdered = async (name: string) => {
+    try {
+      await api.post('/demand/fulfil', { medicine_name: name, status: 'ordered' });
+      toast.success('Marked as ordered');
+      load();
+    } catch { toast.error('Failed to update'); }
+  };
+
+  const highDemand = items.filter(i => i.is_high_demand);
+  const others     = items.filter(i => !i.is_high_demand);
+
+  if (loading) return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-[#00475a]" /></div>;
+
+  return (
+    <div className="space-y-5">
+      {/* Header controls */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <p className="text-sm text-slate-500">
+            Medicines requested by walk-in patients that were unavailable.
+            Threshold: <span className="font-semibold text-[#00475a]">{threshold}+ requests</span> = high demand.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-slate-500">Threshold:</span>
+          {[2,3,5].map(t => (
+            <button key={t} onClick={() => setThreshold(t)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-medium ${threshold === t ? 'bg-[#00475a] text-white' : 'bg-slate-100 text-slate-600'}`}>
+              {t}+
+            </button>
+          ))}
+          <button onClick={load} className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200">
+            <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+          </button>
+        </div>
+      </div>
+
+      {items.length === 0 ? (
+        <div className="text-center py-20 text-slate-400">
+          <TrendingUp className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <p className="text-sm font-medium">No demand requests yet</p>
+          <p className="text-xs mt-1">When pharmacists note unavailable medicines, they appear here</p>
+        </div>
+      ) : (
+        <>
+          {/* High demand section */}
+          {highDemand.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Flame className="w-4 h-4 text-red-500" />
+                <h2 className="text-sm font-bold text-red-700 uppercase tracking-wide">
+                  High Demand — Procure Now ({highDemand.length})
+                </h2>
+              </div>
+              <div className="space-y-2">
+                {highDemand.map((item: any) => (
+                  <div key={item.medicine_name}
+                    className="flex items-center gap-4 p-4 bg-red-50 border border-red-200 rounded-xl">
+                    <div className="w-9 h-9 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Flame className="w-4 h-4 text-red-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-bold text-red-900">{item.medicine_name}</p>
+                        <span className="text-xs bg-red-200 text-red-800 px-2 py-0.5 rounded-full font-bold">
+                          {item.request_count} requests
+                        </span>
+                        {item.requests_recent > 0 && (
+                          <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+                            {item.requests_recent} this week
+                          </span>
+                        )}
+                        {item.already_in_reorder && (
+                          <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
+                            Already in reorder list
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 mt-1 text-xs text-red-600">
+                        {item.molecule && <span>{item.molecule}</span>}
+                        {item.dosage_form && <><span>·</span><span>{item.dosage_form}</span></>}
+                        <span>· Last requested {new Date(item.last_requested).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                        {item.current_stock > 0 && <span className="text-amber-600">· {item.current_stock} in stock now</span>}
+                      </div>
+                    </div>
+                    <button onClick={() => markOrdered(item.medicine_name)}
+                      className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 bg-[#00475a] text-white rounded-lg text-xs font-semibold hover:bg-[#003d4d]">
+                      <Check className="w-3.5 h-3.5" /> Mark ordered
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Normal demand section */}
+          {others.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <TrendingUp className="w-4 h-4 text-slate-400" />
+                <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">
+                  Watching ({others.length})
+                </h2>
+              </div>
+              <div className="space-y-2">
+                {others.map((item: any) => (
+                  <div key={item.medicine_name}
+                    className="flex items-center gap-4 p-3 bg-white border border-slate-100 rounded-xl hover:border-slate-200">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-slate-800">{item.medicine_name}</p>
+                        <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
+                          {item.request_count} request{item.request_count > 1 ? 's' : ''}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Last: {new Date(item.last_requested).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                        {item.requests_recent > 0 && ` · ${item.requests_recent} this week`}
+                      </p>
+                    </div>
+                    <button onClick={() => markOrdered(item.medicine_name)}
+                      className="flex-shrink-0 text-xs text-slate-400 hover:text-[#00475a] px-2 py-1 rounded-lg hover:bg-slate-100">
+                      Mark ordered
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Main page ──────────────────────────────────────────────────────────────
 export default function ProcurementPage() {
-  const [tab, setTab] = useState<'reorder' | 'orders' | 'suppliers'>('reorder');
+  const [tab, setTab] = useState<'reorder' | 'orders' | 'suppliers' | 'demand'>('reorder');
 
   const TABS = [
     { key: 'reorder',   label: 'Reorder list',     icon: AlertTriangle },
     { key: 'orders',    label: 'Purchase orders',   icon: ReceiptText   },
     { key: 'suppliers', label: 'Suppliers',         icon: Building2     },
+    { key: 'demand',    label: 'In Demand',         icon: Flame         },
   ];
 
   return (
@@ -851,6 +1005,7 @@ export default function ProcurementPage() {
         {tab === 'reorder'   && <ReorderTab />}
         {tab === 'orders'    && <POTab />}
         {tab === 'suppliers' && <SuppliersTab />}
+        {tab === 'demand'    && <DemandTab />}
       </div>
     </div>
   );

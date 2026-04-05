@@ -9,10 +9,11 @@ import { StockAdjustment } from '../database/entities/stock-adjustment.entity';
 import { Supplier } from '../database/entities/supplier.entity';
 import { Medicine } from '../database/entities/medicine.entity';
 import { AuditModule } from '../audit/audit.module';
+import { DemandController } from './demand.controller';
 
 @Module({
   imports: [TypeOrmModule.forFeature([StockBatch, StockAdjustment, Supplier, Medicine]), AuditModule],
-  controllers: [ProcurementController, StockAdjustmentController, StockController],
+  controllers: [ProcurementController, StockAdjustmentController, StockController, DemandController],
   providers: [StockService],
   exports: [StockService],
 })
