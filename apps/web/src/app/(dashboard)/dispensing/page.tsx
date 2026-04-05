@@ -512,16 +512,72 @@ export default function DispensingPage() {
   };
 
   const handleApproveAi = async () => {
-    for (const med of aiResult?.extraction_json?.medicines || []) {
+    const medicines = aiResult?.extraction_json?.medicines || [];
+    const notFound: string[] = [];
+    const outOfStock: string[] = [];
+    let added = 0;
+
+    // Set doctor name from prescription if available
+    const docName = aiResult?.extraction_json?.doctor_name || aiResult?.extraction_json?.doctor || '';
+    if (docName) setCompliance((p: any) => ({ ...p, doctor_name: docName }));
+
+    for (const med of medicines) {
       if (med.matched_medicine_id) {
-        await handleSelectMedicine({
-          id: med.matched_medicine_id, brand_name: med.matched_medicine_name || med.name,
-          gst_percent: 0, schedule_class: 'OTC',
-        }, cart.length);
+        // Check if the matched medicine has stock via search-enriched
+        try {
+          const res = await api.get(`/medicines/search-enriched?search=${encodeURIComponent(med.matched_medicine_name || med.name)}&limit=1`);
+          const found = res.data?.[0];
+          if (found && Number(found.total_stock) > 0) {
+            await handleSelectMedicine({
+              id: med.matched_medicine_id,
+              brand_name: med.matched_medicine_name || med.name,
+              gst_percent: found.gst_percent || 0,
+              schedule_class: found.schedule_class || 'OTC',
+              fefo_batch: found.fefo_batch,
+              total_stock: found.total_stock,
+            }, cart.length);
+            added++;
+          } else {
+            outOfStock.push(med.matched_medicine_name || med.name);
+            // Note demand automatically
+            api.post('/demand', {
+              medicine_id: med.matched_medicine_id,
+              medicine_name: med.matched_medicine_name || med.name,
+              notes: 'From prescription scan',
+            }).catch(() => {});
+          }
+        } catch {
+          await handleSelectMedicine({
+            id: med.matched_medicine_id,
+            brand_name: med.matched_medicine_name || med.name,
+            gst_percent: 0, schedule_class: 'OTC',
+          }, cart.length);
+          added++;
+        }
+      } else {
+        // Medicine not in inventory at all
+        notFound.push(med.name);
+        // Note demand for procurement
+        api.post('/demand', {
+          medicine_name: med.name,
+          notes: 'From prescription scan — not in inventory',
+        }).catch(() => {});
       }
     }
+
     setShowAiReview(false);
-    toast.success('Medicines added from prescription');
+
+    // Show summary toast
+    if (added > 0 && notFound.length === 0 && outOfStock.length === 0) {
+      toast.success(`✅ ${added} medicine${added > 1 ? 's' : ''} added to bill`);
+    } else {
+      if (added > 0) toast.success(`✅ ${added} medicine${added > 1 ? 's' : ''} added to bill`);
+      if (outOfStock.length > 0) toast.error(`⚠️ Out of stock: ${outOfStock.join(', ')}`);
+      if (notFound.length > 0) toast.error(`❌ Not in inventory: ${notFound.join(', ')}`);
+      if (outOfStock.length > 0 || notFound.length > 0) {
+        toast('Unavailable medicines noted for procurement', { icon: '📋' });
+      }
+    }
   };
 
   const today = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
