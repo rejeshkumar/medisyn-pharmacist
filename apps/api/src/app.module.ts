@@ -35,6 +35,7 @@ import { HrModule } from './hr/hr.module';
 import { ReportsController } from './reports/reports.controller';
 import { AiCareModule } from './ai-care/ai-care.module';
 import { BillingModule } from './billing/billing.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 
 @Module({
   imports: [
@@ -87,6 +88,7 @@ import { BillingModule } from './billing/billing.module';
     AiModule,
     AvailabilityModule,
     ConsultationModule,
+    AnalyticsModule,
   ],
   providers: [
     // Applied globally in order — JwtAuthGuard first, then TenantGuard
