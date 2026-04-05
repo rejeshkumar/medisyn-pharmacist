@@ -503,7 +503,7 @@ export default function DispensingPage() {
           if (result.extraction_json) {
             setAiResult(result); setShowAiReview(true);
             if (result.patient_name) setCompliance(p => ({ ...p, patient_name: result.patient_name }));
-            if (result.doctor_name)  setCompliance(p => ({ ...p, doctor_name: result.doctor_name }));
+            if (result.doctor_name)  setCompliance(p => ({ ...p, doctor_name: result.doctor_name, referring_doctor: result.doctor_name }));
           }
         }
         if (result.status === 'failed') { clearInterval(poll); setAiExtracting(false); toast.error('Scan failed'); }
@@ -519,7 +519,7 @@ export default function DispensingPage() {
 
     // Set doctor name from prescription if available
     const docName = aiResult?.extraction_json?.doctor_name || aiResult?.extraction_json?.doctor || '';
-    if (docName) setCompliance((p: any) => ({ ...p, doctor_name: docName }));
+    if (docName) setCompliance((p: any) => ({ ...p, doctor_name: docName, referring_doctor: docName }));
 
     for (const med of medicines) {
       if (med.matched_medicine_id) {
