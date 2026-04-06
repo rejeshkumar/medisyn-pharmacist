@@ -484,11 +484,7 @@ export class ReportsController {
       LEFT JOIN users u ON u.id = s.created_by::uuid
       WHERE s.tenant_id = $1
         AND s.created_at BETWEEN $2 AND $3
-        AND m.schedule_class IN (
-          ${q.schedule_class
-            ? `'${q.schedule_class}'`
-            : `'H','H1','X'`}
-        )
+        AND m.schedule_class::text IN ('H','H1','X')
       ORDER BY s.created_at DESC
       LIMIT 500`,
       [tid, start, end],
