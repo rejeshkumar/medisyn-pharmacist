@@ -295,6 +295,7 @@ export class FinancialController {
 
   @Get('salaries')
   async getSalaries(@Query('month') month: string, @Req() req: any) {
+    if (!['owner','office_manager'].includes(req.user.role)) throw new Error('Forbidden');
     const tid = req.user.tenant_id;
     const m   = month || new Date().toISOString().slice(0, 7);
 
@@ -315,6 +316,7 @@ export class FinancialController {
 
   @Post('salaries')
   async saveSalary(@Body() body: any, @Req() req: any) {
+    if (!['owner','office_manager'].includes(req.user.role)) throw new Error('Forbidden');
     const { tenant_id, sub } = req.user;
     const net = Number(body.basic_salary||0) + Number(body.allowances||0) - Number(body.deductions||0);
 

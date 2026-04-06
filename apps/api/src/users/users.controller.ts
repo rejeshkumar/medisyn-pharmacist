@@ -15,7 +15,7 @@ export class UsersController {
   constructor(private usersService: UsersService) {}
 
   @Get()
-  @Roles(UserRole.OWNER, UserRole.RECEPTIONIST, UserRole.NURSE, UserRole.DOCTOR, UserRole.PHARMACIST)
+  @Roles(UserRole.OWNER, UserRole.RECEPTIONIST, UserRole.OFFICE_MANAGER, UserRole.NURSE, UserRole.DOCTOR, UserRole.PHARMACIST)
   @ApiOperation({ summary: 'List users; supports ?role=doctor filter' })
   findAll(@Request() req, @Query('role') role?: string) {
     return this.usersService.findAll(req.tenantId, role);

@@ -31,6 +31,10 @@ const TABS = [
   { key: 'credit',    label: 'Credit Sales' },
   { key: 'petty',     label: 'Petty Cash' },
   { key: 'bank',      label: 'Bank Import' },
+  { key: 'budget',    label: 'Budget vs Actual' },
+  { key: 'gstr2',     label: 'GST Input Credit' },
+  { key: 'invoices',  label: 'Purchase Invoices' },
+  { key: 'inspector', label: 'Drug Inspector' },
 ];
 
 function fmt(n: number) {
@@ -1197,14 +1201,14 @@ function BankImportTab() {
     <div className="space-y-4">
       {/* Upload area */}
       <div className="border-2 border-dashed border-gray-200 rounded-2xl p-6 text-center">
-        <UploadCloud className="w-8 h-8 text-gray-300 mx-auto mb-3" />
+        <Upload className="w-8 h-8 text-gray-300 mx-auto mb-3" />
         <p className="text-sm font-medium text-gray-700 mb-1">Upload bank statement CSV</p>
         <p className="text-xs text-gray-400 mb-3">
           Format: Date, Description, Debit, Credit, Balance<br/>
           Download from your bank&apos;s internet banking portal
         </p>
         <label className="btn-primary cursor-pointer">
-          {importing ? <Loader2 className="w-4 h-4 animate-spin inline mr-1" /> : <UploadCloud className="w-4 h-4 inline mr-1" />}
+          {importing ? <Loader2 className="w-4 h-4 animate-spin inline mr-1" /> : <Upload className="w-4 h-4 inline mr-1" />}
           {importing ? 'Importing...' : 'Choose CSV File'}
           <input type="file" accept=".csv" className="hidden" onChange={handleFileUpload} disabled={importing} />
         </label>
@@ -1255,11 +1259,11 @@ function BankImportTab() {
                   <td className="px-4 py-2">
                     {t.matched_type ? (
                       <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full flex items-center gap-1 w-fit">
-                        <Link className="w-3 h-3" /> {t.matched_type}
+                        <Link2 className="w-3 h-3" /> {t.matched_type}
                       </span>
                     ) : (
                       <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full flex items-center gap-1 w-fit">
-                        <Unlink className="w-3 h-3" /> Review
+                        <Link2Off className="w-3 h-3" /> Review
                       </span>
                     )}
                   </td>
@@ -1308,7 +1312,533 @@ export default function FinancialPage() {
         {tab === 'credit'    && <CreditTab />}
         {tab === 'petty'     && <PettyCashTab />}
         {tab === 'bank'      && <BankImportTab />}
+        {tab === 'budget'    && <BudgetTab />}
+        {tab === 'gstr2'     && <GSTR2Tab />}
+        {tab === 'invoices'  && <PurchaseInvoicesTab />}
+        {tab === 'inspector' && <DrugInspectorTab />}
       </div>
+    </div>
+  );
+}
+
+// ── Budget vs Actual Tab ───────────────────────────────────────────────────
+function BudgetTab() {
+  const qc = useQueryClient();
+  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [editing, setEditing] = useState(false);
+  const [editValues, setEditValues] = useState<Record<string, string>>({});
+
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['budget', month],
+    queryFn: () => api.get(`/financial/budget?month=${month}`).then(r => r.data),
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: (items: any) => api.post('/financial/budget/bulk', { month, items }),
+    onSuccess: () => { toast.success('Budget saved'); setEditing(false); refetch(); },
+  });
+
+  const copyMutation = useMutation({
+    mutationFn: () => api.post('/financial/budget/copy-last-month', { month }),
+    onSuccess: (r: any) => { toast.success(r.data.message || 'Copied'); refetch(); },
+  });
+
+  const startEdit = () => {
+    const vals: Record<string, string> = {};
+    data?.items?.forEach((i: any) => { vals[i.category] = String(i.budgeted || ''); });
+    setEditValues(vals);
+    setEditing(true);
+  };
+
+  const statusColors: Record<string, string> = {
+    on_track:    'text-green-600 bg-green-50',
+    behind:      'text-red-600 bg-red-50',
+    over_budget: 'text-red-600 bg-red-50',
+    unset:       'text-gray-400 bg-gray-50',
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <input type="month" className="input" value={month} onChange={e => setMonth(e.target.value)} />
+        <div className="flex gap-2">
+          <button onClick={() => copyMutation.mutate()} disabled={copyMutation.isPending}
+            className="btn-secondary flex items-center gap-1 text-sm">
+            {copyMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+            Copy Last Month
+          </button>
+          {editing ? (
+            <button onClick={() => saveMutation.mutate(Object.entries(editValues).map(([category, amount]) => ({ category, amount: Number(amount)||0 })))}
+              className="btn-primary text-sm">Save Budget</button>
+          ) : (
+            <button onClick={startEdit} className="btn-primary text-sm">Set Budget</button>
+          )}
+        </div>
+      </div>
+
+      {isLoading ? <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin" /></div> : (
+        <div className="card p-0 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-100">
+              <tr>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Category</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Budget</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Actual</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Variance</th>
+                <th className="text-center px-4 py-3 font-medium text-gray-600">Status</th>
+                <th className="px-4 py-3 w-32" />
+              </tr>
+            </thead>
+            <tbody>
+              {(data?.items || []).map((item: any) => (
+                <tr key={item.category} className="border-b border-gray-50 hover:bg-gray-50">
+                  <td className="px-4 py-3 font-medium text-gray-900">{item.category}</td>
+                  <td className="px-4 py-3 text-right">
+                    {editing ? (
+                      <input type="number" className="input w-28 text-right" value={editValues[item.category]||''}
+                        onChange={e => setEditValues(v => ({...v, [item.category]: e.target.value}))} placeholder="0" />
+                    ) : (
+                      <span className="text-gray-700">{item.budgeted > 0 ? fmt(item.budgeted) : '—'}</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right font-medium text-gray-900">{fmt(item.actual)}</td>
+                  <td className="px-4 py-3 text-right">
+                    {item.budgeted > 0 && (
+                      <span className={`font-semibold ${item.variance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {item.variance >= 0 ? '+' : ''}{fmt(item.variance)}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    {item.budgeted > 0 && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[item.status]}`}>
+                        {item.status === 'on_track' ? '✓ On track'
+                         : item.status === 'behind' ? '↓ Behind target'
+                         : item.status === 'over_budget' ? '↑ Over budget'
+                         : '—'}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {item.budgeted > 0 && item.variance_pct !== null && (
+                      <div className="flex items-center gap-1">
+                        <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden w-16">
+                          <div className={`h-full rounded-full ${item.status === 'on_track' ? 'bg-green-500' : 'bg-red-500'}`}
+                            style={{ width: `${Math.min(item.variance_pct, 100)}%` }} />
+                        </div>
+                        <span className="text-xs text-gray-400">{item.variance_pct}%</span>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── GSTR-2 Tab ─────────────────────────────────────────────────────────────
+function GSTR2Tab() {
+  const qc = useQueryClient();
+  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({
+    invoice_date: new Date().toISOString().split('T')[0],
+    supplier_name: '', supplier_gstin: '', invoice_number: '',
+    invoice_amount: '', taxable_amount: '', gst_rate: '12',
+    cgst_amount: '', sgst_amount: '',
+  });
+
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['gstr2', month],
+    queryFn: () => api.get(`/financial/gstr2?month=${month}`).then(r => r.data),
+  });
+
+  const addMutation = useMutation({
+    mutationFn: (d: any) => api.post('/financial/gstr2', d),
+    onSuccess: () => { toast.success('Entry added'); setShowForm(false); refetch(); },
+  });
+
+  const importMutation = useMutation({
+    mutationFn: () => api.post('/financial/gstr2/auto-import', { month }),
+    onSuccess: (r: any) => { toast.success(r.data.message); refetch(); },
+  });
+
+  const claimMutation = useMutation({
+    mutationFn: (id: string) => api.patch(`/financial/gstr2/${id}/claim-itc`, { month }),
+    onSuccess: () => { toast.success('ITC claimed'); refetch(); },
+  });
+
+  const s = data?.summary || {};
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <input type="month" className="input" value={month} onChange={e => setMonth(e.target.value)} />
+        <div className="flex gap-2">
+          <button onClick={() => importMutation.mutate()} disabled={importMutation.isPending}
+            className="btn-secondary text-sm flex items-center gap-1">
+            {importMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+            Auto Import from Invoices
+          </button>
+          <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2 text-sm">
+            <Plus className="w-4 h-4" /> Add Entry
+          </button>
+        </div>
+      </div>
+
+      {s.total_invoices > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <StatCard label="ITC Available" value={fmt(s.itc_available)} color="green" sub="From purchases" />
+          <StatCard label="GST Collected" value={fmt(s.gst_collected)} color="amber" sub="From sales" />
+          <StatCard label="Net GST Payable" value={fmt(s.net_gst_payable)} color={s.net_gst_payable > 0 ? 'red' : 'green'} sub="After ITC" />
+          <StatCard label="ITC Savings" value={fmt(s.savings)} color="teal" sub="Tax offset" />
+        </div>
+      )}
+
+      {isLoading ? <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin" /></div>
+      : !data?.entries?.length ? (
+        <div className="text-center py-16 text-gray-400">
+          <ReceiptText className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <p className="text-sm">No purchase invoices in GSTR-2 for this month</p>
+          <p className="text-xs mt-1">Add entries or auto-import from purchase invoices</p>
+        </div>
+      ) : (
+        <div className="card p-0 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-100">
+              <tr>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Date</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Supplier</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Invoice No</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Taxable</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">CGST</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">SGST</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Total ITC</th>
+                <th className="text-center px-4 py-3 font-medium text-gray-600">ITC Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.entries.map((e: any) => (
+                <tr key={e.id} className="border-b border-gray-50 hover:bg-gray-50">
+                  <td className="px-4 py-2 text-gray-500 text-xs">{new Date(e.invoice_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</td>
+                  <td className="px-4 py-2 font-medium text-gray-900">{e.supplier_name}</td>
+                  <td className="px-4 py-2 text-gray-500 font-mono text-xs">{e.invoice_number}</td>
+                  <td className="px-4 py-2 text-right text-gray-700">{fmt(e.taxable_amount)}</td>
+                  <td className="px-4 py-2 text-right text-gray-600">{fmt(e.cgst_amount)}</td>
+                  <td className="px-4 py-2 text-right text-gray-600">{fmt(e.sgst_amount)}</td>
+                  <td className="px-4 py-2 text-right font-semibold text-green-700">{fmt(e.total_tax)}</td>
+                  <td className="px-4 py-2 text-center">
+                    {e.itc_claimed ? (
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Claimed</span>
+                    ) : (
+                      <button onClick={() => claimMutation.mutate(e.id)}
+                        className="text-xs bg-[#00475a] text-white px-2 py-0.5 rounded-full hover:bg-[#003d4d]">
+                        Claim ITC
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {showForm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md">
+            <div className="p-5 border-b flex items-center justify-between">
+              <h3 className="font-semibold">Add GSTR-2 Entry</h3>
+              <button onClick={() => setShowForm(false)}><X className="w-5 h-5 text-gray-400" /></button>
+            </div>
+            <div className="p-5 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="label">Invoice Date</label>
+                  <input type="date" className="input" value={form.invoice_date} onChange={e => setForm(f => ({...f, invoice_date: e.target.value}))} /></div>
+                <div><label className="label">GST Rate %</label>
+                  <select className="input" value={form.gst_rate} onChange={e => setForm(f => ({...f, gst_rate: e.target.value}))}>
+                    {['5','12','18','28'].map(r => <option key={r}>{r}</option>)}
+                  </select></div>
+              </div>
+              <div><label className="label">Supplier Name *</label>
+                <input className="input" value={form.supplier_name} onChange={e => setForm(f => ({...f, supplier_name: e.target.value}))} /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="label">Supplier GSTIN</label>
+                  <input className="input" value={form.supplier_gstin} onChange={e => setForm(f => ({...f, supplier_gstin: e.target.value}))} placeholder="32XXXXX..." /></div>
+                <div><label className="label">Invoice Number *</label>
+                  <input className="input" value={form.invoice_number} onChange={e => setForm(f => ({...f, invoice_number: e.target.value}))} /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="label">Invoice Amount *</label>
+                  <input type="number" className="input" value={form.invoice_amount} onChange={e => setForm(f => ({...f, invoice_amount: e.target.value}))} /></div>
+                <div><label className="label">Taxable Amount</label>
+                  <input type="number" className="input" value={form.taxable_amount} onChange={e => setForm(f => ({...f, taxable_amount: e.target.value}))} placeholder="Auto-calculated" /></div>
+              </div>
+            </div>
+            <div className="p-5 border-t flex gap-3">
+              <button onClick={() => setShowForm(false)} className="btn-secondary flex-1">Cancel</button>
+              <button onClick={() => addMutation.mutate(form)} disabled={!form.supplier_name || !form.invoice_number || !form.invoice_amount} className="btn-primary flex-1 disabled:opacity-50">Add</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Purchase Invoices Tab ──────────────────────────────────────────────────
+function PurchaseInvoicesTab() {
+  const qc = useQueryClient();
+  const now = new Date();
+  const [from, setFrom] = useState(new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]);
+  const [to, setTo]     = useState(now.toISOString().split('T')[0]);
+  const [status, setStatus] = useState('');
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({
+    invoice_date: now.toISOString().split('T')[0],
+    invoice_number: '', supplier_name: '', supplier_gstin: '',
+    subtotal: '', cgst: '', sgst: '', total_amount: '',
+    credit_days: '30', notes: '',
+  });
+
+  const { data: invoices, isLoading, refetch } = useQuery({
+    queryKey: ['purchase-invoices', from, to, status],
+    queryFn: () => api.get(`/financial/purchase-invoices?from=${from}&to=${to}${status?`&status=${status}`:''}`).then(r => r.data),
+  });
+
+  const addMutation = useMutation({
+    mutationFn: (d: any) => api.post('/financial/purchase-invoices', d),
+    onSuccess: () => { toast.success('Invoice added'); setShowForm(false); refetch(); },
+  });
+
+  const payMutation = useMutation({
+    mutationFn: ({ id, data }: any) => api.patch(`/financial/purchase-invoices/${id}/pay`, data),
+    onSuccess: () => { toast.success('Marked as paid'); refetch(); },
+  });
+
+  const totalUnpaid = (invoices||[]).filter((i:any) => i.payment_status!=='paid').reduce((s:number,i:any) => s+Number(i.total_amount),0);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <input type="date" className="input" value={from} onChange={e => setFrom(e.target.value)} />
+          <span className="text-gray-400">to</span>
+          <input type="date" className="input" value={to} onChange={e => setTo(e.target.value)} />
+          <select className="input" value={status} onChange={e => setStatus(e.target.value)}>
+            <option value="">All</option>
+            <option value="unpaid">Unpaid</option>
+            <option value="paid">Paid</option>
+          </select>
+          {totalUnpaid > 0 && <span className="text-sm font-semibold text-red-600">Unpaid: {fmt(totalUnpaid)}</span>}
+        </div>
+        <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2 text-sm">
+          <Plus className="w-4 h-4" /> Add Invoice
+        </button>
+      </div>
+
+      {isLoading ? <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin" /></div>
+      : !invoices?.length ? (
+        <div className="text-center py-16 text-gray-400">
+          <ReceiptText className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <p className="text-sm">No purchase invoices recorded</p>
+        </div>
+      ) : (
+        <div className="card p-0 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-100">
+              <tr>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Date</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Supplier</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Invoice No</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Amount</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Due Date</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
+                <th className="px-4 py-3" />
+              </tr>
+            </thead>
+            <tbody>
+              {invoices.map((inv: any) => (
+                <tr key={inv.id} className={`border-b border-gray-50 hover:bg-gray-50 ${inv.payment_status!=='paid' && inv.due_date && new Date(inv.due_date) < new Date() ? 'bg-red-50/30' : ''}`}>
+                  <td className="px-4 py-2 text-gray-500 text-xs">{new Date(inv.invoice_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</td>
+                  <td className="px-4 py-2 font-medium text-gray-900">{inv.supplier_name}</td>
+                  <td className="px-4 py-2 text-gray-500 font-mono text-xs">{inv.invoice_number}</td>
+                  <td className="px-4 py-2 text-right font-semibold text-gray-900">{fmt(inv.total_amount)}</td>
+                  <td className="px-4 py-2 text-xs">
+                    {inv.due_date ? (
+                      <span className={new Date(inv.due_date) < new Date() && inv.payment_status!=='paid' ? 'text-red-600 font-semibold' : 'text-gray-500'}>
+                        {new Date(inv.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                        {new Date(inv.due_date) < new Date() && inv.payment_status!=='paid' && ' ⚠️'}
+                      </span>
+                    ) : '—'}
+                  </td>
+                  <td className="px-4 py-2">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${inv.payment_status==='paid' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {inv.payment_status==='paid' ? 'Paid' : 'Unpaid'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2">
+                    {inv.payment_status !== 'paid' && (
+                      <button onClick={() => {
+                        const ref = prompt('Payment reference number:', '');
+                        payMutation.mutate({ id: inv.id, data: { amount: inv.total_amount, reference_no: ref, payment_mode: 'bank_transfer' } });
+                      }} className="text-xs text-[#00475a] hover:underline font-medium">
+                        Mark Paid
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {showForm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md">
+            <div className="p-5 border-b flex items-center justify-between">
+              <h3 className="font-semibold">Add Purchase Invoice</h3>
+              <button onClick={() => setShowForm(false)}><X className="w-5 h-5 text-gray-400" /></button>
+            </div>
+            <div className="p-5 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="label">Invoice Date</label>
+                  <input type="date" className="input" value={form.invoice_date} onChange={e => setForm(f=>({...f,invoice_date:e.target.value}))} /></div>
+                <div><label className="label">Credit Days</label>
+                  <input type="number" className="input" value={form.credit_days} onChange={e => setForm(f=>({...f,credit_days:e.target.value}))} /></div>
+              </div>
+              <div><label className="label">Supplier Name *</label>
+                <input className="input" value={form.supplier_name} onChange={e => setForm(f=>({...f,supplier_name:e.target.value}))} /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="label">Invoice Number *</label>
+                  <input className="input" value={form.invoice_number} onChange={e => setForm(f=>({...f,invoice_number:e.target.value}))} /></div>
+                <div><label className="label">Supplier GSTIN</label>
+                  <input className="input" value={form.supplier_gstin} onChange={e => setForm(f=>({...f,supplier_gstin:e.target.value}))} placeholder="32XXXXX..." /></div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div><label className="label">Subtotal</label>
+                  <input type="number" className="input" value={form.subtotal} onChange={e => setForm(f=>({...f,subtotal:e.target.value}))} /></div>
+                <div><label className="label">CGST</label>
+                  <input type="number" className="input" value={form.cgst} onChange={e => setForm(f=>({...f,cgst:e.target.value}))} /></div>
+                <div><label className="label">SGST</label>
+                  <input type="number" className="input" value={form.sgst} onChange={e => setForm(f=>({...f,sgst:e.target.value}))} /></div>
+              </div>
+              <div><label className="label">Total Amount *</label>
+                <input type="number" className="input text-lg font-semibold" value={form.total_amount} onChange={e => setForm(f=>({...f,total_amount:e.target.value}))} /></div>
+            </div>
+            <div className="p-5 border-t flex gap-3">
+              <button onClick={() => setShowForm(false)} className="btn-secondary flex-1">Cancel</button>
+              <button onClick={() => addMutation.mutate(form)} disabled={!form.supplier_name||!form.invoice_number||!form.total_amount} className="btn-primary flex-1 disabled:opacity-50">Add Invoice</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Drug Inspector Tab ─────────────────────────────────────────────────────
+function DrugInspectorTab() {
+  const now = new Date();
+  const [from, setFrom] = useState(new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]);
+  const [to, setTo]     = useState(now.toISOString().split('T')[0]);
+  const [schedule, setSchedule] = useState('');
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['drug-inspector', from, to, schedule],
+    queryFn: () => api.get(`/financial/drug-inspector-report?from=${from}&to=${to}${schedule?`&schedule=${schedule}`:''}`).then(r => r.data),
+  });
+
+  const downloadReport = () => {
+    const url = `/financial/drug-inspector-report/pdf?from=${from}&to=${to}`;
+    window.open(`${process.env.NEXT_PUBLIC_API_URL}${url}`, '_blank');
+  };
+
+  const s = data?.summary || {};
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <input type="date" className="input" value={from} onChange={e => setFrom(e.target.value)} />
+          <span className="text-gray-400">to</span>
+          <input type="date" className="input" value={to} onChange={e => setTo(e.target.value)} />
+          <select className="input" value={schedule} onChange={e => setSchedule(e.target.value)}>
+            <option value="">All (H + H1 + X)</option>
+            <option value="H">Schedule H only</option>
+            <option value="H1">Schedule H1 only</option>
+            <option value="X">Schedule X only</option>
+          </select>
+        </div>
+        <button onClick={downloadReport} className="btn-primary flex items-center gap-2">
+          <ReceiptText className="w-4 h-4" /> Download Report
+        </button>
+      </div>
+
+      {data?.summary && (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <StatCard label="Total Entries" value={s.total_entries} color="blue" />
+          <StatCard label="Schedule H" value={s.schedule_h} color="amber" />
+          <StatCard label="Schedule H1" value={s.schedule_h1} color="red" />
+          <StatCard label="Schedule X" value={s.schedule_x} color="teal" />
+          <StatCard label="Unique Medicines" value={s.unique_medicines} color="gray" />
+        </div>
+      )}
+
+      {isLoading ? <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin" /></div>
+      : !data?.entries?.length ? (
+        <div className="text-center py-16 text-gray-400">
+          <ReceiptText className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <p className="text-sm">No scheduled drug dispensing in this period</p>
+          <p className="text-xs mt-1">Schedule H, H1, and X dispensing will appear here</p>
+        </div>
+      ) : (
+        <div className="card p-0 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-100">
+              <tr>
+                <th className="text-left px-3 py-3 font-medium text-gray-600">Date</th>
+                <th className="text-left px-3 py-3 font-medium text-gray-600">Medicine</th>
+                <th className="text-left px-3 py-3 font-medium text-gray-600">Schedule</th>
+                <th className="text-left px-3 py-3 font-medium text-gray-600">Batch</th>
+                <th className="text-right px-3 py-3 font-medium text-gray-600">Qty</th>
+                <th className="text-left px-3 py-3 font-medium text-gray-600">Patient</th>
+                <th className="text-left px-3 py-3 font-medium text-gray-600">Doctor</th>
+                <th className="text-left px-3 py-3 font-medium text-gray-600">Pharmacist</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.entries.map((e: any, i: number) => (
+                <tr key={i} className="border-b border-gray-50 hover:bg-gray-50">
+                  <td className="px-3 py-2 text-gray-500 text-xs">{new Date(e.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</td>
+                  <td className="px-3 py-2">
+                    <p className="font-medium text-gray-900 text-xs">{e.medicine_name}</p>
+                    <p className="text-xs text-gray-400">{e.generic_name}</p>
+                  </td>
+                  <td className="px-3 py-2">
+                    <span className={`text-xs px-2 py-0.5 rounded font-bold ${
+                      e.schedule_class==='X' ? 'bg-purple-100 text-purple-700'
+                      : e.schedule_class==='H1' ? 'bg-red-100 text-red-700'
+                      : 'bg-amber-100 text-amber-700'}`}>
+                      {e.schedule_class}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-gray-500 text-xs font-mono">{e.batch_number||'—'}</td>
+                  <td className="px-3 py-2 text-right font-medium">{e.quantity_dispensed}</td>
+                  <td className="px-3 py-2 text-gray-700 text-xs">{e.patient_name||'Walk-in'}</td>
+                  <td className="px-3 py-2 text-gray-600 text-xs">{e.doctor_name||'—'}</td>
+                  <td className="px-3 py-2 text-gray-500 text-xs">{e.pharmacist_name||'—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

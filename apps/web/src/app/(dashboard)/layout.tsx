@@ -81,7 +81,7 @@ const OWNER_NAV_SECTIONS = [
     items: [
       { href: '/compliance',         label: 'Compliance',    icon: Shield      },
       { href: '/reports',            label: 'Reports',       icon: BarChart3   },
-      { href: '/financial',          label: 'Financial',     icon: DollarSign  },
+      ...((['owner','office_manager'].includes(user?.role||'')) ? [{ href: '/financial', label: 'Financial', icon: DollarSign }] : []),
       { href: '/analytics',          label: 'Behaviour',     icon: Users         },
     ],
   },

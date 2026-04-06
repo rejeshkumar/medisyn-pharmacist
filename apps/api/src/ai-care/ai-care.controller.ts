@@ -60,7 +60,7 @@ export class AiCareController {
 
   @Post('followups/:id/send-reminder')
   async sendReminder(@Param('id') id: string, @Req() req: any) {
-    if (!['owner','receptionist'].includes(req.user.role)) throw new ForbiddenException();
+    if (!['owner','receptionist','office_manager'].includes(req.user.role)) throw new ForbiddenException();
     const [followup] = await this.svc.getFollowups(req.user.tenant_id, {});
     const f = (await this.svc.getFollowups(req.user.tenant_id, {})).find((x: any) => x.id === id);
     if (!f) return { error: 'Not found' };

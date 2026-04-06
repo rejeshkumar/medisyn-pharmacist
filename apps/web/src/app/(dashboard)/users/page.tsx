@@ -12,7 +12,8 @@ const ALL_ROLES = [
   { value: 'pharmacist',   label: 'Pharmacist' },
   { value: 'assistant',    label: 'Assistant' },
   { value: 'doctor',       label: 'Doctor' },
-  { value: 'receptionist', label: 'Receptionist' },
+  { value: 'receptionist',   label: 'Receptionist' },
+  { value: 'office_manager', label: 'Office Manager' },
   { value: 'nurse',        label: 'Nurse' },
 ];
 
@@ -21,7 +22,8 @@ const roleColors: Record<string, string> = {
   pharmacist:   'bg-primary-100 text-primary-700 border-primary-200',
   assistant:    'bg-gray-100 text-gray-600 border-gray-200',
   doctor:       'bg-teal-100 text-teal-700 border-teal-200',
-  receptionist: 'bg-blue-100 text-blue-700 border-blue-200',
+  receptionist:   'bg-blue-100 text-blue-700 border-blue-200',
+  office_manager: 'bg-violet-100 text-violet-700 border-violet-200',
   nurse:        'bg-pink-100 text-pink-700 border-pink-200',
 };
 

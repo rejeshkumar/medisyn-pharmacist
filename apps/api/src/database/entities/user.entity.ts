@@ -11,12 +11,13 @@ import { Exclude } from 'class-transformer';
 import { Tenant } from './tenant.entity';
 
 export enum UserRole {
-  OWNER        = 'owner',
-  PHARMACIST   = 'pharmacist',
-  ASSISTANT    = 'assistant',
-  DOCTOR       = 'doctor',
-  RECEPTIONIST = 'receptionist',
-  NURSE        = 'nurse',
+  OWNER           = 'owner',
+  PHARMACIST      = 'pharmacist',
+  ASSISTANT       = 'assistant',
+  DOCTOR          = 'doctor',
+  RECEPTIONIST    = 'receptionist',
+  OFFICE_MANAGER  = 'office_manager',
+  NURSE           = 'nurse',
 }
 
 export enum UserStatus {
