@@ -1197,14 +1197,14 @@ function BankImportTab() {
     <div className="space-y-4">
       {/* Upload area */}
       <div className="border-2 border-dashed border-gray-200 rounded-2xl p-6 text-center">
-        <Upload className="w-8 h-8 text-gray-300 mx-auto mb-3" />
+        <UploadCloud className="w-8 h-8 text-gray-300 mx-auto mb-3" />
         <p className="text-sm font-medium text-gray-700 mb-1">Upload bank statement CSV</p>
         <p className="text-xs text-gray-400 mb-3">
           Format: Date, Description, Debit, Credit, Balance<br/>
           Download from your bank&apos;s internet banking portal
         </p>
         <label className="btn-primary cursor-pointer">
-          {importing ? <Loader2 className="w-4 h-4 animate-spin inline mr-1" /> : <Upload className="w-4 h-4 inline mr-1" />}
+          {importing ? <Loader2 className="w-4 h-4 animate-spin inline mr-1" /> : <UploadCloud className="w-4 h-4 inline mr-1" />}
           {importing ? 'Importing...' : 'Choose CSV File'}
           <input type="file" accept=".csv" className="hidden" onChange={handleFileUpload} disabled={importing} />
         </label>
