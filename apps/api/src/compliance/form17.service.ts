@@ -55,14 +55,14 @@ export class Form17Service {
           s.doctor_name,
           u.full_name AS pharmacist_name,
           COALESCE(m.schedule_class, '') AS schedule_class,
-          COALESCE(comp.doctor_reg_no, '') AS doctor_reg_no,
-          COALESCE(comp.prescription_no, s.bill_number) AS prescription_no
+          '' AS doctor_reg_no,
+          s.bill_number AS prescription_no
        FROM sale_items si
        JOIN sales s         ON s.id = si.sale_id
        LEFT JOIN medicines m ON m.id = si.medicine_id
        LEFT JOIN stock_batches sb ON sb.id = si.batch_id
-       LEFT JOIN users u    ON u.id = s.pharmacist_id
-       LEFT JOIN compliance_records comp ON comp.sale_id = s.id
+       LEFT JOIN users u    ON u.id::text = s.created_by
+       -- LEFT JOIN compliance_records comp ON comp.sale_id = s.id
        WHERE s.tenant_id = $1
          AND s.is_voided  = false
          AND m.schedule_class = 'X'

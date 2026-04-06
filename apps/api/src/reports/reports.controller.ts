@@ -217,7 +217,7 @@ export class ReportsController {
       JOIN sales     s  ON s.id  = si.sale_id
       WHERE s.tenant_id = $1
         AND s.created_at BETWEEN $2 AND $3
-        ${q.schedule_class ? `AND m.schedule_class = '${q.schedule_class}'` : ''}
+        AND m.schedule_class::text IN ('H','H1','X','OTC')
       GROUP BY m.id, m.brand_name, m.molecule, m.strength, m.schedule_class, m.manufacturer
       ORDER BY ${sortBy}
       LIMIT $4`,
@@ -302,7 +302,7 @@ export class ReportsController {
         AND sb.tenant_id = $1
         AND sb.quantity  > 0
         AND sb.is_active = true
-        ${q.schedule_class ? `AND m.schedule_class = '${q.schedule_class}'` : ''}
+        AND m.schedule_class::text IN ('H','H1','X','OTC')
         ${q.category ? `AND m.category ILIKE '%${q.category}%'` : ''}
       GROUP BY m.id, m.brand_name, m.molecule, m.strength,
                m.schedule_class, m.rack_location, m.manufacturer
@@ -348,7 +348,7 @@ export class ReportsController {
         AND sb.quantity  > 0
         AND sb.expiry_date <= CURRENT_DATE + INTERVAL '${days} days'
         AND sb.expiry_date >= CURRENT_DATE - INTERVAL '30 days'
-        ${q.schedule_class ? `AND m.schedule_class = '${q.schedule_class}'` : ''}
+        AND m.schedule_class::text IN ('H','H1','X','OTC')
       ORDER BY sb.expiry_date ASC`,
       [tid],
     );
