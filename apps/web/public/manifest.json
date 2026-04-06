@@ -1,0 +1,36 @@
+{
+  "name": "MediSyn Pharmacy",
+  "short_name": "MediSyn",
+  "description": "MediSyn Specialty Clinic Pharmacy Management",
+  "start_url": "/dispensing",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#00475a",
+  "orientation": "landscape",
+  "icons": [
+    {
+      "src": "/images/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dispense",
+      "url": "/dispensing",
+      "description": "Open dispensing screen"
+    },
+    {
+      "name": "New Patient",
+      "url": "/patients",
+      "description": "Register a new patient"
+    }
+  ]
+}

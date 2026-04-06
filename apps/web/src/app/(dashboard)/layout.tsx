@@ -3,6 +3,7 @@ import NotificationBell from '@/components/hr/NotificationBell';
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
+import OfflineBar from '@/components/common/OfflineBar';
 import Image from 'next/image';
 import { getUser, clearAuth } from '@/lib/auth';
 import {
@@ -215,6 +216,7 @@ function BottomTabLayout({
       )}
 
       {/* ── Main content ── */}
+      <OfflineBar />
       <main className="flex-1 overflow-y-auto scrollbar-thin pb-16">
         {children}
       </main>
