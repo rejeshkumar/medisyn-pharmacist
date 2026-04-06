@@ -2,6 +2,8 @@
 import { useState, useRef, useEffect, useCallback, useId } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
+import dynamic from 'next/dynamic';
+const BarcodeScanner = dynamic(() => import('@/components/dispensing/BarcodeScanner'), { ssr: false });
 import { formatCurrency, getScheduleClassColor, getConfidenceColor } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import {
@@ -259,6 +261,7 @@ export default function DispensingPage() {
   const [aiExtracting, setAiExtracting] = useState(false);
   const [aiResult, setAiResult] = useState<any>(null);
   const [showAiReview, setShowAiReview] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
   const [showSubstitutes, setShowSubstitutes] = useState<string | null>(null);
   const [aiPrescriptionId, setAiPrescriptionId] = useState<string | null>(null);
   const [activePrescriptionId, setActivePrescriptionId] = useState<string | null>(null);
@@ -828,7 +831,8 @@ export default function DispensingPage() {
                   <tr key={`search-${idx}`} className="border-b border-slate-100 bg-white">
                     <td className="px-3 py-2 text-xs text-slate-300 text-center">{cart.length + 1}</td>
                     <td className="px-3 py-2" colSpan={6}>
-                      <div id={`search-${idx}`}>
+                      <div id={`search-${idx}`} className="flex items-center gap-2">
+                        <div className="flex-1">
                         <MedSearchDropdown
                           value={sv}
                           onChange={v => {
@@ -839,6 +843,12 @@ export default function DispensingPage() {
                           onSelect={med => handleSelectMedicine(med, idx)}
                           autoFocus={idx === 0 && cart.length === 0}
                         />
+                        </div>
+                        <button onClick={() => setShowScanner(true)}
+                          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#00475a]/10 hover:bg-[#00475a] hover:text-white text-[#00475a] text-xs font-medium transition-colors border border-[#00475a]/20">
+                          <Scan className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Scan</span>
+                        </button>
                       </div>
                     </td>
                     <td></td>
