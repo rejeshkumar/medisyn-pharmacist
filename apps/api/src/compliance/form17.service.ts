@@ -62,10 +62,9 @@ export class Form17Service {
        LEFT JOIN medicines m ON m.id = si.medicine_id
        LEFT JOIN stock_batches sb ON sb.id = si.batch_id
        LEFT JOIN users u    ON u.id::text = s.created_by
-       -- LEFT JOIN compliance_records comp ON comp.sale_id = s.id
        WHERE s.tenant_id = $1
          AND s.is_voided  = false
-         AND m.schedule_class = 'X'
+         AND m.schedule_class::text = 'X'
          AND s.created_at::date BETWEEN $2 AND $3
        ORDER BY s.created_at ASC`,
       [tenantId, fromDate, toDate],
