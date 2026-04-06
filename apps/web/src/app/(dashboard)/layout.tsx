@@ -8,7 +8,7 @@ import Image from 'next/image';
 import { getUser, clearAuth } from '@/lib/auth';
 import {
   LayoutDashboard, Pill, ShoppingCart, Package, FileText,
-  BarChart3, Users, Upload, Shield, LogOut, ChevronRight,
+  BarChart3, Users, DollarSign, Upload, Shield, LogOut, ChevronRight,
   Menu, X, HeartPulse, ClipboardList, Settings, Briefcase,
   RefreshCcw, ShoppingBag, Clock, Calendar, Bell,
   Stethoscope, ReceiptText, ArrowLeftRight, ChevronUp, Cpu, Scan,
@@ -81,6 +81,7 @@ const OWNER_NAV_SECTIONS = [
     items: [
       { href: '/compliance',         label: 'Compliance',    icon: Shield      },
       { href: '/reports',            label: 'Reports',       icon: BarChart3   },
+      { href: '/financial',          label: 'Financial',     icon: DollarSign  },
       { href: '/analytics',          label: 'Behaviour',     icon: Users         },
     ],
   },
