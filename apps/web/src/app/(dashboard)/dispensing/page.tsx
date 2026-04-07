@@ -25,17 +25,18 @@ interface CartItem {
   expiry_date: string;
   qty: number;
   rate: number;
-  line_discount_pct: number;   // NEW: per-line discount %
+  line_discount_pct: number;
   gst_percent: number;
-  avl_qty: number;             // NEW: available stock
-  rack_location: string;       // NEW: rack location
+  avl_qty: number;
+  rack_location: string;
   is_substituted: boolean;
   original_medicine_id?: string;
   substitution_reason?: string;
   schedule_class: string;
   is_chronic: boolean;
   chronic_category?: string;
-  create_care_plan: boolean;  // doctor/pharmacist flag at billing
+  create_care_plan: boolean;
+  all_batches?: any[]; // all available batches for auto-split
 }
 
 interface DraftBill {
@@ -320,7 +321,8 @@ export default function DispensingPage() {
         schedule_class:    med.schedule_class,
         is_chronic:        isChronicDetected,
         chronic_category:  med.chronic_category || '',
-        create_care_plan:  isChronicDetected,  // auto-check if chronic detected
+        create_care_plan:  isChronicDetected,
+        all_batches:       med.all_batches || [],
       };
 
       if (rowIdx < cart.length) {
@@ -353,11 +355,74 @@ export default function DispensingPage() {
     }
   };
 
-  // ── Update cart item field ─────────────────────────────────────────────
+  // ── Update cart item field — auto-splits across batches when qty exceeds avl_qty ──
   const updateItem = (idx: number, field: keyof CartItem, value: any) => {
-    setCart(prev => prev.map((item, i) =>
-      i === idx ? { ...item, [field]: value } : item
-    ));
+    if (field !== 'qty') {
+      setCart(prev => prev.map((item, i) =>
+        i === idx ? { ...item, [field]: value } : item
+      ));
+      return;
+    }
+
+    const requestedQty = Number(value);
+    setCart(prev => {
+      const item = prev[idx];
+      if (!item) return prev;
+
+      // If qty fits in current batch — simple update
+      if (requestedQty <= item.avl_qty) {
+        return prev.map((it, i) => i === idx ? { ...it, qty: requestedQty } : it);
+      }
+
+      // qty exceeds current batch — auto-split across all_batches (FEFO order)
+      const allBatches: any[] = (item.all_batches || [])
+        .filter((b: any) => Number(b.quantity) > 0)
+        .sort((a: any, b: any) => new Date(a.expiry_date).getTime() - new Date(b.expiry_date).getTime());
+
+      if (allBatches.length <= 1) {
+        // No other batches — just update and let validation catch it
+        return prev.map((it, i) => i === idx ? { ...it, qty: requestedQty } : it);
+      }
+
+      // Build split rows
+      const splitRows: CartItem[] = [];
+      let remaining = requestedQty;
+
+      for (const batch of allBatches) {
+        if (remaining <= 0) break;
+        const available = Number(batch.quantity);
+        const useQty = Math.min(remaining, available);
+        splitRows.push({
+          ...item,
+          batch_id:     batch.id,
+          batch_number: batch.batch_number,
+          expiry_date:  batch.expiry_date,
+          rate:         Number(batch.sale_rate),
+          avl_qty:      available,
+          qty:          useQty,
+          all_batches:  item.all_batches,
+        });
+        remaining -= useQty;
+      }
+
+      if (splitRows.length === 0) return prev;
+
+      // Replace current row with split rows
+      const newCart = [...prev];
+      newCart.splice(idx, 1, ...splitRows);
+
+      // Show toast if split happened
+      if (splitRows.length > 1) {
+        setTimeout(() => {
+          toast.success(
+            \`Split across \${splitRows.length} batches: \${splitRows.map(r => \`\${r.batch_number} (×\${r.qty})\`).join(', ')}\`,
+            { duration: 4000 }
+          );
+        }, 100);
+      }
+
+      return newCart;
+    });
   };
 
   // ── Calculations ──────────────────────────────────────────────────────
