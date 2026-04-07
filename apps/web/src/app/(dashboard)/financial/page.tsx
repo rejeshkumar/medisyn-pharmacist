@@ -1278,44 +1278,115 @@ function BankImportTab() {
 }
 
 // ── Main Page ──────────────────────────────────────────────────────────────
+const TAB_GROUPS = [
+  {
+    group: 'Overview',
+    tabs: [
+      { key: 'dashboard', label: 'Daily P&L',       icon: '📊' },
+      { key: 'pnl',       label: 'Monthly P&L',     icon: '📈' },
+      { key: 'budget',    label: 'Budget vs Actual', icon: '🎯' },
+    ],
+  },
+  {
+    group: 'Transactions',
+    tabs: [
+      { key: 'expenses',  label: 'Expenses',         icon: '💸' },
+      { key: 'invoices',  label: 'Purchase Invoices',icon: '🧾' },
+      { key: 'cash',      label: 'Cash Register',    icon: '🏧' },
+      { key: 'petty',     label: 'Petty Cash',       icon: '💰' },
+    ],
+  },
+  {
+    group: 'Payables & Credit',
+    tabs: [
+      { key: 'payables',  label: 'Supplier Payables',icon: '🏢' },
+      { key: 'credit',    label: 'Credit Sales',     icon: '💳' },
+    ],
+  },
+  {
+    group: 'Payroll',
+    tabs: [
+      { key: 'salaries',  label: 'Salaries',         icon: '👥' },
+    ],
+  },
+  {
+    group: 'Banking & Tax',
+    tabs: [
+      { key: 'upi',       label: 'UPI Reconciliation',icon: '📱' },
+      { key: 'bank',      label: 'Bank Import',      icon: '🏦' },
+      { key: 'gstr2',     label: 'GST Input Credit', icon: '📋' },
+    ],
+  },
+  {
+    group: 'Compliance',
+    tabs: [
+      { key: 'inspector', label: 'Drug Inspector',   icon: '💊' },
+    ],
+  },
+];
+
 export default function FinancialPage() {
   const [tab, setTab] = useState('dashboard');
+  const activeTab = TABS.find(t => t.key === tab);
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-white flex-shrink-0">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Financial</h1>
-          <p className="text-sm text-slate-400 mt-0.5">P&L · Expenses · Payables · Salaries · UPI reconciliation</p>
+    <div className="h-full flex overflow-hidden bg-gray-50">
+
+      {/* ── Vertical sidebar ────────────────────────────────────────────── */}
+      <div className="w-52 flex-shrink-0 bg-white border-r border-gray-100 flex flex-col overflow-y-auto">
+        <div className="px-4 py-4 border-b border-gray-100">
+          <h1 className="text-base font-bold text-gray-900">Financial</h1>
+          <p className="text-xs text-gray-400 mt-0.5">Management console</p>
         </div>
+
+        <nav className="flex-1 py-3 space-y-0.5">
+          {TAB_GROUPS.map(group => (
+            <div key={group.group}>
+              <p className="px-4 pt-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                {group.group}
+              </p>
+              {group.tabs.map(t => (
+                <button
+                  key={t.key}
+                  onClick={() => setTab(t.key)}
+                  className={`w-full flex items-center gap-2.5 px-4 py-2 text-sm transition-all text-left ${
+                    tab === t.key
+                      ? 'bg-[#00475a]/10 text-[#00475a] font-semibold border-r-2 border-[#00475a]'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`}
+                >
+                  <span className="text-base leading-none">{t.icon}</span>
+                  <span className="truncate">{t.label}</span>
+                </button>
+              ))}
+            </div>
+          ))}
+        </nav>
       </div>
 
-      <div className="flex border-b border-slate-100 bg-white flex-shrink-0 px-6 overflow-x-auto">
-        {TABS.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
-            className={`flex items-center px-4 py-3 text-sm font-medium border-b-2 transition-colors flex-shrink-0 ${
-              tab === t.key ? 'border-[#00475a] text-[#00475a]' : 'border-transparent text-slate-500 hover:text-slate-700'
-            }`}>
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex-1 overflow-auto p-6">
-        {tab === 'dashboard' && <DailyPnL />}
-        {tab === 'pnl'       && <MonthlyPnL />}
-        {tab === 'expenses'  && <ExpensesTab />}
-        {tab === 'payables'  && <PayablesTab />}
-        {tab === 'salaries'  && <SalariesTab />}
-        {tab === 'upi'       && <UpiTab />}
-        {tab === 'cash'      && <CashRegisterTab />}
-        {tab === 'credit'    && <CreditTab />}
-        {tab === 'petty'     && <PettyCashTab />}
-        {tab === 'bank'      && <BankImportTab />}
-        {tab === 'budget'    && <BudgetTab />}
-        {tab === 'gstr2'     && <GSTR2Tab />}
-        {tab === 'invoices'  && <PurchaseInvoicesTab />}
-        {tab === 'inspector' && <DrugInspectorTab />}
+      {/* ── Main content ────────────────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="px-6 py-4 bg-white border-b border-gray-100 flex-shrink-0">
+          <h2 className="text-lg font-semibold text-gray-900">
+            {activeTab?.label || 'Financial'}
+          </h2>
+        </div>
+        <div className="flex-1 overflow-auto p-6">
+          {tab === 'dashboard' && <DailyPnL />}
+          {tab === 'pnl'       && <MonthlyPnL />}
+          {tab === 'expenses'  && <ExpensesTab />}
+          {tab === 'payables'  && <PayablesTab />}
+          {tab === 'salaries'  && <SalariesTab />}
+          {tab === 'upi'       && <UpiTab />}
+          {tab === 'cash'      && <CashRegisterTab />}
+          {tab === 'credit'    && <CreditTab />}
+          {tab === 'petty'     && <PettyCashTab />}
+          {tab === 'bank'      && <BankImportTab />}
+          {tab === 'budget'    && <BudgetTab />}
+          {tab === 'gstr2'     && <GSTR2Tab />}
+          {tab === 'invoices'  && <PurchaseInvoicesTab />}
+          {tab === 'inspector' && <DrugInspectorTab />}
+        </div>
       </div>
     </div>
   );
