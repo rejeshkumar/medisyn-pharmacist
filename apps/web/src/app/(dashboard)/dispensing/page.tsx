@@ -415,7 +415,7 @@ export default function DispensingPage() {
       if (splitRows.length > 1) {
         setTimeout(() => {
           toast.success(
-            \`Split across \${splitRows.length} batches: \${splitRows.map(r => \`\${r.batch_number} (×\${r.qty})\`).join(', ')}\`,
+            `Split across ${splitRows.length} batches: ${splitRows.map(r => r.batch_number + ' (\u00d7' + r.qty + ')').join(', ')}`,
             { duration: 4000 }
           );
         }, 100);
