@@ -32,8 +32,9 @@ export class MedicinesService {
 
     if (search) {
       qb.andWhere(
-        '(m.brand_name ILIKE :s OR m.molecule ILIKE :s)',
-        { s: `%${search}%` },
+        `(m.brand_name ILIKE :s OR m.molecule ILIKE :s
+          OR m.brand_name % :q OR m.molecule % :q)`,
+        { s: `%${search}%`, q: search },
       );
     }
     if (category)      qb.andWhere('m.category = :category',    { category });
@@ -257,10 +258,11 @@ export class MedicinesService {
        LEFT JOIN stock_batches sb ON sb.medicine_id = m.id
          AND sb.tenant_id = $1 AND sb.quantity > 0 AND sb.expiry_date > NOW()
        WHERE m.tenant_id = $1
-         AND LOWER(m.brand_name) LIKE LOWER($2)
+         AND (LOWER(m.brand_name) LIKE LOWER($2) OR m.brand_name % $3)
        GROUP BY m.id, m.brand_name, m.molecule, m.strength, m.dosage_form
+       ORDER BY similarity(m.brand_name, $3) DESC
        LIMIT 1`,
-      [tenantId, `%${medicineName}%`]
+      [tenantId, `%${medicineName}%`, medicineName]
     ).catch(() => []);
 
     if (!medicines?.length) {
@@ -347,9 +349,19 @@ export class MedicinesService {
          ), 0) AS substitute_count
        FROM medicines m
        WHERE m.tenant_id = $1 AND m.is_active = true
-         AND (m.brand_name ILIKE $2 OR m.molecule ILIKE $2 OR m.treatment_for ILIKE $2)
+         AND (
+           m.brand_name ILIKE $2
+           OR m.molecule ILIKE $2
+           OR m.treatment_for ILIKE $2
+           OR m.brand_name % $5
+           OR m.molecule % $5
+         )
        ORDER BY
+         -- Exact prefix match first
          CASE WHEN m.brand_name ILIKE $3 THEN 0 ELSE 1 END,
+         -- Then by similarity score (trigram)
+         similarity(m.brand_name, $5) DESC,
+         -- Then in-stock before out-of-stock
          CASE WHEN COALESCE((
            SELECT SUM(sb.quantity) FROM stock_batches sb
            WHERE sb.medicine_id = m.id AND sb.tenant_id = $1
@@ -357,7 +369,7 @@ export class MedicinesService {
          ), 0) > 0 THEN 0 ELSE 1 END,
          m.brand_name ASC
        LIMIT $4`,
-      [tenantId, `%${search}%`, `${search}%`, limit],
+      [tenantId, `%${search}%`, `${search}%`, limit, search],
     ).catch((err: any) => {
       console.error('[searchEnriched] failed:', err.message);
       return [];
