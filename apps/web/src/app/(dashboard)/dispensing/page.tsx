@@ -1068,7 +1068,7 @@ export default function DispensingPage() {
 
       {/* ── Mobile bottom bar ── */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 px-4 py-3 bg-white border-t border-slate-200 shadow-lg" style={{paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))"}}>
-        <button onClick={() => setShowBillPanel(true)}
+        <button onClick={handleBill}
           className="w-full py-3 bg-[#00475a] text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2">
           <ShoppingCart className="w-4 h-4" />
           Bill Summary · {formatCurrency(netTotal)}
