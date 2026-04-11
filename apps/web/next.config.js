@@ -1,11 +1,12 @@
-const withPWA = require('next-pwa')({
+const withPWA = require('next-pwa').default || require('next-pwa');
+
+const pwa = withPWA({
   dest: 'public',
   register: true,
   skipWaiting: true,
-  disable: process.env.NODE_ENV === 'development', // disable in dev to avoid noise
+  disable: process.env.NODE_ENV === 'development',
   runtimeCaching: [
     {
-      // Cache API responses for medicine search
       urlPattern: /\/medicines\/search-enriched/,
       handler: 'StaleWhileRevalidate',
       options: {
@@ -14,7 +15,6 @@ const withPWA = require('next-pwa')({
       },
     },
     {
-      // Cache static assets aggressively
       urlPattern: /\/_next\/static\/.*/,
       handler: 'CacheFirst',
       options: {
@@ -35,4 +35,4 @@ const nextConfig = {
   },
 };
 
-module.exports = withPWA(nextConfig);
+module.exports = pwa(nextConfig);

@@ -9,3 +9,10 @@ apps/api/dist/
 .env
 .env
 .env.local
+.env
+.env.local
+.env.production
+.env*.local
+apps/api/.env
+apps/web/.env
+.env.save
