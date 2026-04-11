@@ -6,3 +6,6 @@ apps/api/dist/
 .DS_Store
 **/.DS_Store
 *.bak
+.env
+.env
+.env.local
