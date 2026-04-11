@@ -4,8 +4,8 @@ import {
 } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import * as bcrypt from 'bcrypt';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import * as bcrypt from 'bcryptjs';
 
 // ── Super Admin Guard ─────────────────────────────────────────────────────────
 import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
