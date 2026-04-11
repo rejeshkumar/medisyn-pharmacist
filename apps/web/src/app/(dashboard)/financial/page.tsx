@@ -1160,28 +1160,97 @@ function BankImportTab() {
 
     try {
       const text = await file.text();
-      const lines = text.split('\n').filter(l => l.trim());
+      const rawLines = text.split('\n');
       const transactions = [];
 
-      for (const line of lines.slice(1)) { // skip header
-        const cols = line.split(',').map(c => c.trim().replace(/"/g, ''));
-        if (cols.length < 4) continue;
-        const [date, description, debit, credit, balance] = cols;
-        if (!date || !description) continue;
+      // ── Canara Bank / generic CSV parser ──────────────────────────────
+      // Find the header row dynamically — look for 'Txn Date' or 'Date'
+      let dataStartIdx = -1;
+      let colMap = { date: 0, description: 3, debit: 5, credit: 6, balance: 7 }; // Canara defaults
 
-        // Parse date - handle DD/MM/YYYY or DD-MM-YYYY
-        const dateParts = date.split(/[\/\-]/);
-        let parsedDate = date;
-        if (dateParts.length === 3 && dateParts[0].length === 2) {
-          parsedDate = `${dateParts[2]}-${dateParts[1].padStart(2,'0')}-${dateParts[0].padStart(2,'0')}`;
+      for (let i = 0; i < rawLines.length; i++) {
+        const lower = rawLines[i].toLowerCase();
+        if (lower.includes('txn date') || lower.includes('transaction date')) {
+          dataStartIdx = i + 1; // data starts after this header row
+          // Canara: Txn Date, Value Date, Cheque No., Description, Branch Code, Debit, Credit, Balance
+          colMap = { date: 0, description: 3, debit: 5, credit: 6, balance: 7 };
+          break;
+        } else if (lower.includes(',date,') || lower.startsWith('date,')) {
+          dataStartIdx = i + 1;
+          // Generic: Date, Description, Debit, Credit, Balance
+          colMap = { date: 0, description: 1, debit: 2, credit: 3, balance: 4 };
+          break;
         }
+      }
+
+      if (dataStartIdx === -1) {
+        toast.error('Could not find data header row. Check CSV format.');
+        setImporting(false);
+        return;
+      }
+
+      const dataLines = rawLines.slice(dataStartIdx).filter(l => l.trim());
+
+      for (const line of dataLines) {
+        // Handle quoted CSV fields (Canara wraps amounts in quotes)
+        const cols: string[] = [];
+        let current = '';
+        let inQuotes = false;
+        for (const ch of line) {
+          if (ch === '"') { inQuotes = !inQuotes; }
+          else if (ch === ',' && !inQuotes) { cols.push(current.trim()); current = ''; }
+          else { current += ch; }
+        }
+        cols.push(current.trim());
+
+        if (cols.length < 4) continue;
+
+        const rawDate    = cols[colMap.date]    || '';
+        const description = cols[colMap.description] || '';
+        const rawDebit   = cols[colMap.debit]   || '0';
+        const rawCredit  = cols[colMap.credit]  || '0';
+        const rawBalance = cols[colMap.balance] || '0';
+
+        if (!rawDate || rawDate.length < 8) continue;
+        if (!description || description.length < 2) continue;
+
+        // Parse date — handles:
+        // DD-MM-YYYY HH:MM:SS (Canara)
+        // DD/MM/YYYY
+        // YYYY-MM-DD
+        let parsedDate = rawDate;
+        const dateOnly = rawDate.split(' ')[0]; // strip time component
+        const parts = dateOnly.split(/[\/\-]/);
+        if (parts.length === 3) {
+          if (parts[0].length === 2) {
+            // DD-MM-YYYY → YYYY-MM-DD
+            parsedDate = `${parts[2].substring(0,4)}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+          } else if (parts[0].length === 4) {
+            // Already YYYY-MM-DD
+            parsedDate = dateOnly;
+          }
+        }
+
+        // Clean amounts — remove commas, spaces, Rs. prefix
+        const cleanAmt = (s: string) => parseFloat(s.replace(/[,\s₹Rs.]/g, '')) || 0;
+        const debit  = cleanAmt(rawDebit);
+        const credit = cleanAmt(rawCredit);
+        const balance = cleanAmt(rawBalance);
+
+        if (debit === 0 && credit === 0) continue; // skip zero-amount rows
+
+        // Extract UPI reference from Canara description
+        // Format: UPI/CR/644473344037/NAME/BANK/**ref@upi/...
+        const upiRefMatch = description.match(/UPI\/(?:CR|DR)\/([0-9]+)/i);
+        const reference = upiRefMatch ? upiRefMatch[1] : undefined;
 
         transactions.push({
           date:        parsedDate,
           description: description,
-          debit:       parseFloat(debit?.replace(/,/g,'') || '0') || 0,
-          credit:      parseFloat(credit?.replace(/,/g,'') || '0') || 0,
-          balance:     parseFloat(balance?.replace(/,/g,'') || '0') || null,
+          debit,
+          credit,
+          balance:     balance || null,
+          reference,
         });
       }
 
