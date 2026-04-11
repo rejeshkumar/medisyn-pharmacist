@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import {
-  TrendingUp, TrendingDown, DollarSign, ShoppingCart,
+  TrendingUp, TrendingDown, DollarSign, ShoppingCart, Upload,
   Users, Wallet, AlertTriangle, CheckCircle, Plus,
   Loader2, X, ChevronDown, RefreshCw, ArrowUpRight,
   ArrowDownRight, Building2, CreditCard, Smartphone,
