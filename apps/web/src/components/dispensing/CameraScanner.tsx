@@ -31,11 +31,9 @@ export default function CameraScanner({ onScan, onClose, title = 'Scan Barcode' 
       if (!devices?.length) { setError('No camera found'); setStatus('error'); return; }
       setCameras(devices);
       const cam = devices[Math.min(camIdx, devices.length - 1)];
-      const scanner = new Html5Qrcode('medisyn-qr-scanner', { verbose: false });
       scannerRef.current = scanner;
       await scanner.start(cam.id,
         { fps: 10, qrbox: { width: 250, height: 150 }, aspectRatio: 1.5,
-          formatsToSupport: [
             Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8,
             Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39,
             Html5QrcodeSupportedFormats.UPC_A, Html5QrcodeSupportedFormats.UPC_E,
