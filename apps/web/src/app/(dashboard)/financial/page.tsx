@@ -10,7 +10,7 @@ import {
   Users, Wallet, AlertTriangle, CheckCircle, Plus,
   Loader2, X, ChevronDown, RefreshCw, ArrowUpRight,
   ArrowDownRight, Building2, CreditCard, Smartphone,
-  Banknote, ReceiptText,
+  Banknote, ReceiptText, Upload, Hash, Link2, Link2Off,
 } from 'lucide-react';
 
 const EXPENSE_CATEGORIES = [
