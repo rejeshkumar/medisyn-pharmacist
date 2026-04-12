@@ -256,7 +256,7 @@ export default function DispensingPage() {
   const [patientSearch, setPatientSearch] = useState('');
 
   // Payment
-  const [paymentMode, setPaymentMode] = useState('cash');
+  const [paymentMode, setPaymentMode] = useState('');
   const [overallDiscount, setOverallDiscount] = useState(0);
   const [amountPaid, setAmountPaid] = useState<number | ''>(''); // NEW: partial payment
 
