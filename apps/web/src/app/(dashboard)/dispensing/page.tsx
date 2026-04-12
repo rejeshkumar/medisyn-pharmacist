@@ -277,6 +277,7 @@ export default function DispensingPage() {
   const [showScanner, setShowScanner] = useState(false);
   const [hybridCash, setHybridCash] = useState(0);
   const [hybridUpi, setHybridUpi] = useState(0);
+  const [showPaymentPrompt, setShowPaymentPrompt] = useState(false);
   const [showSubstitutes, setShowSubstitutes] = useState<string | null>(null);
   const [substitutesForMed, setSubstitutesForMed] = useState<any>(null);
   const [ddiResult, setDdiResult] = useState<any>(null);
@@ -593,6 +594,11 @@ export default function DispensingPage() {
         setShowDdiModal(true);
         return; // pause — pharmacist must acknowledge
       }
+    }
+    // If no payment mode selected, show payment prompt first
+    if (!paymentMode) {
+      setShowPaymentPrompt(true);
+      return;
     }
     setShowPreview(true);
   };
@@ -1183,6 +1189,52 @@ export default function DispensingPage() {
       </div>
 
       {/* ── Modals ── */}
+
+      {/* ── Barcode Scanner Modal ── */}
+      {showScanner && (
+        <BarcodeScanner
+          onFound={(medicine, batch) => {
+            handleSelectMedicine({ ...medicine, fefo_batch: batch, total_stock: batch?.quantity || 0 }, searchValues.length - 1);
+            setShowScanner(false);
+          }}
+          onClose={() => setShowScanner(false)}
+        />
+      )}
+
+      {/* ── Payment Mode Prompt ── */}
+      {showPaymentPrompt && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <h3 className="font-bold text-gray-900 text-lg mb-1">Select Payment Mode</h3>
+            <p className="text-sm text-gray-500 mb-5">How is the patient paying?</p>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              {[
+                { mode: 'cash',   label: '💵 Cash',    color: 'bg-green-50 border-green-200 text-green-800 hover:bg-green-100' },
+                { mode: 'upi',    label: '📱 UPI',     color: 'bg-blue-50 border-blue-200 text-blue-800 hover:bg-blue-100' },
+                { mode: 'card',   label: '💳 Card',    color: 'bg-purple-50 border-purple-200 text-purple-800 hover:bg-purple-100' },
+                { mode: 'online', label: '🌐 Online',  color: 'bg-cyan-50 border-cyan-200 text-cyan-800 hover:bg-cyan-100' },
+                { mode: 'hybrid', label: '💵+📱 Split', color: 'bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100' },
+                { mode: 'credit', label: '📋 Credit',  color: 'bg-red-50 border-red-200 text-red-800 hover:bg-red-100' },
+              ].map(({ mode, label, color }) => (
+                <button key={mode}
+                  onClick={() => {
+                    setPaymentMode(mode);
+                    setShowPaymentPrompt(false);
+                    setTimeout(() => setShowPreview(true), 50);
+                  }}
+                  className={`py-3 px-4 rounded-xl border-2 text-sm font-semibold transition-all ${color}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            <button onClick={() => setShowPaymentPrompt(false)}
+              className="w-full py-2 text-sm text-gray-400 hover:text-gray-600">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {showPreview && (
         <BillDocument
           data={{
