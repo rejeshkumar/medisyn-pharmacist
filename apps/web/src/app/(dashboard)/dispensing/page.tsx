@@ -37,7 +37,8 @@ interface CartItem {
   chronic_category?: string;
   create_care_plan: boolean;
   all_batches?: any[];
-  discount_reason?: string; // all available batches for auto-split
+  discount_reason?: string;
+  tabs_per_strip?: number; // all available batches for auto-split
 }
 
 interface DraftBill {
@@ -146,6 +147,9 @@ function MedSearchDropdown({
                   <span className="text-[#00475a] font-medium">{med.molecule}</span>
                   <span>·</span><span>{med.strength}</span>
                   <span>·</span><span>{med.dosage_form}</span>
+                  {med.tabs_per_strip > 1 && (
+                    <><span>·</span><span className="font-bold text-[#00475a] bg-teal-50 px-1.5 py-0.5 rounded">{med.tabs_per_strip}'s</span></>
+                  )}
                   {med.manufacturer && <><span>·</span><span className="italic">{med.manufacturer}</span></>}
                   {med.rack_location && <><span>·</span><span className="text-blue-600 font-medium">📍{med.rack_location}</span></>}
                   {fefo?.sale_rate && <><span>·</span><span className="font-semibold text-gray-700">₹{Number(fefo.sale_rate).toFixed(2)}</span></>}
@@ -327,6 +331,7 @@ export default function DispensingPage() {
         rack_location:     med.rack_location || '',
         is_substituted:    false,
         schedule_class:    med.schedule_class,
+        tabs_per_strip:    med.tabs_per_strip || 1,
         is_chronic:        isChronicDetected,
         chronic_category:  med.chronic_category || '',
         create_care_plan:  isChronicDetected,
@@ -876,6 +881,11 @@ export default function DispensingPage() {
                         : 'text-green-600'
                       }`}>
                         {item.avl_qty}
+                        {(item.tabs_per_strip || 1) > 1 && item.avl_qty > 0 && (
+                          <span className="block text-[9px] text-[#00475a] font-semibold">
+                            {Math.floor(item.avl_qty / (item.tabs_per_strip||1))} strips
+                          </span>
+                        )}
                         {item.qty > item.avl_qty && item.avl_qty > 0 && (
                           <span className="block text-[9px] text-red-500 font-bold">⚠ Exceeds stock</span>
                         )}
@@ -891,6 +901,18 @@ export default function DispensingPage() {
                           }
                         }}
                         className="w-16 text-center text-sm font-bold border border-slate-200 rounded focus:outline-none focus:border-[#00475a] py-1" />
+                      {(item.tabs_per_strip || 1) > 1 && item.qty > 0 && (() => {
+                        const tps = item.tabs_per_strip || 1;
+                        const strips = Math.floor(item.qty / tps);
+                        const loose = item.qty % tps;
+                        return (
+                          <div className="text-[9px] text-[#00475a] font-semibold mt-0.5 leading-tight">
+                            {strips > 0 && loose > 0 && `${strips}×${tps}'s+${loose}`}
+                            {strips > 0 && loose === 0 && `${strips}×${tps}'s`}
+                            {strips === 0 && loose > 0 && `${loose} tabs`}
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="px-3 py-2 text-right text-sm font-medium text-slate-700">
                       ₹{Number(item.rate).toFixed(2)}
@@ -898,6 +920,15 @@ export default function DispensingPage() {
                     <td className="px-3 py-2">
                       <div className="space-y-1">
                         <div className="flex items-center gap-1">
+                          <input id={`disc-amt-${idx}`} type="number" min={0}
+                            value={item.line_discount_pct > 0 ? (lineTotal(item) / (1 - item.line_discount_pct/100) * item.line_discount_pct/100).toFixed(0) : ''}
+                            onChange={e => {
+                              const amt = Number(e.target.value) || 0;
+                              const base = item.qty * item.rate;
+                              if (base > 0) updateItem(idx, 'line_discount_pct', Math.min(100, parseFloat(((amt / base) * 100).toFixed(2))));
+                            }}
+                            placeholder="₹"
+                            className="w-10 text-center text-xs border border-slate-200 rounded focus:outline-none focus:border-[#00475a] px-1" />
                           <input id={`disc-${idx}`} type="number" min={0} max={100}
                             value={item.line_discount_pct}
                             onChange={e => updateItem(idx, 'line_discount_pct', Math.min(100, Math.max(0, Number(e.target.value))))}
