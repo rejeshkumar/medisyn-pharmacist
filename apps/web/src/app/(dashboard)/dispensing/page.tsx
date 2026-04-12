@@ -294,6 +294,20 @@ export default function DispensingPage() {
   }, []);
 
   useEffect(() => { loadDrafts(); }, [loadDrafts]);
+
+  // ── Add medicine to cart from search ──────────────────────────────────
+  const handleSelectMedicine = async (med: any, rowIdx: number) => {
+    try {
+      const { data: bestBatch } = await api.get(`/stock/${med.id}/best-batch`);
+      if (!bestBatch) {
+        setSubstitutesForMed(med);
+        setShowSubstitutes(med.id);
+        toast('No stock — showing substitutes', { icon: '⚠️' });
+        return;
+      }
+      const isChronicByMolecule = med.is_chronic === true;
+      const isChronicByQtySchedule = (
+        Number(bestBatch.quantity) >= 20 &&
         ['H', 'H1'].includes(med.schedule_class)
       );
       const isChronicDetected = isChronicByMolecule || isChronicByQtySchedule;
