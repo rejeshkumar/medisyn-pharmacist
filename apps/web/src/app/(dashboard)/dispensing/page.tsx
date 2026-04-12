@@ -294,34 +294,6 @@ export default function DispensingPage() {
   }, []);
 
   useEffect(() => { loadDrafts(); }, [loadDrafts]);
-
-  // ── Keyboard shortcut: Ctrl+N for new bill ──────────────────────────────
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
-        e.preventDefault();
-        if (cart.length === 0) return;
-        holdAndNew();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [cart, holdAndNew]);
-
-  // ── Add medicine to cart from search ──────────────────────────────────
-  const handleSelectMedicine = async (med: any, rowIdx: number) => {
-    try {
-      const { data: bestBatch } = await api.get(`/stock/${med.id}/best-batch`);
-      if (!bestBatch) {
-        setSubstitutesForMed(med);
-        setShowSubstitutes(med.id);
-        toast('No stock — showing substitutes', { icon: '⚠️' });
-        return;
-      }
-      // ── 3-signal chronic detection ─────────────────────────────
-      const isChronicByMolecule = med.is_chronic === true;
-      const isChronicByQtySchedule = (
-        Number(bestBatch.quantity) >= 20 &&
         ['H', 'H1'].includes(med.schedule_class)
       );
       const isChronicDetected = isChronicByMolecule || isChronicByQtySchedule;
@@ -492,6 +464,18 @@ export default function DispensingPage() {
       toast.error(e.response?.data?.message || 'Failed to hold bill');
     } finally { setHoldingBill(false); }
   };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "n") {
+        e.preventDefault();
+        if (cart.length === 0) return;
+        holdAndNew();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [cart, holdAndNew]);
 
   const switchToDraft = async (id: string) => {
     if (id === 'current') { setActiveDraftId('current'); return; }
