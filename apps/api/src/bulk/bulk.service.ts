@@ -141,27 +141,8 @@ export class BulkService {
     let successCount = 0;
     for (const item of toInsert) {
       try {
-        let medicine = await this.medicineRepo.findOne({ where: { brand_name: item.brandName } });
-        if (!medicine) {
-          // Auto-create medicine so stock import never fails on missing master
-          try {
-            medicine = await this.medicineRepo.save(this.medicineRepo.create({
-              brand_name: item.brandName,
-              molecule: item.brandName,
-              strength: 'As per label',
-              dosage_form: DosageForm.TABLET,
-              schedule_class: ScheduleClass.OTC,
-              gst_percent: 5,
-              mrp: item.saleRate ? item.saleRate * 1.1 : 0,
-              sale_rate: item.saleRate || 0,
-              substitute_group_key: item.brandName
-                .toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''),
-            }));
-          } catch (createErr) {
-            errors.push({ row: 0, error: `Could not create medicine: ${item.brandName}`, data: item });
-            continue;
-          }
-        }
+        const medicine = await this.medicineRepo.findOne({ where: { brand_name: item.brandName } });
+        if (!medicine) { errors.push({ row: 0, error: `Medicine not found: ${item.brandName}`, data: item }); continue; }
 
         let supplierId = null;
         if (item.supplierName) {
@@ -172,18 +153,7 @@ export class BulkService {
 
         await this.batchRepo.save(this.batchRepo.create({
           medicine_id: medicine.id, batch_number: item.batchNo,
-          expiry_date: (() => {
-            const exp = String(item.expiry ?? '');
-            if (/^\d{4}-\d{2}-\d{2}$/.test(exp)) {
-              const [yyyy,mm] = exp.split('-');
-              return new Date(parseInt(yyyy), parseInt(mm)-1, 1);
-            }
-            if (/^\d{1,2}\/\d{4}$/.test(exp)) {
-              const [mm,yyyy] = exp.split('/');
-              return new Date(parseInt(yyyy), parseInt(mm)-1, 1);
-            }
-            return new Date(exp);
-          })(),
+          expiry_date: new Date(`01/${item.expiry}`),
           quantity: item.qty, purchase_price: item.purchasePrice,
           mrp: item.saleRate * 1.1, sale_rate: item.saleRate, supplier_id: supplierId,
         }));
@@ -194,16 +164,7 @@ export class BulkService {
     }
 
     await this.logActivity({ action_type: BulkActionType.BULK_IMPORT_STOCK, file_name: fileName, total_rows: toInsert.length, success_rows: successCount, failed_rows: errors.length, performed_by: userId });
-    return {
-      success: successCount > 0,
-      total_rows: toInsert.length,
-      success_rows: successCount,
-      failed_rows: errors.length,
-      errors: errors.map(e => ({ row: e.row ?? 0, error: e.error ?? String(e) })),
-      message: successCount > 0
-        ? `${successCount} stock batches imported successfully.`
-        : `Import failed. ${errors.length} rows had errors.`,
-    };
+    return { success: successCount > 0, total_rows: toInsert.length, success_rows: successCount, failed_rows: errors.length };
   }
 
   async getLogs(userId?: string) {
@@ -402,4 +363,3 @@ export class BulkService {
     return this.logRepo.save(this.logRepo.create(data));
   }
 }
-// Thu Apr  2 22:51:15 IST 2026
