@@ -94,18 +94,6 @@ function MedSearchDropdown({
 
   useEffect(() => { if (results?.length) setOpen(true); }, [results]);
 
-  // ── Keyboard shortcut: Ctrl+N for new bill ──────────────────────────────
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
-        e.preventDefault();
-        if (cart.length === 0) return;
-        holdAndNew();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [cart, holdAndNew]);
 
   return (
     <div ref={ref} className="relative w-full">
@@ -306,6 +294,19 @@ export default function DispensingPage() {
   }, []);
 
   useEffect(() => { loadDrafts(); }, [loadDrafts]);
+
+  // ── Keyboard shortcut: Ctrl+N for new bill ──────────────────────────────
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+        e.preventDefault();
+        if (cart.length === 0) return;
+        holdAndNew();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [cart, holdAndNew]);
 
   // ── Add medicine to cart from search ──────────────────────────────────
   const handleSelectMedicine = async (med: any, rowIdx: number) => {
