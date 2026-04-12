@@ -10,6 +10,7 @@ const CLINIC = {
   subname: 'Pharmacy',
   address: 'TMC XVII-1260,1261,1264,1265, CHIRVAKKU JUNCTION, TALIPARAMBA, KANNUR KERALA, PO 670141',
   phone: '6282208880',
+  landline: '04602 220880',
   email: 'pharmacy@medisyn.in',
   gstin: 'GSTIN: 32ACEFM2008C1Z1',
   dl_no: 'DL: RLF20KL2025003081 / RLF21KL2025003073',
@@ -32,6 +33,7 @@ export interface BillData {
   date?: Date | string;
   pharmacist?: string;
   patientName?: string;
+  patientId?: string;
   doctorName?: string;
   doctorRegNo?: string;
   paymentMode: string;
@@ -175,7 +177,7 @@ export default function BillDocument({ data, mode, onClose, onConfirm, isLoading
                 <p className="text-sm font-semibold text-gray-600">{CLINIC.subname}</p>
                 <p className="text-[11px] text-gray-500 mt-1 leading-5">
                   {CLINIC.address}<br />
-                  Ph: {CLINIC.phone} &nbsp;|&nbsp; {CLINIC.email}<br />
+                  Ph: {CLINIC.phone} &nbsp;|&nbsp; Land: {CLINIC.landline} &nbsp;|&nbsp; {CLINIC.email}<br />
                   {CLINIC.gstin} &nbsp;|&nbsp; {CLINIC.dl_no}
                 </p>
                 <p className="mt-2 text-sm font-bold uppercase tracking-widest text-gray-800">
@@ -205,6 +207,7 @@ export default function BillDocument({ data, mode, onClose, onConfirm, isLoading
                   {data.patientName && (
                     <p><span className="text-gray-500">Patient: </span>
                       <span className="font-semibold">{data.patientName}</span>
+                      {data.patientId && <span className="text-gray-400 text-[10px] ml-1">(ID: {data.patientId})</span>}
                     </p>
                   )}
                   {data.doctorName && (
@@ -312,9 +315,14 @@ export default function BillDocument({ data, mode, onClose, onConfirm, isLoading
                 </div>
               </div>
 
-              <div className="text-center mt-4 text-[11px] text-gray-400 border-t border-dashed border-gray-300 pt-3">
+              <div className="mt-4 bg-gray-50 border border-gray-200 rounded px-3 py-2 text-[10px] text-gray-500">
+                <strong>Disclaimer:</strong> Medicines once dispensed cannot be returned or exchanged. 
+                Please verify medicines at the time of purchase. Keep medicines out of reach of children. 
+                Store as per label instructions.
+              </div>
+              <div className="text-center mt-3 text-[11px] text-gray-400 border-t border-dashed border-gray-300 pt-3">
                 Thank you for choosing MediSyn Specialty Clinic &nbsp;•&nbsp; Get well soon!<br />
-                <span className="text-[10px]">This is a computer-generated bill</span>
+                <span className="text-[10px]">This is a computer-generated bill &nbsp;|&nbsp; Powered by MediSyn</span>
               </div>
 
             </div>

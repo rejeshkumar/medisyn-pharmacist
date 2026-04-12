@@ -1,14 +1,156 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import toast from 'react-hot-toast';
 import api from '@/lib/api';
 import { Scan, X, Loader2, AlertTriangle, Hash, Camera } from 'lucide-react';
-import toast from 'react-hot-toast';
 
 interface Props {
   onFound: (medicine: any, batch: any) => void;
   onClose: () => void;
 }
+
+// ── Camera Scanner using native browser APIs ─────────────────────────────────
+function CameraScanner({ onDetected }: { onDetected: (code: string) => void }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [error, setError] = useState('');
+  const [scanning, setScanning] = useState(false);
+  const streamRef = useRef<MediaStream | null>(null);
+  const intervalRef = useRef<any>(null);
+
+  useEffect(() => {
+    startCamera();
+    return () => stopCamera();
+  }, []);
+
+  const stopCamera = () => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
+    setScanning(false);
+  };
+
+  const startCamera = async () => {
+    try {
+      setError('');
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+        setScanning(true);
+        // Try ZXing if available, otherwise show manual fallback
+        tryZxingLoad();
+      }
+    } catch (err: any) {
+      if (err.name === 'NotAllowedError') {
+        setError('Camera permission denied. Please allow camera access and try again.');
+      } else if (err.name === 'NotFoundError') {
+        setError('No camera found on this device.');
+      } else {
+        setError('Camera error: ' + err.message);
+      }
+    }
+  };
+
+  const tryZxingLoad = () => {
+    // Dynamically load ZXing barcode library
+    if ((window as any).ZXing) {
+      startZxingScanning();
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js';
+    script.onload = () => startZxingScanning();
+    script.onerror = () => {
+      // Fallback: manual capture button
+      setError('');
+    };
+    document.head.appendChild(script);
+  };
+
+  const startZxingScanning = () => {
+    const ZXing = (window as any).ZXing;
+    if (!ZXing || !videoRef.current) return;
+    try {
+      const codeReader = new ZXing.BrowserMultiFormatReader();
+      codeReader.decodeFromVideoElement(videoRef.current, (result: any, err: any) => {
+        if (result) {
+          onDetected(result.getText());
+          stopCamera();
+        }
+      });
+    } catch {}
+  };
+
+  const captureFrame = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const video = videoRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d')?.drawImage(video, 0, 0);
+    // With ZXing loaded, attempt decode
+    const ZXing = (window as any).ZXing;
+    if (ZXing) {
+      try {
+        const codeReader = new ZXing.BrowserMultiFormatReader();
+        codeReader.decodeFromCanvas(canvas)
+          .then((result: any) => { if (result) onDetected(result.getText()); })
+          .catch(() => toast.error('No barcode detected — try again'));
+      } catch { toast.error('Could not read barcode'); }
+    }
+  };
+
+  if (error) return (
+    <div className="text-center py-6 space-y-3">
+      <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto" />
+      <p className="text-sm text-slate-600">{error}</p>
+      <button onClick={startCamera}
+        className="px-4 py-2 bg-[#00475a] text-white rounded-lg text-sm font-medium">
+        Try Again
+      </button>
+    </div>
+  );
+
+  return (
+    <div className="space-y-3">
+      <div className="relative rounded-xl overflow-hidden bg-black aspect-video">
+        <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
+        <canvas ref={canvasRef} className="hidden" />
+        {/* Scanning overlay */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="w-48 h-32 border-2 border-white/70 rounded-lg relative">
+            <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-[#00d4aa] rounded-tl" />
+            <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-[#00d4aa] rounded-tr" />
+            <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-[#00d4aa] rounded-bl" />
+            <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-[#00d4aa] rounded-br" />
+          </div>
+        </div>
+        {scanning && (
+          <div className="absolute bottom-2 left-0 right-0 text-center">
+            <span className="text-white text-xs bg-black/50 px-3 py-1 rounded-full">
+              Point camera at barcode
+            </span>
+          </div>
+        )}
+      </div>
+      <button onClick={captureFrame}
+        className="w-full py-2.5 bg-[#00475a] text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2">
+        <Camera className="w-4 h-4" /> Capture Barcode
+      </button>
+      <p className="text-xs text-slate-400 text-center">
+        Auto-scanning active • or tap Capture to scan manually
+      </p>
+    </div>
+  );
+}
+
 
 export default function BarcodeScanner({ onFound, onClose }: Props) {
   const [mode, setMode]           = useState<'camera' | 'manual'>('manual');
@@ -108,11 +250,7 @@ export default function BarcodeScanner({ onFound, onClose }: Props) {
           )}
 
           {mode === 'camera' && (
-            <div className="text-center py-6 text-slate-400">
-              <Camera className="w-10 h-10 mx-auto mb-2 opacity-30" />
-              <p className="text-sm">Camera scanning requires a barcode library.</p>
-              <p className="text-xs mt-1">Use USB scanner or manual entry for now.</p>
-            </div>
+            <CameraScanner onDetected={(code) => { setBarcode(code); lookup(code); }} />
           )}
 
           {/* Not found — offer to map */}
