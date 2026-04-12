@@ -37,7 +37,9 @@ interface CartItem {
   chronic_category?: string;
   create_care_plan: boolean;
   all_batches?: any[];
-  discount_reason?: string; // all available batches for auto-split
+  discount_reason?: string;
+  tabs_per_strip?: number;
+  max_discount_pct?: number | null;
 }
 
 interface DraftBill {
