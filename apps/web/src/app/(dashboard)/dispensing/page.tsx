@@ -37,8 +37,7 @@ interface CartItem {
   chronic_category?: string;
   create_care_plan: boolean;
   all_batches?: any[];
-  discount_reason?: string;
-  tabs_per_strip?: number; // all available batches for auto-split
+  discount_reason?: string; // all available batches for auto-split
 }
 
 interface DraftBill {
@@ -97,6 +96,12 @@ function MedSearchDropdown({
 
 
   return (
+    <>
+    <style>{`
+      input[type=number]::-webkit-inner-spin-button,
+      input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+      input[type=number] { -moz-appearance: textfield; }
+    `}</style>
     <div ref={ref} className="relative w-full">
       <input
         type="text" value={value}
@@ -147,8 +152,8 @@ function MedSearchDropdown({
                   <span className="text-[#00475a] font-medium">{med.molecule}</span>
                   <span>·</span><span>{med.strength}</span>
                   <span>·</span><span>{med.dosage_form}</span>
-                  {med.tabs_per_strip > 1 && (
-                    <><span>·</span><span className="font-bold text-[#00475a] bg-teal-50 px-1.5 py-0.5 rounded">{med.tabs_per_strip}'s</span></>
+                  {(med.tabs_per_strip || 1) > 1 && (
+                    <><span>·</span><span className="font-bold text-[#00475a] bg-teal-50 px-1 rounded">{med.tabs_per_strip}'s</span></>
                   )}
                   {med.manufacturer && <><span>·</span><span className="italic">{med.manufacturer}</span></>}
                   {med.rack_location && <><span>·</span><span className="text-blue-600 font-medium">📍{med.rack_location}</span></>}
@@ -189,6 +194,7 @@ function MedSearchDropdown({
         </div>
       )}
     </div>
+    </>
   );
 }
 
@@ -323,7 +329,7 @@ export default function DispensingPage() {
         molecule:          med.molecule || '',
         batch_number:      bestBatch.batch_number,
         expiry_date:       bestBatch.expiry_date,
-        qty:               1,
+        qty:               0,
         rate:              Number(bestBatch.sale_rate),
         line_discount_pct: 0,
         gst_percent:       Number(med.gst_percent || 0),
@@ -332,6 +338,7 @@ export default function DispensingPage() {
         is_substituted:    false,
         schedule_class:    med.schedule_class,
         tabs_per_strip:    med.tabs_per_strip || 1,
+        max_discount_pct:  med.max_discount_pct ?? null,
         is_chronic:        isChronicDetected,
         chronic_category:  med.chronic_category || '',
         create_care_plan:  isChronicDetected,
@@ -559,6 +566,15 @@ export default function DispensingPage() {
   };
 
   const handleBill = async () => {
+    // Check max discount violations
+    const violations = cart.filter(i =>
+      i.max_discount_pct != null && i.line_discount_pct > i.max_discount_pct
+    );
+    if (violations.length > 0) {
+      toast.error(`Discount exceeds limit on: ${violations.map(v => v.medicine_name).join(', ')}`);
+      return;
+    }
+
     if (cart.length === 0) { toast.error('Cart is empty'); return; }
     const overQty = cart.filter(i => i.avl_qty > 0 && i.qty > i.avl_qty);
     if (overQty.length > 0) {
@@ -819,14 +835,14 @@ export default function DispensingPage() {
           <table className="w-full border-collapse">
             <thead className="bg-slate-100 sticky top-0 z-10">
               <tr>
-                <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 uppercase w-8">No</th>
-                <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 uppercase">Medicine / Batch</th>
-                <th className="px-3 py-2 text-center text-[10px] font-bold text-slate-500 uppercase w-20">Avl.Qty</th>
-                <th className="px-3 py-2 text-center text-[10px] font-bold text-slate-500 uppercase w-20">Qty</th>
-                <th className="px-3 py-2 text-right text-[10px] font-bold text-slate-500 uppercase w-24">Rate</th>
-                <th className="px-3 py-2 text-center text-[10px] font-bold text-slate-500 uppercase w-20">Dis%</th>
-                <th className="px-3 py-2 text-right text-[10px] font-bold text-slate-500 uppercase w-28">Amount</th>
-                <th className="px-3 py-2 w-8"></th>
+                <th className="px-2 py-2 text-left text-[10px] font-bold text-slate-500 uppercase w-7">No</th>
+                <th className="px-2 py-2 text-left text-[10px] font-bold text-slate-500 uppercase">Medicine / Batch</th>
+                <th className="px-2 py-2 text-center text-[10px] font-bold text-slate-500 uppercase w-16">Avl.Qty</th>
+                <th className="px-2 py-2 text-center text-[10px] font-bold text-slate-500 uppercase w-20">Qty</th>
+                <th className="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase w-20">Rate</th>
+                <th className="px-2 py-2 text-center text-[10px] font-bold text-slate-500 uppercase w-40">Discount</th>
+                <th className="px-2 py-2 text-right text-[10px] font-bold text-slate-500 uppercase w-24">Amount</th>
+                <th className="px-2 py-2 w-7"></th>
               </tr>
             </thead>
             <tbody>
@@ -892,7 +908,7 @@ export default function DispensingPage() {
                       </span>
                     </td>
                     <td className="px-3 py-2 text-center">
-                      <input id={`qty-${idx}`} type="number" min={1} value={item.qty}
+                      <input id={`qty-${idx}`} type="number" min={1} value={item.qty || ''}
                         onChange={e => updateItem(idx, 'qty', Math.max(1, Number(e.target.value)))}
                         onKeyDown={e => {
                           if (e.key === 'Tab') {
@@ -906,10 +922,8 @@ export default function DispensingPage() {
                         const strips = Math.floor(item.qty / tps);
                         const loose = item.qty % tps;
                         return (
-                          <div className="text-[9px] text-[#00475a] font-semibold mt-0.5 leading-tight">
-                            {strips > 0 && loose > 0 && `${strips}×${tps}'s+${loose}`}
-                            {strips > 0 && loose === 0 && `${strips}×${tps}'s`}
-                            {strips === 0 && loose > 0 && `${loose} tabs`}
+                          <div className="text-[9px] text-[#00475a] font-semibold mt-0.5 text-center">
+                            {strips > 0 && loose > 0 ? `${strips}×${tps}+${loose}` : strips > 0 ? `${strips}×${tps}'s` : `${loose} tab`}
                           </div>
                         );
                       })()}
@@ -917,20 +931,22 @@ export default function DispensingPage() {
                     <td className="px-3 py-2 text-right text-sm font-medium text-slate-700">
                       ₹{Number(item.rate).toFixed(2)}
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="px-2 py-2">
                       <div className="space-y-1">
                         <div className="flex items-center gap-1">
-                          <input id={`disc-amt-${idx}`} type="number" min={0}
-                            value={item.line_discount_pct > 0 ? (lineTotal(item) / (1 - item.line_discount_pct/100) * item.line_discount_pct/100).toFixed(0) : ''}
+                          <span className="text-[10px] text-slate-400 shrink-0">₹</span>
+                          <input type="number" min={0}
+                            value={item.line_discount_pct > 0 ? (item.qty * item.rate * item.line_discount_pct / 100).toFixed(0) : ''}
                             onChange={e => {
                               const amt = Number(e.target.value) || 0;
                               const base = item.qty * item.rate;
                               if (base > 0) updateItem(idx, 'line_discount_pct', Math.min(100, parseFloat(((amt / base) * 100).toFixed(2))));
+                              else updateItem(idx, 'line_discount_pct', 0);
                             }}
-                            placeholder="₹"
-                            className="w-10 text-center text-xs border border-slate-200 rounded focus:outline-none focus:border-[#00475a] px-1" />
+                            placeholder="0"
+                            className="w-12 text-center text-xs border border-slate-200 rounded focus:outline-none focus:border-[#00475a] px-1 py-0.5" />
                           <input id={`disc-${idx}`} type="number" min={0} max={100}
-                            value={item.line_discount_pct}
+                            value={item.line_discount_pct || ''}
                             onChange={e => updateItem(idx, 'line_discount_pct', Math.min(100, Math.max(0, Number(e.target.value))))}
                             onKeyDown={e => {
                               if (e.key === 'Tab') {
@@ -939,20 +955,26 @@ export default function DispensingPage() {
                                 if (nextSearch) nextSearch.focus();
                                 else {
                                   const newSearchVals = [...searchValues];
-                              if (newSearchVals.length <= idx + 1) newSearchVals.push('');
-                              setSearchValues(newSearchVals);
-                              setTimeout(() => document.getElementById(`search-${idx + 1}`)?.focus(), 50);
-                            }
-                          }
-                        }}
-                        className="w-10 text-center text-xs border border-slate-200 rounded focus:outline-none focus:border-[#00475a] px-1" />
-                          <span className="text-xs text-slate-400">%</span>
+                                  if (newSearchVals.length <= idx + 1) newSearchVals.push('');
+                                  setSearchValues(newSearchVals);
+                                  setTimeout(() => document.getElementById(`search-${idx + 1}`)?.focus(), 50);
+                                }
+                              }
+                            }}
+                            placeholder="0"
+                            className="w-10 text-center text-xs border border-slate-200 rounded focus:outline-none focus:border-[#00475a] px-1 py-0.5" />
+                          <span className="text-[10px] text-slate-400">%</span>
                         </div>
+                        {item.line_discount_pct > 0 && item.max_discount_pct != null && item.line_discount_pct > item.max_discount_pct && (
+                          <p className="text-[9px] text-red-600 font-bold">⚠ Max {item.max_discount_pct}% allowed</p>
+                        )}
                         {item.line_discount_pct > 0 && (
                           <select
                             value={item.discount_reason || ''}
                             onChange={e => updateItem(idx, 'discount_reason', e.target.value)}
-                            className="w-full text-[10px] border border-amber-200 rounded px-1 py-0.5 bg-amber-50 focus:outline-none focus:border-[#00475a]">
+                            className={`w-full text-[10px] border rounded px-1 py-0.5 focus:outline-none focus:border-[#00475a] ${
+                              !item.discount_reason ? 'border-red-300 bg-red-50 text-red-600' : 'border-amber-200 bg-amber-50 text-amber-800'
+                            }`}>
                             <option value="">Reason *</option>
                             <option>Staff discount</option>
                             <option>Owner discount</option>

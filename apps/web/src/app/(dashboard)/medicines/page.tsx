@@ -48,6 +48,7 @@ const EMPTY_FORM = {
   stock_group:'', treatment_for:'', description:'', discount_percent:0,
   rack_location:'', intake_route:'Oral', reorder_qty:0,
   is_rx_required:false, is_fast_moving:false,
+  max_discount_pct:'', tabs_per_strip:1,
 };
 
 export default function MedicinesPage() {
@@ -419,6 +420,14 @@ export default function MedicinesPage() {
                   <div><label className="label">Sale Rate (₹)</label><input type="number" className="input" value={form.sale_rate} onChange={e => set('sale_rate', e.target.value)} placeholder="0.00" min={0} /></div>
                   <div><label className="label">GST %</label><input type="number" className="input" value={form.gst_percent} onChange={e => set('gst_percent', e.target.value)} min={0} max={28} /></div>
                   <div><label className="label">Discount %</label><input type="number" className="input" value={form.discount_percent} onChange={e => set('discount_percent', e.target.value)} min={0} max={100} /></div>
+                  <div>
+                    <label className="label">Max Discount % <span className="text-gray-400 font-normal">(leave blank = no limit)</span></label>
+                    <input type="number" className="input" value={form.max_discount_pct} onChange={e => set('max_discount_pct', e.target.value)} min={0} max={100} placeholder="e.g. 10" />
+                  </div>
+                  <div>
+                    <label className="label">Tabs / Caps per Strip</label>
+                    <input type="number" className="input" value={form.tabs_per_strip} onChange={e => set('tabs_per_strip', Number(e.target.value))} min={1} placeholder="e.g. 10, 14, 15" />
+                  </div>
                 </div>
               </div>
 
