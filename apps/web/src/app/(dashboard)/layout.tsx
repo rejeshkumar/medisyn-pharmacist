@@ -82,6 +82,7 @@ const OWNER_NAV_SECTIONS = [
       { href: '/compliance',         label: 'Compliance',    icon: Shield      },
       { href: '/reports',            label: 'Reports',       icon: BarChart3   },
       { href: '/financial', label: 'Financial', icon: DollarSign },
+      { href: '/day-close', label: 'End of Day', icon: DollarSign },
       { href: '/analytics',          label: 'Behaviour',     icon: Users         },
     ],
   },
