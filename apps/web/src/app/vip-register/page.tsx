@@ -19,6 +19,7 @@ export default function VipRegisterPage() {
     salutation: 'Mr', first_name: '', last_name: '', gender: 'male',
     dob: '', mobile: '', email: '', area: '', address: '',
     vip_registered_by: '',
+    vip_category: 'individual',
   });
 
   const set = (f: string, v: string) => setForm((p) => ({ ...p, [f]: v }));
@@ -146,14 +147,44 @@ export default function VipRegisterPage() {
                 <input type="email" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="email@example.com" />
               </div>
 
+              {/* VIP Category Selection */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-2">VIP Pass Category *</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { key: 'individual', label: 'Individual', price: 599, desc: '1 person' },
+                    { key: 'family',     label: 'Family',     price: 999, desc: 'Up to 4' },
+                    { key: 'extended',   label: 'Extended',   price: 1499, desc: 'Up to 8' },
+                  ].map(cat => (
+                    <button type="button" key={cat.key}
+                      onClick={() => set('vip_category', cat.key)}
+                      className={`p-3 rounded-xl border-2 text-center transition-all ${
+                        form.vip_category === cat.key
+                          ? 'border-amber-500 bg-amber-50'
+                          : 'border-gray-200 hover:border-amber-300'
+                      }`}>
+                      <p className={`text-xs font-bold ${form.vip_category === cat.key ? 'text-amber-700' : 'text-gray-700'}`}>{cat.label}</p>
+                      <p className={`text-lg font-bold mt-0.5 ${form.vip_category === cat.key ? 'text-amber-600' : 'text-gray-800'}`}>₹{cat.price}</p>
+                      <p className="text-[10px] text-gray-400">{cat.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Area / Locality</label>
                   <input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" value={form.area} onChange={(e) => set('area', e.target.value)} placeholder="Area" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Registered By</label>
-                  <input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" value={form.vip_registered_by} onChange={(e) => set('vip_registered_by', e.target.value)} placeholder="Sales staff name" />
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Sold By *</label>
+                  <select className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" value={form.vip_registered_by} onChange={(e) => set('vip_registered_by', e.target.value)}>
+                    <option value="">Select staff</option>
+                    <option>Rejesh Kumar</option>
+                    <option>Pharmacist</option>
+                    <option>Receptionist</option>
+                    <option>Other</option>
+                  </select>
                 </div>
               </div>
 
@@ -203,8 +234,11 @@ export default function VipRegisterPage() {
                     <p className="font-mono font-bold text-sm">{patient?.uhid}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-amber-200 text-xs">Valid Until</p>
-                    <p className="font-bold text-sm">
+                    <p className="text-amber-200 text-xs">Plan · Valid Until</p>
+                    <p className="font-bold text-sm capitalize">
+                      {patient?.vip_category || form.vip_category}
+                    </p>
+                    <p className="text-amber-200 text-xs">
                       {patient?.vip_end_date ? new Date(patient.vip_end_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : vipEndDate}
                     </p>
                   </div>
@@ -225,7 +259,7 @@ export default function VipRegisterPage() {
               </div>
 
               <button
-                onClick={() => { setStep('form'); setForm({ salutation: 'Mr', first_name: '', last_name: '', gender: 'male', dob: '', mobile: '', email: '', area: '', address: '', vip_registered_by: '' }); setPatient(null); }}
+                onClick={() => { setStep('form'); setForm({ salutation: 'Mr', first_name: '', last_name: '', gender: 'male', dob: '', mobile: '', email: '', area: '', address: '', vip_registered_by: '', vip_category: 'individual' }); setPatient(null); }}
                 className="w-full border border-amber-300 text-amber-700 font-medium py-2.5 rounded-xl hover:bg-amber-50 text-sm"
               >
                 Register Another Member
