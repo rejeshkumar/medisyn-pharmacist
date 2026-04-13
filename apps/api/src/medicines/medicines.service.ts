@@ -302,6 +302,8 @@ export class MedicinesService {
          m.gst_percent, m.mrp, m.sale_rate, m.manufacturer,
          m.rack_location, m.treatment_for, m.reorder_qty,
          COALESCE(m.is_chronic, false) AS is_chronic,
+         COALESCE(m.tabs_per_strip, 1) AS tabs_per_strip,
+         m.max_discount_pct,
          m.chronic_category,
          false AS is_generic,
          CASE m.schedule_class::text
