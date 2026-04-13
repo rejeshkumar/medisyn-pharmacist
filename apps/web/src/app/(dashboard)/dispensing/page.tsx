@@ -94,19 +94,6 @@ function MedSearchDropdown({
 
   useEffect(() => { if (results?.length) setOpen(true); }, [results]);
 
-  // ── Keyboard shortcut: Ctrl+N for new bill ──────────────────────────────
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
-        e.preventDefault();
-        if (cart.length === 0) return;
-        holdAndNew();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [cart, holdAndNew]);
-
   return (
     <div ref={ref} className="relative w-full">
       <input
@@ -491,6 +478,18 @@ export default function DispensingPage() {
       toast.error(e.response?.data?.message || 'Failed to hold bill');
     } finally { setHoldingBill(false); }
   };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "n") {
+        e.preventDefault();
+        if (cart.length === 0) return;
+        holdAndNew();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [cart, holdAndNew]);
 
   const switchToDraft = async (id: string) => {
     if (id === 'current') { setActiveDraftId('current'); return; }
