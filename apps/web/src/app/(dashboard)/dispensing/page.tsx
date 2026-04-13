@@ -36,8 +36,7 @@ interface CartItem {
   is_chronic: boolean;
   chronic_category?: string;
   create_care_plan: boolean;
-  all_batches?: any[];
-  discount_reason?: string; // all available batches for auto-split
+  all_batches?: any[]; // all available batches for auto-split
 }
 
 interface DraftBill {
@@ -264,8 +263,6 @@ export default function DispensingPage() {
   const [aiResult, setAiResult] = useState<any>(null);
   const [showAiReview, setShowAiReview] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
-  const [hybridCash, setHybridCash] = useState(0);
-  const [hybridUpi, setHybridUpi] = useState(0);
   const [showSubstitutes, setShowSubstitutes] = useState<string | null>(null);
   const [substitutesForMed, setSubstitutesForMed] = useState<any>(null);
   const [ddiResult, setDdiResult] = useState<any>(null);
@@ -479,18 +476,6 @@ export default function DispensingPage() {
     } finally { setHoldingBill(false); }
   };
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "n") {
-        e.preventDefault();
-        if (cart.length === 0) return;
-        holdAndNew();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [cart, holdAndNew]);
-
   const switchToDraft = async (id: string) => {
     if (id === 'current') { setActiveDraftId('current'); return; }
     const draft = drafts.find(d => d.id === id);
@@ -593,9 +578,7 @@ export default function DispensingPage() {
       chronic_category: i.chronic_category,
     })),
     discount_amount:   overallDiscAmt + lineDiscTotal,
-    payment_mode:      paymentMode === 'hybrid' ? 'cash_upi' : paymentMode,
-    hybrid_cash:       paymentMode === 'hybrid' ? hybridCash : undefined,
-    hybrid_upi:        paymentMode === 'hybrid' ? hybridUpi : undefined,
+    payment_mode:      paymentMode,
     amount_paid:       typeof amountPaid === 'number' ? amountPaid : netTotal,
     ai_prescription_id: aiPrescriptionId,
     compliance_data:   hasScheduledDrugs ? compliance : undefined,
@@ -881,57 +864,47 @@ export default function DispensingPage() {
                         )}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-center">
-                      <input id={`qty-${idx}`} type="number" min={1} value={item.qty}
-                        onChange={e => updateItem(idx, 'qty', Math.max(1, Number(e.target.value)))}
-                        onKeyDown={e => {
-                          if (e.key === 'Tab') {
-                            e.preventDefault();
-                            document.getElementById(`disc-${idx}`)?.focus();
-                          }
-                        }}
-                        className="w-16 text-center text-sm font-bold border border-slate-200 rounded focus:outline-none focus:border-[#00475a] py-1" />
+                    <td className="px-3 py-2">
+                      <div className="flex items-center justify-center gap-1">
+                        <button onClick={() => {
+                          if (item.qty > 1) updateItem(idx, 'qty', item.qty - 1);
+                          else setCart(c => c.filter((_, i) => i !== idx));
+                        }} className="w-5 h-5 rounded border border-slate-200 flex items-center justify-center hover:bg-slate-100 text-slate-500 text-xs">−</button>
+                        <input id={`qty-${idx}`} type="number" min={1} value={item.qty}
+                          onChange={e => updateItem(idx, 'qty', Math.max(1, Number(e.target.value)))}
+                          onKeyDown={e => {
+                            if (e.key === 'Tab') {
+                              e.preventDefault();
+                              document.getElementById(`disc-${idx}`)?.focus();
+                            }
+                          }}
+                          className="w-10 text-center text-sm font-bold border border-slate-200 rounded focus:outline-none focus:border-[#00475a]" />
+                        <button onClick={() => updateItem(idx, 'qty', item.qty + 1)}
+                          className="w-5 h-5 rounded border border-slate-200 flex items-center justify-center hover:bg-slate-100 text-slate-500 text-xs">+</button>
+                      </div>
                     </td>
                     <td className="px-3 py-2 text-right text-sm font-medium text-slate-700">
                       ₹{Number(item.rate).toFixed(2)}
                     </td>
                     <td className="px-3 py-2">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-1">
-                          <input id={`disc-${idx}`} type="number" min={0} max={100}
-                            value={item.line_discount_pct}
-                            onChange={e => updateItem(idx, 'line_discount_pct', Math.min(100, Math.max(0, Number(e.target.value))))}
-                            onKeyDown={e => {
-                              if (e.key === 'Tab') {
-                                e.preventDefault();
-                                const nextSearch = document.getElementById(`search-${idx + 1}`);
-                                if (nextSearch) nextSearch.focus();
-                                else {
-                                  const newSearchVals = [...searchValues];
+                      <input id={`disc-${idx}`} type="number" min={0} max={100}
+                        value={item.line_discount_pct}
+                        onChange={e => updateItem(idx, 'line_discount_pct', Math.min(100, Math.max(0, Number(e.target.value))))}
+                        onKeyDown={e => {
+                          if (e.key === 'Tab') {
+                            e.preventDefault();
+                            // Focus next row's search or add new row
+                            const nextSearch = document.getElementById(`search-${idx + 1}`);
+                            if (nextSearch) nextSearch.focus();
+                            else {
+                              const newSearchVals = [...searchValues];
                               if (newSearchVals.length <= idx + 1) newSearchVals.push('');
                               setSearchValues(newSearchVals);
                               setTimeout(() => document.getElementById(`search-${idx + 1}`)?.focus(), 50);
                             }
                           }
                         }}
-                        className="w-10 text-center text-xs border border-slate-200 rounded focus:outline-none focus:border-[#00475a] px-1" />
-                          <span className="text-xs text-slate-400">%</span>
-                        </div>
-                        {item.line_discount_pct > 0 && (
-                          <select
-                            value={item.discount_reason || ''}
-                            onChange={e => updateItem(idx, 'discount_reason', e.target.value)}
-                            className="w-full text-[10px] border border-amber-200 rounded px-1 py-0.5 bg-amber-50 focus:outline-none focus:border-[#00475a]">
-                            <option value="">Reason *</option>
-                            <option>Staff discount</option>
-                            <option>Owner discount</option>
-                            <option>Round off</option>
-                            <option>VIP Pass</option>
-                            <option>Special doctor discount</option>
-                            <option>Other</option>
-                          </select>
-                        )}
-                      </div>
+                        className="w-14 text-center text-sm border border-slate-200 rounded focus:outline-none focus:border-[#00475a] px-1" />
                     </td>
                     <td className="px-3 py-2 text-right text-sm font-semibold text-slate-800">
                       ₹{amt.toFixed(2)}
@@ -1068,39 +1041,17 @@ export default function DispensingPage() {
             <div className="pt-1">
               <p className="text-xs text-slate-400 mb-1.5">Payment mode</p>
               <div className="grid grid-cols-3 gap-1">
-                {['cash','upi','card','online','hybrid'].map(m => (
+                {['cash','card','upi'].map(m => (
                   <button key={m} onClick={() => setPaymentMode(m)}
                     className={`py-1.5 rounded-lg text-xs font-semibold border transition-all ${
                       paymentMode === m
                         ? 'bg-[#00475a] text-white border-[#00475a]'
                         : 'border-slate-200 text-slate-500 hover:border-slate-300'
                     }`}>
-                    {m === 'hybrid' ? 'Cash+UPI' : m.toUpperCase()}
+                    {m.toUpperCase()}
                   </button>
                 ))}
               </div>
-              {paymentMode === 'hybrid' && (
-                <div className="mt-2 space-y-1.5">
-                  <p className="text-[10px] text-slate-400">Split payment</p>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-slate-500 w-8">Cash</span>
-                    <input type="number" min={0} placeholder="₹0"
-                      value={hybridCash} onChange={e => setHybridCash(Number(e.target.value))}
-                      className="flex-1 text-xs border border-slate-200 rounded px-2 py-1 focus:outline-none focus:border-[#00475a]" />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-slate-500 w-8">UPI</span>
-                    <input type="number" min={0} placeholder="₹0"
-                      value={hybridUpi} onChange={e => setHybridUpi(Number(e.target.value))}
-                      className="flex-1 text-xs border border-slate-200 rounded px-2 py-1 focus:outline-none focus:border-[#00475a]" />
-                  </div>
-                  {(hybridCash + hybridUpi) !== netTotal && (hybridCash + hybridUpi) > 0 && (
-                    <p className="text-[10px] text-amber-600">
-                      Total: ₹{(hybridCash + hybridUpi).toFixed(2)} (Net: ₹{netTotal.toFixed(2)})
-                    </p>
-                  )}
-                </div>
-              )}
             </div>
           </div>
 
@@ -1117,7 +1068,7 @@ export default function DispensingPage() {
 
       {/* ── Mobile bottom bar ── */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 px-4 py-3 bg-white border-t border-slate-200 shadow-lg" style={{paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))"}}>
-        <button onClick={handleBill}
+        <button onClick={() => setShowBillPanel(true)}
           className="w-full py-3 bg-[#00475a] text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2">
           <ShoppingCart className="w-4 h-4" />
           Bill Summary · {formatCurrency(netTotal)}
@@ -1134,7 +1085,6 @@ export default function DispensingPage() {
         <BillDocument
           data={{
             patientName: compliance.patient_name || undefined,
-            patientId: compliance.patient_id || undefined,
             doctorName: compliance.doctor_name || undefined,
             doctorRegNo: compliance.doctor_reg_no || undefined,
             paymentMode,
@@ -1159,7 +1109,7 @@ export default function DispensingPage() {
         <BillDocument
           data={{
             billNumber: completedSale.bill_number, date: completedSale.created_at,
-            patientName: completedSale.customer_name, patientId: completedSale.patient_id, doctorName: completedSale.doctor_name,
+            patientName: completedSale.customer_name, doctorName: completedSale.doctor_name,
             paymentMode: completedSale.payment_mode,
             items: completedSale.items?.map((item: any) => ({
               medicineName: item.medicine?.brand_name || item.medicine_name,
