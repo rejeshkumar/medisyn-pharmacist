@@ -303,8 +303,6 @@ export class MedicinesService {
          m.rack_location, m.treatment_for, m.reorder_qty,
          COALESCE(m.is_chronic, false) AS is_chronic,
          m.chronic_category,
-         COALESCE(m.tabs_per_strip, 1) AS tabs_per_strip,
-         m.max_discount_pct,
          false AS is_generic,
          CASE m.schedule_class::text
            WHEN 'OTC' THEN 'Over the Counter'
