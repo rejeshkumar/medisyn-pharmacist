@@ -914,10 +914,20 @@ function DemandTab() {
                         {item.current_stock > 0 && <span className="text-amber-600">· {item.current_stock} in stock now</span>}
                       </div>
                     </div>
-                    <button onClick={() => markOrdered(item.medicine_name)}
-                      className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 bg-[#00475a] text-white rounded-lg text-xs font-semibold hover:bg-[#003d4d]">
-                      <Check className="w-3.5 h-3.5" /> Mark ordered
-                    </button>
+                    <div className="flex-shrink-0 flex gap-2">
+                      <button onClick={() => {
+                        const tab = document.querySelector('[data-tab="orders"]') as HTMLButtonElement;
+                        tab?.click();
+                        toast.success(`Add "${item.medicine_name}" to a new PO`);
+                      }}
+                        className="flex items-center gap-1.5 px-3 py-2 bg-amber-500 text-white rounded-lg text-xs font-semibold hover:bg-amber-600">
+                        <ReceiptText className="w-3.5 h-3.5" /> Raise PO
+                      </button>
+                      <button onClick={() => markOrdered(item.medicine_name)}
+                        className="flex items-center gap-1.5 px-3 py-2 bg-[#00475a] text-white rounded-lg text-xs font-semibold hover:bg-[#003d4d]">
+                        <Check className="w-3.5 h-3.5" /> Mark ordered
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -949,10 +959,16 @@ function DemandTab() {
                         {item.requests_recent > 0 && ` · ${item.requests_recent} this week`}
                       </p>
                     </div>
-                    <button onClick={() => markOrdered(item.medicine_name)}
-                      className="flex-shrink-0 text-xs text-slate-400 hover:text-[#00475a] px-2 py-1 rounded-lg hover:bg-slate-100">
-                      Mark ordered
-                    </button>
+                    <div className="flex-shrink-0 flex gap-2">
+                      <button onClick={() => toast.success(`Go to Purchase Orders tab to add "${item.medicine_name}"`)}
+                        className="text-xs text-amber-600 hover:text-amber-700 px-2 py-1 rounded-lg hover:bg-amber-50 border border-amber-200">
+                        Raise PO
+                      </button>
+                      <button onClick={() => markOrdered(item.medicine_name)}
+                        className="text-xs text-slate-400 hover:text-[#00475a] px-2 py-1 rounded-lg hover:bg-slate-100">
+                        Mark ordered
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

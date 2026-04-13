@@ -88,6 +88,9 @@ export default function BookAppointmentPage() {
   const [patients, setPatients]             = useState<any[]>([]);
   const [searchingPatients, setSearchingPatients] = useState(false);
   const [selectedPatient, setSelectedPatient]     = useState<any>(null);
+  const [showNewPatient, setShowNewPatient]         = useState(false);
+  const [newPatientForm, setNewPatientForm]         = useState({ name: '', mobile: '', age: '', gender: 'Male' });
+  const [savingPatient, setSavingPatient]           = useState(false);
 
   // Doctors
   const [allDoctors, setAllDoctors]         = useState<any[]>([]);
@@ -277,7 +280,7 @@ export default function BookAppointmentPage() {
               {searchingPatients && (
                 <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-slate-400" />
               )}
-              {patients.length > 0 && (
+              {(patients.length > 0 || (patientSearch.length >= 2 && !searchingPatients)) && (
                 <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-100 rounded-xl shadow-lg z-10 overflow-hidden">
                   {patients.map(p => (
                     <button key={p.id}
@@ -292,6 +295,67 @@ export default function BookAppointmentPage() {
                       </div>
                     </button>
                   ))}
+                  <button
+                    onClick={() => { setShowNewPatient(true); setPatients([]); setNewPatientForm(f => ({ ...f, name: patientSearch, mobile: /^\d+$/.test(patientSearch) ? patientSearch : '' })); }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-teal-50 text-left bg-teal-50/50 border-t border-slate-100">
+                    <div className="w-8 h-8 rounded-full bg-[#00475a]/10 text-[#00475a] flex items-center justify-center text-xs font-bold">+</div>
+                    <div>
+                      <p className="text-sm font-semibold text-[#00475a]">Register new patient</p>
+                      <p className="text-xs text-slate-400">Add "{patientSearch}" as a new patient</p>
+                    </div>
+                  </button>
+                </div>
+              )}
+
+              {/* New patient registration form */}
+              {showNewPatient && (
+                <div className="mt-2 p-4 bg-teal-50 border border-teal-200 rounded-xl space-y-3">
+                  <p className="text-sm font-semibold text-teal-800">New Patient Registration</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="col-span-2">
+                      <input className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00475a]"
+                        placeholder="Full name *" value={newPatientForm.name}
+                        onChange={e => setNewPatientForm(f => ({ ...f, name: e.target.value }))} />
+                    </div>
+                    <input className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00475a]"
+                      placeholder="Mobile *" value={newPatientForm.mobile}
+                      onChange={e => setNewPatientForm(f => ({ ...f, mobile: e.target.value }))} />
+                    <input className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00475a]"
+                      placeholder="Age" value={newPatientForm.age}
+                      onChange={e => setNewPatientForm(f => ({ ...f, age: e.target.value }))} />
+                    <select className="col-span-2 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00475a]"
+                      value={newPatientForm.gender} onChange={e => setNewPatientForm(f => ({ ...f, gender: e.target.value }))}>
+                      <option>Male</option><option>Female</option><option>Other</option>
+                    </select>
+                  </div>
+                  <div className="flex gap-2">
+                    <button disabled={savingPatient || !newPatientForm.name || !newPatientForm.mobile}
+                      onClick={async () => {
+                        setSavingPatient(true);
+                        try {
+                          const { data } = await api.post('/patients', {
+                            first_name: newPatientForm.name.split(' ')[0],
+                            last_name: newPatientForm.name.split(' ').slice(1).join(' ') || '',
+                            mobile: newPatientForm.mobile,
+                            age: newPatientForm.age ? Number(newPatientForm.age) : undefined,
+                            gender: newPatientForm.gender.toLowerCase(),
+                          });
+                          setSelectedPatient(data);
+                          setShowNewPatient(false);
+                          setPatientSearch('');
+                          toast.success('Patient registered successfully');
+                        } catch (e: any) {
+                          toast.error(e.response?.data?.message || 'Failed to register');
+                        } finally { setSavingPatient(false); }
+                      }}
+                      className="flex-1 py-2 bg-[#00475a] text-white rounded-lg text-sm font-semibold disabled:opacity-50">
+                      {savingPatient ? 'Saving...' : 'Register & Select'}
+                    </button>
+                    <button onClick={() => setShowNewPatient(false)}
+                      className="px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600">
+                      Cancel
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

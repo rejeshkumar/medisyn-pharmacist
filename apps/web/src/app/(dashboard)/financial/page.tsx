@@ -249,13 +249,58 @@ function MonthlyPnL() {
 }
 
 // ── Expenses Tab ───────────────────────────────────────────────────────────
+
+// ── Recurring Expenses Banner ──────────────────────────────────────────────
+function RecurringExpensesBanner() {
+  const qc = useQueryClient();
+  const { data: recurring } = useQuery({
+    queryKey: ['recurring-expenses'],
+    queryFn: () => api.get('/financial/expenses?is_recurring=true&limit=20').then(r => r.data).catch(() => []),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.delete(`/financial/expenses/${id}`),
+    onSuccess: () => { toast.success('Recurring expense removed'); qc.invalidateQueries({ queryKey: ['recurring-expenses'] }); },
+  });
+
+  const recurringItems = (recurring || []).filter((e: any) => e.is_recurring);
+  if (!recurringItems.length) return null;
+
+  return (
+    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-2">
+      <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide mb-2">
+        Recurring Monthly Expenses ({recurringItems.length})
+      </p>
+      <div className="space-y-1.5">
+        {recurringItems.map((e: any) => (
+          <div key={e.id} className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-xs text-amber-700 font-medium truncate">{e.description}</span>
+              <span className="text-[10px] bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded shrink-0">
+                Day {e.recurrence_day} monthly
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs font-bold text-red-600">{fmt(e.amount)}</span>
+              <button onClick={() => deleteMutation.mutate(e.id)}
+                className="text-amber-400 hover:text-red-500">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ExpensesTab() {
   const qc = useQueryClient();
   const now = new Date();
   const [from, setFrom] = useState(new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]);
   const [to, setTo]     = useState(now.toISOString().split('T')[0]);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ expense_date: now.toISOString().split('T')[0], category: 'Rent', description: '', amount: '', payment_mode: 'cash', vendor_name: '', reference_no: '' });
+  const [form, setForm] = useState({ expense_date: now.toISOString().split('T')[0], category: 'Rent', description: '', amount: '', payment_mode: 'cash', vendor_name: '', reference_no: '', is_recurring: false, recurrence_day: '1' });
   const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
 
   const { data: expenses, isLoading } = useQuery({
@@ -284,6 +329,9 @@ function ExpensesTab() {
           <Plus className="w-4 h-4" /> Add Expense
         </button>
       </div>
+
+      {/* Recurring expenses info banner */}
+      <RecurringExpensesBanner />
 
       {isLoading ? <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin" /></div>
       : !expenses?.length ? (
@@ -375,6 +423,31 @@ function ExpensesTab() {
                 </div>
               </div>
             </div>
+            <div className="px-5 pb-3">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" checked={form.is_recurring}
+                  onChange={e => set('is_recurring', e.target.checked)}
+                  className="w-4 h-4 accent-[#00475a] rounded" />
+                <span className="text-sm font-medium text-gray-700">Recurring monthly expense</span>
+              </label>
+              {form.is_recurring && (
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-xs text-gray-500">Auto-add on day</span>
+                  <select className="input w-20 text-sm" value={form.recurrence_day}
+                    onChange={e => set('recurrence_day', e.target.value)}>
+                    {Array.from({length: 28}, (_, i) => i + 1).map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                  <span className="text-xs text-gray-500">of every month</span>
+                </div>
+              )}
+              {form.is_recurring && (
+                <p className="text-xs text-amber-600 mt-1">
+                  ⚠ This expense will auto-appear in your P&L every month on day {form.recurrence_day}
+                </p>
+              )}
+            </div>
             <div className="p-5 border-t flex gap-3">
               <button onClick={() => setShowForm(false)} className="btn-secondary flex-1">Cancel</button>
               <button
@@ -382,7 +455,7 @@ function ExpensesTab() {
                 disabled={addMutation.isPending || !form.description || !form.amount}
                 className="btn-primary flex-1 disabled:opacity-50">
                 {addMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin inline mr-1" /> : null}
-                Add Expense
+                {form.is_recurring ? 'Add Recurring Expense' : 'Add Expense'}
               </button>
             </div>
           </div>
