@@ -102,7 +102,7 @@ function MedSearchDropdown({
       <input
         type="text" value={value}
         autoFocus={autoFocus}
-        onChange={e => { onChange(e.target.value); }}
+        onChange={e => { onChange(e.target.value); if (e.target.value.length >= 2) setOpen(true); }}
         onFocus={() => { if (results?.length) setOpen(true); }}
         placeholder="Type medicine name..."
         className="w-full px-2 py-1 text-sm border-0 bg-transparent focus:outline-none focus:ring-1 focus:ring-[#00475a] rounded"
@@ -221,7 +221,7 @@ function PatientSearch({ value, onSelect, onChange }: {
   return (
     <div ref={ref} className="relative">
       <input type="text" value={value}
-        onChange={e => { onChange(e.target.value); }}
+        onChange={e => { onChange(e.target.value); if (e.target.value.length >= 2) setOpen(true); }}
         onFocus={() => { if (data?.length) setOpen(true); }}
         placeholder="Search patient name / mobile..."
         className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[#00475a]" />
