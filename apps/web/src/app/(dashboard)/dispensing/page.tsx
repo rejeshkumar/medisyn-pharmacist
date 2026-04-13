@@ -912,7 +912,8 @@ export default function DispensingPage() {
                     </td>
                     <td className="px-3 py-2 text-center">
                       <input id={`qty-${idx}`} type="number" min={1} value={item.qty || ''}
-                        onChange={e => updateItem(idx, 'qty', Math.max(1, Number(e.target.value)))}
+                        onChange={e => updateItem(idx, 'qty', Number(e.target.value) || 0)}
+                        onBlur={e => { if (!item.qty || item.qty < 1) updateItem(idx, 'qty', 1); }}
                         onFocus={e => e.target.select()}
                         onKeyDown={e => {
                           if (e.key === 'Tab') {
