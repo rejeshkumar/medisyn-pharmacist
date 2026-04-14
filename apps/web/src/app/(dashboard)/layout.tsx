@@ -7,7 +7,7 @@ import OfflineBar from '@/components/common/OfflineBar';
 import Image from 'next/image';
 import { getUser, clearAuth } from '@/lib/auth';
 import {
-  LayoutDashboard, Pill, ShoppingCart, Package, FileText,
+  CalendarPlus, LayoutDashboard, Pill, ShoppingCart, Package, FileText,
   BarChart3, Users, DollarSign, Upload, Shield, LogOut, ChevronRight,
   Menu, X, HeartPulse, ClipboardList, Settings, Briefcase,
   RefreshCcw, ShoppingBag, Clock, Calendar, Bell,
@@ -62,6 +62,8 @@ const OWNER_NAV_SECTIONS = [
     items: [
       { href: '/dashboard',    label: 'Dashboard',      icon: LayoutDashboard },
       { href: '/patients',     label: 'Patients',       icon: HeartPulse      },
+      { href: '/receptionist/book-appointment', label: 'Book Appointment', icon: CalendarPlus },
+      { href: '/receptionist/book-appointment', label: 'Book Appointment', icon: CalendarPlus },
       { href: '/dispensing',   label: 'Dispense',       icon: ShoppingCart    },
       { href: '/billing',      label: 'Bills',          icon: FileText        },
       { href: '/ai-care',      label: 'AI Care Engine', icon: Cpu             },
