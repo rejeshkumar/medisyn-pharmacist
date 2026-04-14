@@ -161,4 +161,5 @@ export class VipRegisterDto {
   @IsString()
   @IsOptional()
   vip_registered_by?: string;
+  vip_category?: string;
 }
