@@ -75,7 +75,7 @@ function CashCounter({ value, onChange }: { value: Record<number, number>; onCha
 
 // ── Pharmacist View ─────────────────────────────────────────────────────────
 function PharmacistView({ data, date, onSubmit, submitting }: any) {
-  const [mode, setMode] = useState<'denomination'|'total'>('denomination');
+  const [mode, setMode] = useState<'denomination'|'total'>('total');
   const [denoms, setDenoms] = useState<Record<number, number>>({});
   const [totalCash, setTotalCash] = useState('');
   const [upiCounted, setUpiCounted] = useState('');
