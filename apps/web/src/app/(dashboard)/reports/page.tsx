@@ -303,16 +303,22 @@ export default function ReportsPage() {
   const categories = ['sales','clinical','stock','compliance','hr'];
   const rows = Array.isArray(reportData) ? reportData : reportData?.rows || [];
 
+  const [showSidebar, setShowSidebar] = useState(true);
+
   return (
     <div className="flex h-full overflow-hidden bg-slate-50">
       {/* ── Left: Report list ── */}
-      <div className="w-56 flex-shrink-0 bg-white border-r border-slate-100 flex flex-col overflow-hidden">
+      <div className={`${showSidebar ? 'flex' : 'hidden'} md:flex w-56 flex-shrink-0 bg-white border-r border-slate-100 flex-col overflow-hidden absolute md:relative z-20 h-full`}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
           <span className="text-sm font-semibold text-slate-700">Reports</span>
-          <button onClick={() => setShowSettings(true)}
-            className="text-slate-400 hover:text-slate-600">
-            <Settings className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowSettings(true)} className="text-slate-400 hover:text-slate-600">
+              <Settings className="w-4 h-4" />
+            </button>
+            <button onClick={() => setShowSidebar(false)} className="md:hidden text-slate-400 hover:text-slate-600">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto py-2">
           {categories.map(cat => {
@@ -327,7 +333,7 @@ export default function ReportsPage() {
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{cfg.label}</span>
                 </div>
                 {catReports.map(r => (
-                  <button key={r.report_id} onClick={() => handleReportSwitch(r.report_id)}
+                  <button key={r.report_id} onClick={() => { handleReportSwitch(r.report_id); if (window.innerWidth < 768) setShowSidebar(false); }}
                     className={`w-full text-left px-4 py-2 text-xs transition-colors ${
                       activeReport === r.report_id
                         ? 'bg-teal-50 text-[#00475a] font-semibold border-r-2 border-[#00475a]'
@@ -342,12 +348,22 @@ export default function ReportsPage() {
         </div>
       </div>
 
+      {/* Mobile overlay when sidebar open */}
+      {showSidebar && (
+        <div className="md:hidden fixed inset-0 bg-black/30 z-10" onClick={() => setShowSidebar(false)} />
+      )}
+
       {/* ── Right: Report content ── */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Toolbar */}
         <div className="flex-shrink-0 bg-white border-b border-slate-100 px-5 py-3">
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide flex-nowrap sm:flex-wrap">
             {/* Report title */}
+            <button onClick={() => setShowSidebar(true)}
+              className="md:hidden flex items-center gap-1.5 px-2 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-500 hover:bg-slate-50 flex-shrink-0">
+              <BarChart3 className="w-3.5 h-3.5" />
+              Reports
+            </button>
             <div className="min-w-0">
               <h2 className="text-base font-bold text-slate-900">{currentReport?.name}</h2>
               <p className="text-xs text-slate-400 hidden sm:block">{currentReport?.description}</p>
