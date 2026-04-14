@@ -792,12 +792,19 @@ export default function DispensingPage() {
               />
             </div>
           </div>
-          {/* Gender + Age */}
-          {compliance.patient_gender && (
-            <span className="text-xs text-slate-500">
-              {compliance.patient_gender} · {compliance.patient_age ? `${compliance.patient_age}y` : ''}
-            </span>
-          )}
+          {/* Gender + Age + Patient ID */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {compliance.patient_gender && (
+              <span className="text-xs text-slate-500">
+                {compliance.patient_gender} · {compliance.patient_age ? `${compliance.patient_age}y` : ''}
+              </span>
+            )}
+            {compliance.patient_id && (
+              <span className="text-xs bg-teal-50 text-[#00475a] px-2 py-0.5 rounded font-mono font-medium border border-teal-100">
+                ID: {String(compliance.patient_id).slice(0, 8).toUpperCase()}
+              </span>
+            )}
+          </div>
           {/* Referring doctor */}
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">Ref. Dr:</span>
@@ -1231,7 +1238,17 @@ export default function DispensingPage() {
                 { mode: 'credit', label: '📋 Credit',   color: 'bg-red-50 border-red-200 text-red-800 hover:bg-red-100' },
               ].map(({ mode, label, color }) => (
                 <button key={mode}
-                  onClick={() => { setPaymentMode(mode); setShowPaymentPrompt(false); setTimeout(() => setShowPreview(true), 50); }}
+                  onClick={() => {
+                    setPaymentMode(mode);
+                    setShowPaymentPrompt(false);
+                    if (mode === 'hybrid') {
+                      // Open bill panel so user can enter split amounts
+                      setShowBillPanel(true);
+                      toast('Enter Cash + UPI split amounts below', { icon: '💵' });
+                    } else {
+                      setTimeout(() => setShowPreview(true), 50);
+                    }
+                  }}
                   className={`py-3 px-4 rounded-xl border-2 text-sm font-semibold transition-all ${color}`}>
                   {label}
                 </button>
