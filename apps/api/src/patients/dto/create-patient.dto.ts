@@ -161,5 +161,10 @@ export class VipRegisterDto {
   @IsString()
   @IsOptional()
   vip_registered_by?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  vip_category?: string;
   vip_category?: string;
 }
