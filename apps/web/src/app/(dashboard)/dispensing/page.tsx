@@ -583,6 +583,19 @@ export default function DispensingPage() {
       setShowPaymentPrompt(true);
       return;
     }
+    if (paymentMode === 'hybrid') {
+      if (!hybridCash && !hybridUpi) {
+        toast.error('Enter Cash and UPI amounts for split payment');
+        setShowBillPanel(true);
+        return;
+      }
+      const hybridTotal = hybridCash + hybridUpi;
+      if (hybridTotal < netTotal * 0.99) {
+        toast.error(`Split total ₹${hybridTotal.toFixed(0)} is less than net ₹${netTotal}. Please adjust.`);
+        setShowBillPanel(true);
+        return;
+      }
+    }
     // Run DDI check if 2+ medicines in cart
     if (cart.length >= 2) {
       const ddi = await checkDrugInteractions();
@@ -995,8 +1008,15 @@ export default function DispensingPage() {
                     </td>
                     <td className="px-3 py-2">
                       <button onClick={() => {
-                        setCart(c => c.filter((_,i) => i !== idx));
+                        const newCart = cart.filter((_,i) => i !== idx);
+                        setCart(newCart);
                         setSearchValues(v => v.filter((_,i) => i !== idx));
+                        if (newCart.length === 0) {
+                          setPaymentMode('');
+                          setHybridCash(0);
+                          setHybridUpi(0);
+                          setAmountPaid('');
+                        }
                       }} className="text-slate-300 hover:text-red-500">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
