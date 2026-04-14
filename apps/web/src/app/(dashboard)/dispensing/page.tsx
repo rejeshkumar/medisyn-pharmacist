@@ -152,12 +152,33 @@ function MedSearchDropdown({
                   )}
                   {med.manufacturer && <><span>·</span><span className="italic">{med.manufacturer}</span></>}
                   {med.rack_location && <><span>·</span><span className="text-blue-600 font-medium">📍{med.rack_location}</span></>}
-                  {fefo?.sale_rate && <><span>·</span><span className="font-semibold text-gray-700">₹{Number(fefo.sale_rate).toFixed(2)}</span></>}
-                  {fefo?.mrp && Number(fefo.mrp) > Number(fefo.sale_rate) && <><span>·</span><span className="text-gray-400 line-through text-[10px]">₹{Number(fefo.mrp).toFixed(2)}</span></>}
+                  {fefo?.sale_rate && (
+                    <span className="inline-flex items-center gap-1">
+                      <span>·</span>
+                      <span className="font-bold text-[#00475a]">Sale ₹{Number(fefo.sale_rate).toFixed(2)}</span>
+                    </span>
+                  )}
+                  {fefo?.mrp && (
+                    <span className="inline-flex items-center gap-1">
+                      <span>·</span>
+                      <span className="text-gray-500">MRP ₹{Number(fefo.mrp).toFixed(2)}</span>
+                    </span>
+                  )}
+                  {fefo?.purchase_price && Number(fefo.purchase_price) > 0 && (
+                    <span className="inline-flex items-center gap-1">
+                      <span>·</span>
+                      <span className="text-amber-700">Cost ₹{Number(fefo.purchase_price).toFixed(2)}</span>
+                    </span>
+                  )}
                   {fefo?.purchase_price && fefo.sale_rate && (() => {
                     const margin = ((Number(fefo.sale_rate) - Number(fefo.purchase_price)) / Number(fefo.sale_rate) * 100);
                     if (margin <= 0) return null;
-                    return <><span>·</span><span className={`font-bold text-[10px] ${margin >= 20 ? 'text-green-600' : margin >= 10 ? 'text-amber-600' : 'text-red-500'}`}>{margin.toFixed(0)}% margin</span></>;
+                    return (
+                      <span className="inline-flex items-center gap-1">
+                        <span>·</span>
+                        <span className={`font-bold text-[10px] ${margin >= 20 ? 'text-green-600' : margin >= 10 ? 'text-amber-600' : 'text-red-500'}`}>{margin.toFixed(0)}% margin</span>
+                      </span>
+                    );
                   })()}
                 </div>
                 {isOOS && (
@@ -1164,22 +1185,43 @@ export default function DispensingPage() {
                 ))}
               </div>
               {paymentMode === 'hybrid' && (
-                <div className="mt-2 space-y-1.5">
+                <div className="mt-2 space-y-2">
+                  <p className="text-[10px] text-slate-500">Split must equal net total <span className="font-bold text-[#00475a]">₹{netTotal}</span></p>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-slate-500 w-8">Cash</span>
-                    <input type="number" min={0} placeholder="₹0"
-                      value={hybridCash} onChange={e => setHybridCash(Number(e.target.value))}
-                      className="flex-1 text-xs border border-slate-200 rounded px-2 py-1 focus:outline-none focus:border-[#00475a]" />
+                    <span className="text-[10px] text-slate-500 w-8">💵 Cash</span>
+                    <input type="number" min={0} placeholder="0"
+                      value={hybridCash || ''}
+                      onChange={e => {
+                        const cash = Number(e.target.value) || 0;
+                        setHybridCash(cash);
+                        setHybridUpi(Math.max(0, netTotal - cash));
+                      }}
+                      className="flex-1 text-sm font-bold border border-slate-200 rounded px-2 py-1.5 focus:outline-none focus:border-[#00475a]" />
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-slate-500 w-8">UPI</span>
-                    <input type="number" min={0} placeholder="₹0"
-                      value={hybridUpi} onChange={e => setHybridUpi(Number(e.target.value))}
-                      className="flex-1 text-xs border border-slate-200 rounded px-2 py-1 focus:outline-none focus:border-[#00475a]" />
+                    <span className="text-[10px] text-slate-500 w-8">📱 UPI</span>
+                    <input type="number" min={0} placeholder="0"
+                      value={hybridUpi || ''}
+                      onChange={e => {
+                        const upi = Number(e.target.value) || 0;
+                        setHybridUpi(upi);
+                        setHybridCash(Math.max(0, netTotal - upi));
+                      }}
+                      className="flex-1 text-sm font-bold border border-slate-200 rounded px-2 py-1.5 focus:outline-none focus:border-[#00475a]" />
                   </div>
-                  {(hybridCash + hybridUpi) > 0 && (hybridCash + hybridUpi) !== netTotal && (
-                    <p className="text-[10px] text-amber-600">Total: ₹{(hybridCash+hybridUpi).toFixed(2)} · Net: ₹{netTotal.toFixed(2)}</p>
-                  )}
+                  {(() => {
+                    const total = hybridCash + hybridUpi;
+                    const diff = total - netTotal;
+                    if (total === 0) return null;
+                    if (Math.abs(diff) < 1) return (
+                      <p className="text-[10px] text-green-600 font-semibold">✅ Split matches — ₹{hybridCash} cash + ₹{hybridUpi} UPI</p>
+                    );
+                    return (
+                      <p className="text-[10px] text-red-500 font-semibold">
+                        {diff > 0 ? `⚠ ₹${diff.toFixed(0)} excess` : `⚠ ₹${Math.abs(diff).toFixed(0)} short`} — must equal ₹{netTotal}
+                      </p>
+                    );
+                  })()}
                 </div>
               )}
             </div>
