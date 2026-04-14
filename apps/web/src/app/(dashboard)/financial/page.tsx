@@ -1469,16 +1469,27 @@ const TAB_GROUPS = [
 
 export default function FinancialPage() {
   const [tab, setTab] = useState('dashboard');
+  const [showSidebar, setShowSidebar] = useState(false);
   const activeTab = TABS.find(t => t.key === tab);
 
   return (
-    <div className="h-full flex overflow-hidden bg-gray-50">
+    <div className="h-full flex overflow-hidden bg-gray-50 relative">
 
       {/* ── Vertical sidebar ────────────────────────────────────────────── */}
-      <div className="w-52 flex-shrink-0 bg-white border-r border-gray-100 flex flex-col overflow-y-auto">
-        <div className="px-4 py-4 border-b border-gray-100">
-          <h1 className="text-base font-bold text-gray-900">Financial</h1>
-          <p className="text-xs text-gray-400 mt-0.5">Management console</p>
+      {/* Mobile overlay */}
+      {showSidebar && (
+        <div className="fixed inset-0 bg-black/40 z-20 md:hidden" onClick={() => setShowSidebar(false)} />
+      )}
+
+      <div className={`${showSidebar ? 'flex' : 'hidden'} md:flex w-52 flex-shrink-0 bg-white border-r border-gray-100 flex-col overflow-y-auto fixed md:static h-full z-30 md:z-auto`}>
+        <div className="px-4 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h1 className="text-base font-bold text-gray-900">Financial</h1>
+            <p className="text-xs text-gray-400 mt-0.5">Management console</p>
+          </div>
+          <button onClick={() => setShowSidebar(false)} className="md:hidden text-gray-400 hover:text-gray-600">
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
         <nav className="flex-1 py-3 space-y-0.5">
@@ -1490,7 +1501,7 @@ export default function FinancialPage() {
               {group.tabs.map(t => (
                 <button
                   key={t.key}
-                  onClick={() => setTab(t.key)}
+                  onClick={() => { setTab(t.key); if (window.innerWidth < 768) setShowSidebar(false); }}
                   className={`w-full flex items-center gap-2.5 px-4 py-2 text-sm transition-all text-left ${
                     tab === t.key
                       ? 'bg-[#00475a]/10 text-[#00475a] font-semibold border-r-2 border-[#00475a]'
@@ -1508,8 +1519,13 @@ export default function FinancialPage() {
 
       {/* ── Main content ────────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="px-6 py-4 bg-white border-b border-gray-100 flex-shrink-0">
-          <h2 className="text-lg font-semibold text-gray-900">
+        <div className="px-4 py-3 bg-white border-b border-gray-100 flex-shrink-0 flex items-center gap-3">
+          <button onClick={() => setShowSidebar(true)}
+            className="md:hidden flex items-center gap-1.5 px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-600 hover:bg-slate-50 flex-shrink-0">
+            <DollarSign className="w-3.5 h-3.5" />
+            Menu
+          </button>
+          <h2 className="text-base font-semibold text-gray-900">
             {activeTab?.label || 'Financial'}
           </h2>
         </div>
