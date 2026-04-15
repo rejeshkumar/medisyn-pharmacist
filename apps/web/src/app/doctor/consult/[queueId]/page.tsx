@@ -459,7 +459,7 @@ export default function ConsultPage() {
         items: filledItems.map((i: any) => ({ medicine_name: i.medicine_name, dosage: i.dosage, frequency: i.frequency, duration: i.duration, quantity: Number(i.quantity) || 1, instructions: i.instructions })),
         notes: rxNotes,
       });
-      await api.patch(`/queue/${queueId}/status`, { status: 'completed' });
+      await api.patch(`/queue/${queueId}/status`, { status: 'consultation_done' });
       toast.success('Prescription issued & sent to pharmacy');
       router.back();
     } catch (e: any) {

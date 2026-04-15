@@ -31,6 +31,13 @@ const STATUS_LABEL: Record<string, { label: string; color: string; bg: string }>
   cancelled:           { label: 'Cancelled',  color: 'text-red-600',    bg: 'bg-red-50 border-red-200' },
 };
 
+// Helper: build full name from patient object (supports both name and first_name/last_name)
+function patientName(p: any): string {
+  if (!p) return 'Unknown';
+  if (p.name) return p.name;
+  return `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Unknown';
+}
+
 export default function PrescriptionBridge({ onLoadPrescription, onPendingCountChange }: PrescriptionBridgeProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [newArrival, setNewArrival] = useState(false);
@@ -64,7 +71,7 @@ export default function PrescriptionBridge({ onLoadPrescription, onPendingCountC
 
     onLoadPrescription({
       prescriptionId: rx.id,
-      patientName: rx.patient?.name || '',
+      patientName: patientName(rx.patient),
       doctorName: consult.doctor?.full_name || '',
       items: rx.items || [],
     });
@@ -154,7 +161,7 @@ export default function PrescriptionBridge({ onLoadPrescription, onPendingCountC
                     {entry.token_number}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{entry.patient?.name || 'Unknown'}</p>
+                    <p className="text-sm font-medium text-gray-900 truncate">{patientName(entry.patient)}</p>
                     <p className="text-xs text-gray-400 truncate">{entry.chief_complaint || 'No complaint'}</p>
                   </div>
                   <ChevronRight className={cn('w-4 h-4 text-gray-300 flex-shrink-0 transition-transform', selectedId === entry.id && 'rotate-90')} />
@@ -189,7 +196,7 @@ export default function PrescriptionBridge({ onLoadPrescription, onPendingCountC
                       </span>
                     </div>
                     <div className="flex items-center gap-3 mt-1.5 text-xs text-teal-700">
-                      <span className="flex items-center gap-1"><User className="w-3 h-3" />{prescription.rx.patient?.name}</span>
+                      <span className="flex items-center gap-1"><User className="w-3 h-3" />{patientName(prescription.rx.patient)}</span>
                       <span>Dr. {prescription.consult.doctor?.full_name}</span>
                     </div>
                   </div>
@@ -248,7 +255,7 @@ export default function PrescriptionBridge({ onLoadPrescription, onPendingCountC
                     {entry.token_number}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-600 truncate">{entry.patient?.name}</p>
+                    <p className="text-sm text-gray-600 truncate">{patientName(entry.patient)}</p>
                   </div>
                   <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
                 </div>
