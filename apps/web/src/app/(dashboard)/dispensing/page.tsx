@@ -307,6 +307,7 @@ export default function DispensingPage() {
   const [showDdiModal, setShowDdiModal] = useState(false);
   const [aiPrescriptionId, setAiPrescriptionId] = useState<string | null>(null);
   const [activePrescriptionId, setActivePrescriptionId] = useState<string | null>(null);
+  const [activeQueueId, setActiveQueueId] = useState<string | null>(null);
 
   // Multi-bill tabs
   const [drafts, setDrafts] = useState<DraftBill[]>([]);
@@ -577,7 +578,13 @@ export default function DispensingPage() {
         api.patch(`/prescriptions/${activePrescriptionId}/dispense`, { sale_id: data.id }).catch(() => {});
         setActivePrescriptionId(null);
       }
+      if (activeQueueId) {
+        api.patch(`/queue/${activeQueueId}/status`, { status: 'completed' }).catch(() => {});
+        setActiveQueueId(null);
+      }
       qc.invalidateQueries({ queryKey: ['dashboard'] });
+      qc.invalidateQueries({ queryKey: ['rx-queue-dispensing'] });
+      qc.invalidateQueries({ queryKey: ['dispensing-queue'] });
       toast.success(`Bill ${data.bill_number} created!`);
     },
     onError: (err: any) => toast.error(err.response?.data?.message || 'Bill creation failed'),
@@ -760,8 +767,9 @@ export default function DispensingPage() {
     }
   };
 
-  const handleLoadPrescription = async (data: { prescriptionId: string; patientName: string; doctorName: string; items: Array<{ medicine_name: string; medicine_id?: string; dosage?: string; frequency?: string; quantity?: number; }> }) => {
+  const handleLoadPrescription = async (data: { prescriptionId: string; queueId?: string; patientName: string; doctorName: string; items: Array<{ medicine_name: string; medicine_id?: string; dosage?: string; frequency?: string; quantity?: number; }> }) => {
     setActivePrescriptionId(data.prescriptionId);
+    setActiveQueueId(data.queueId || null);
     setCompliance(p => ({ ...p, patient_name: data.patientName, doctor_name: data.doctorName, referring_doctor: data.doctorName }));
     setPatientSearch(data.patientName);
     setShowRxPanel(false);
