@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import dynamic from 'next/dynamic';
 const BarcodeScanner = dynamic(() => import('@/components/dispensing/BarcodeScanner'), { ssr: false });
+const PrescriptionBridge = dynamic(() => import('@/components/dispensing/PrescriptionBridge'), { ssr: false });
 import { formatCurrency, getScheduleClassColor, getConfidenceColor } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import {
@@ -311,6 +312,8 @@ export default function DispensingPage() {
   const [drafts, setDrafts] = useState<DraftBill[]>([]);
   const [activeDraftId, setActiveDraftId] = useState<string>('current');
   const [holdingBill, setHoldingBill] = useState(false);
+  const [showRxPanel, setShowRxPanel] = useState(true);
+  const [pendingRxCount, setPendingRxCount] = useState(0);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const qc = useQueryClient();
@@ -747,6 +750,23 @@ export default function DispensingPage() {
         toast('Unavailable medicines noted for procurement', { icon: '📋' });
       }
     }
+  };
+
+  const handleLoadPrescription = (data: { prescriptionId: string; patientName: string; doctorName: string; items: Array<{ medicine_name: string; medicine_id?: string; dosage?: string; frequency?: string; quantity?: number; }> }) => {
+    setActivePrescriptionId(data.prescriptionId);
+    setCompliance(p => ({ ...p, patient_name: data.patientName, doctor_name: data.doctorName, referring_doctor: data.doctorName }));
+    setPatientSearch(data.patientName);
+    data.items.forEach(async (item) => {
+      try {
+        const res = await api.get(`/medicines/search-enriched?search=${encodeURIComponent(item.medicine_name)}&limit=1`);
+        const med = res.data?.[0];
+        if (med && Number(med.total_stock) > 0) {
+          await handleSelectMedicine(med, cart.length);
+        }
+      } catch {}
+    });
+    setShowRxPanel(false);
+    toast.success(`Prescription loaded — ${data.items.length} medicines added`);
   };
 
   const today = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
