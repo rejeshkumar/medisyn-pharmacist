@@ -147,6 +147,13 @@ function PharmacistDashboard() {
   const { data: dash } = useQuery({ queryKey: ['dashboard'], queryFn: () => api.get('/reports/dashboard').then(r => r.data), refetchInterval: 30000 });
   const { data: lowStock } = useQuery({ queryKey: ['low-stock'], queryFn: () => api.get('/stock/alerts/low-stock').then(r => r.data) });
   const { data: nearExpiry } = useQuery({ queryKey: ['near-expiry'], queryFn: () => api.get('/stock/alerts/near-expiry?days=30').then(r => r.data) });
+  const { data: rxQueue = [] } = useQuery({
+    queryKey: ['rx-queue-home'],
+    queryFn: () => api.get('/queue/today').then(r =>
+      r.data.filter((e: any) => ['consultation_done', 'dispensing'].includes(e.status))
+    ).catch(() => []),
+    refetchInterval: 15000,
+  });
 
   return (
     <div className="space-y-5">
@@ -163,6 +170,51 @@ function PharmacistDashboard() {
         <KpiCard label="Bills Today" value={dash?.today_bill_count||0} icon={FileText} color="text-teal-600" bg="bg-teal-50" border="border-teal-100" onClick={() => router.push('/billing')} />
         <KpiCard label="Today's Sales" value={fmt(dash?.today_sales||0)} icon={TrendingUp} color="text-green-600" bg="bg-green-50" border="border-green-100" />
       </div>
+
+      {/* ── Prescriptions Waiting ── */}
+      {rxQueue.length > 0 && (
+        <div
+          className="bg-teal-50 border-2 border-teal-400 rounded-2xl p-4 cursor-pointer hover:shadow-md transition-shadow animate-pulse-once"
+          onClick={() => router.push('/dispensing')}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <ClipboardList className="w-5 h-5 text-teal-700" />
+              <h3 className="font-bold text-teal-900 text-base">Prescriptions Waiting</h3>
+            </div>
+            <span className="bg-teal-600 text-white text-sm font-bold px-3 py-1 rounded-full animate-pulse">
+              {rxQueue.length} patient{rxQueue.length > 1 ? 's' : ''}
+            </span>
+          </div>
+          <div className="space-y-2 mb-3">
+            {rxQueue.slice(0, 4).map((entry: any) => {
+              const name = entry.patient
+                ? `${entry.patient.first_name || ''} ${entry.patient.last_name || ''}`.trim()
+                : entry.patient_name || 'Unknown';
+              return (
+                <div key={entry.id} className="flex items-center justify-between py-1.5 border-b border-teal-100 last:border-0">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 bg-teal-200 rounded-full flex items-center justify-center text-teal-800 text-xs font-bold flex-shrink-0">
+                      {entry.token_number}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-teal-900">{name}</p>
+                      <p className="text-xs text-teal-600">{entry.chief_complaint || 'Consultation'}</p>
+                    </div>
+                  </div>
+                  <span className="text-xs text-teal-600 font-medium">Tap to dispense →</span>
+                </div>
+              );
+            })}
+            {rxQueue.length > 4 && (
+              <p className="text-xs text-teal-600 text-center pt-1">+{rxQueue.length - 4} more waiting</p>
+            )}
+          </div>
+          <div className="flex items-center justify-center gap-2 bg-teal-600 text-white text-sm font-semibold rounded-xl py-2.5">
+            <ShoppingCart className="w-4 h-4" /> Open Dispensing
+          </div>
+        </div>
+      )}
 
       {/* URGENT: Low stock + expiry */}
       {lowStock?.length > 0 && (
