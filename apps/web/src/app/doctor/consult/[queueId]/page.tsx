@@ -453,8 +453,11 @@ export default function ConsultPage() {
     if (!filledItems.length) { toast.error('Add at least one medicine'); return; }
     setFinishing(true);
     try {
-      await api.post(`/consultations/${consultId}/prescriptions`, {
-        items: filledItems, notes: rxNotes,
+      await api.post(`/prescriptions`, {
+        consultation_id: consultId,
+        patient_id: queueEntry?.patient_id,
+        items: filledItems.map((i: any) => ({ medicine_name: i.medicine_name, dosage: i.dosage, frequency: i.frequency, duration: i.duration, quantity: Number(i.quantity) || 1, instructions: i.instructions })),
+        notes: rxNotes,
       });
       await api.patch(`/queue/${queueId}`, { status: 'completed' });
       toast.success('Prescription issued & sent to pharmacy');
