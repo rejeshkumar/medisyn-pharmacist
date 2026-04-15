@@ -1238,6 +1238,103 @@ export default function DispensingPage() {
         </div>
       </div>
 
+      {/* ── Mobile Bill Panel Bottom Sheet ── */}
+      {showBillPanel && (
+        <div className="lg:hidden fixed inset-0 z-40 flex flex-col justify-end">
+          {/* Overlay */}
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowBillPanel(false)} />
+          {/* Sheet */}
+          <div className="relative bg-white rounded-t-2xl shadow-2xl max-h-[85vh] flex flex-col">
+            {/* Handle */}
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-10 h-1 bg-slate-300 rounded-full" />
+            </div>
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-2 border-b border-slate-100">
+              <span className="font-bold text-slate-900">Bill Summary</span>
+              <button onClick={() => setShowBillPanel(false)} className="text-slate-400 hover:text-slate-600 p-1">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            {/* Content — scrollable */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-2 text-sm">
+              <div className="flex justify-between text-slate-600"><span>Subtotal</span><span>{formatCurrency(subtotal)}</span></div>
+              {lineDiscTotal > 0 && <div className="flex justify-between text-amber-600"><span>Line discounts</span><span>−{formatCurrency(lineDiscTotal)}</span></div>}
+              <div className="flex justify-between text-slate-600"><span>GST</span><span>{formatCurrency(taxTotal)}</span></div>
+              {overallDiscAmt > 0 && <div className="flex justify-between text-green-600"><span>Overall discount</span><span>−{formatCurrency(overallDiscAmt)}</span></div>}
+              {roundOff !== 0 && <div className="flex justify-between text-slate-400 text-xs"><span>Round off</span><span>{roundOff > 0 ? '+' : ''}{roundOff.toFixed(2)}</span></div>}
+              <div className="flex justify-between font-bold text-base border-t border-slate-200 pt-2 mt-1">
+                <span>Net total</span><span>{formatCurrency(netTotal)}</span>
+              </div>
+              {/* Amount paid */}
+              <div className="pt-1">
+                <p className="text-xs text-slate-400 mb-1">Amount paid</p>
+                <input type="number" placeholder={String(netTotal)}
+                  value={amountPaid}
+                  onChange={e => setAmountPaid(e.target.value === '' ? '' : Number(e.target.value))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold focus:outline-none focus:border-[#00475a]" />
+              </div>
+              {dueAmount > 0 && (
+                <div className="flex justify-between font-bold text-sm text-red-600">
+                  <span>Due amount</span><span>{formatCurrency(dueAmount)}</span>
+                </div>
+              )}
+              {/* Payment mode */}
+              <div className="pt-1">
+                <p className="text-xs text-slate-400 mb-1.5">Payment mode</p>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {['cash','upi','card','online','hybrid'].map(m => (
+                    <button key={m} onClick={() => setPaymentMode(m)}
+                      className={`py-2 rounded-lg text-xs font-semibold border transition-all ${paymentMode===m ? 'bg-[#00475a] text-white border-[#00475a]' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}>
+                      {m === 'hybrid' ? 'Cash+UPI' : m.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {paymentMode === 'hybrid' && (
+                <div className="space-y-2 pt-1">
+                  <p className="text-[10px] text-slate-500">Split must equal net total <span className="font-bold text-[#00475a]">₹{netTotal}</span></p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-500 w-10">💵 Cash</span>
+                    <input type="number" min={0} placeholder="0" value={hybridCash||''}
+                      onChange={e => { const c=Number(e.target.value)||0; setHybridCash(c); setHybridUpi(Math.max(0,netTotal-c)); }}
+                      className="flex-1 text-sm font-bold border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#00475a]" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-500 w-10">📱 UPI</span>
+                    <input type="number" min={0} placeholder="0" value={hybridUpi||''}
+                      onChange={e => { const u=Number(e.target.value)||0; setHybridUpi(u); setHybridCash(Math.max(0,netTotal-u)); }}
+                      className="flex-1 text-sm font-bold border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#00475a]" />
+                  </div>
+                  {(() => {
+                    const total = hybridCash+hybridUpi;
+                    if (total===0) return null;
+                    if (Math.abs(total-netTotal)<1) return <p className="text-xs text-green-600 font-semibold">✅ Split matches</p>;
+                    return <p className="text-xs text-red-500 font-semibold">⚠ {total>netTotal?`₹${(total-netTotal).toFixed(0)} excess`:`₹${(netTotal-total).toFixed(0)} short`}</p>;
+                  })()}
+                </div>
+              )}
+              {/* Overall discount */}
+              <div className="pt-1">
+                <p className="text-xs text-slate-400 mb-1">Overall discount %</p>
+                <input type="number" min={0} max={100} value={overallDiscount}
+                  onChange={e => setOverallDiscount(Math.max(0, Math.min(100, Number(e.target.value))))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#00475a]" />
+              </div>
+            </div>
+            {/* Generate Bill button */}
+            <div className="p-4 border-t border-slate-100" style={{paddingBottom: 'calc(1rem + env(safe-area-inset-bottom)'}}>
+              <button onClick={() => { setShowBillPanel(false); handleBill(); }}
+                disabled={cart.length === 0 || createSaleMutation.isPending}
+                className="w-full py-3.5 bg-[#00475a] text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#003d4d] disabled:opacity-40">
+                {createSaleMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                Generate Bill
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Mobile bottom bar ── */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 px-4 py-3 bg-white border-t border-slate-200 shadow-lg" style={{paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))"}}>
         <button onClick={() => setShowBillPanel(true)}
