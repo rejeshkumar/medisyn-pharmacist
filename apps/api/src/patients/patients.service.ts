@@ -284,7 +284,7 @@ export class PatientsService {
       vip_start_date:     vipStart,
       vip_end_date:       vipEnd,
       vip_registered_by:  dto.vip_registered_by || 'Sales Team',
-      vip_category:       dto.vip_category || 'individual',
+      category:           (dto.vip_category || "individual") as any,
       category:           'general' as any,
     });
     return this.patientRepo.save(patient);
