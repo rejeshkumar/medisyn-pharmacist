@@ -63,7 +63,6 @@ const OWNER_NAV_SECTIONS = [
       { href: '/dashboard',    label: 'Dashboard',      icon: LayoutDashboard },
       { href: '/patients',     label: 'Patients',       icon: HeartPulse      },
       { href: '/receptionist/book-appointment', label: 'Book Appointment', icon: CalendarPlus },
-      { href: '/receptionist/book-appointment', label: 'Book Appointment', icon: CalendarPlus },
       { href: '/dispensing',   label: 'Dispense',       icon: ShoppingCart    },
       { href: '/billing',      label: 'Bills',          icon: FileText        },
       { href: '/ai-care',      label: 'AI Care Engine', icon: Cpu             },
