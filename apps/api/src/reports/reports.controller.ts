@@ -45,10 +45,15 @@ export class ReportsController {
 
     const [todaySales, todayCount, lowStock, nearExpiry, topMeds] = await Promise.all([
       this.ds.query(
-        `SELECT COALESCE(SUM(total_amount),0) AS total FROM sales
+        `SELECT
+           COALESCE(SUM(total_amount),0) AS total,
+           COALESCE(SUM(CASE WHEN payment_mode='cash' THEN total_amount END),0) AS cash,
+           COALESCE(SUM(CASE WHEN payment_mode='upi' THEN total_amount END),0) AS upi,
+           COALESCE(SUM(CASE WHEN payment_mode='card' THEN total_amount END),0) AS card
+         FROM sales
          WHERE tenant_id=$1 AND is_voided=false
-           AND created_at BETWEEN $2 AND $3`,
-        [tenantId, todayStart, todayEnd]
+           AND DATE(created_at + INTERVAL '5 hours 30 minutes')=CURRENT_DATE`,
+        [tenantId]
       ),
       this.ds.query(
         `SELECT COUNT(*)::int AS cnt FROM sales
@@ -80,7 +85,9 @@ export class ReportsController {
     ]);
 
     return {
-      today_sales:       parseFloat(todaySales[0]?.total || '0'),
+      today_sales: parseFloat(todaySales[0]?.total || "0"),
+      today_cash: parseFloat(todaySales[0]?.cash || "0"),
+      today_upi: parseFloat(todaySales[0]?.upi || "0"),
       today_bill_count:  todayCount[0]?.cnt || 0,
       low_stock_count:   lowStock[0]?.cnt || 0,
       near_expiry_count: nearExpiry[0]?.cnt || 0,
