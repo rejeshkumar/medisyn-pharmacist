@@ -306,6 +306,20 @@ export class ConsultationService {
 
     const saved = await this.prescriptionRepo.save(prescription);
 
+    // Also mark the queue entry as completed
+    if (prescription.consultation_id) {
+      const consultation = await this.consultationRepo
+        .findOne({ where: { id: prescription.consultation_id, tenant_id: tenantId } });
+      if (consultation?.queue_id) {
+        await this.queueService.updateStatus(
+          consultation.queue_id,
+          { status: QueueStatus.COMPLETED },
+          tenantId,
+          user,
+        ).catch(() => {}); // non-blocking — don't fail dispense if queue update fails
+      }
+    }
+
     await this.auditService.log({
       tenantId,
       userId: user.id,
