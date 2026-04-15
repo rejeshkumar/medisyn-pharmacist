@@ -272,8 +272,6 @@ export class PatientsService {
       if (dto.area)       patient.area       = dto.area;
       if (dto.address)    patient.address    = dto.address;
       if (dto.vip_category) (patient as any).vip_category = dto.vip_category;
-      if (dto.vip_category) (patient as any).vip_category = dto.vip_category;
-      if (dto.vip_category) patient.vip_category = dto.vip_category;
       return this.patientRepo.save(patient);
     }
 
@@ -286,7 +284,6 @@ export class PatientsService {
       vip_start_date:     vipStart,
       vip_end_date:       vipEnd,
       vip_registered_by:  dto.vip_registered_by || 'Sales Team',
-      vip_category:       dto.vip_category || 'individual',
       vip_category:       dto.vip_category || 'individual',
       category:           'general' as any,
     });
