@@ -318,6 +318,14 @@ export default function DispensingPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const qc = useQueryClient();
 
+  const { data: rxQueue = [] } = useQuery({
+    queryKey: ['rx-queue-dispensing'],
+    queryFn: () => api.get('/queue/today').then(r =>
+      r.data.filter((e: any) => ['consultation_done', 'dispensing'].includes(e.status))
+    ).catch(() => []),
+    refetchInterval: 15000,
+  });
+
   const { data: substitutes } = useQuery({
     queryKey: ['substitutes', showSubstitutes],
     queryFn: () => api.get(`/substitutes?medicine_id=${showSubstitutes}`).then(r => r.data),
@@ -807,6 +815,41 @@ export default function DispensingPage() {
         </button>
       </div>
 
+      {/* ── Rx Waiting Banner ── */}
+      {rxQueue.length > 0 && (
+        <div className="flex-shrink-0 bg-teal-600 px-3 py-2 flex items-center gap-2 overflow-x-auto">
+          <ClipboardList className="w-4 h-4 text-white flex-shrink-0" />
+          <span className="text-white text-xs font-bold flex-shrink-0">
+            {rxQueue.length} prescription{rxQueue.length > 1 ? 's' : ''} waiting:
+          </span>
+          <div className="flex gap-1.5 flex-1 overflow-x-auto">
+            {rxQueue.map((entry: any) => {
+              const name = entry.patient
+                ? `${entry.patient.first_name || ''} ${entry.patient.last_name || ''}`.trim()
+                : entry.patient_name || 'Patient';
+              return (
+                <button
+                  key={entry.id}
+                  onClick={() => setShowRxPanel(true)}
+                  className="flex-shrink-0 flex items-center gap-1.5 bg-white/20 hover:bg-white/30 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors border border-white/30"
+                >
+                  <span className="w-5 h-5 bg-white text-teal-700 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0">
+                    {entry.token_number}
+                  </span>
+                  {name}
+                </button>
+              );
+            })}
+          </div>
+          <button
+            onClick={() => setShowRxPanel(v => !v)}
+            className="flex-shrink-0 text-white/80 hover:text-white text-xs underline"
+          >
+            {showRxPanel ? 'Hide panel' : 'Show panel'}
+          </button>
+        </div>
+      )}
+
       {/* ── Patient / bill header ── */}
       <div className="flex-shrink-0 bg-white border-b border-slate-200 px-4 py-2">
         <div className="flex items-center gap-4 flex-wrap">
@@ -894,6 +937,22 @@ export default function DispensingPage() {
       )}
 
       <div className="flex flex-1 overflow-hidden">
+        {/* ── Prescription Bridge sidebar ── */}
+        {showRxPanel && (
+          <div className="w-64 flex-shrink-0 border-r border-slate-200 bg-white flex flex-col">
+            <PrescriptionBridge
+              onLoadPrescription={handleLoadPrescription}
+              onPendingCountChange={setPendingRxCount}
+            />
+            <button
+              onClick={() => setShowRxPanel(false)}
+              className="flex-shrink-0 flex items-center justify-center py-2 border-t border-slate-100 text-xs text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
+            >
+              <X className="w-3.5 h-3.5 mr-1" /> Hide panel
+            </button>
+          </div>
+        )}
+
         {/* ── Cart table ── */}
         <div className="flex-1 overflow-auto">
           <table className="w-full border-collapse">
