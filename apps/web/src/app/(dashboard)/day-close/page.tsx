@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 import {
   CheckCircle, AlertTriangle, Clock, Loader2,
   ChevronDown, RefreshCw, Banknote, Smartphone,
-  TrendingUp, TrendingDown, X, Check, Info,
+  TrendingUp, TrendingDown, X, Check, Info, Download,
 } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -307,6 +307,7 @@ function ReceptionistView({ data, date, onSubmit, submitting }: any) {
 // ── Owner Review View ───────────────────────────────────────────────────────
 function OwnerView({ data, date, onApprove, submitting }: any) {
   const [bankUpi, setBankUpi] = useState('');
+  const [fetchingBank, setFetchingBank] = useState(false);
   const [cashDeposited, setCashDeposited] = useState('');
   const [depositRef, setDepositRef] = useState('');
   const [closingCash, setClosingCash] = useState('');
@@ -402,6 +403,27 @@ function OwnerView({ data, date, onApprove, submitting }: any) {
         <div className="flex items-center gap-3 mb-3">
           <input type="number" className="input flex-1" placeholder="Bank UPI credit ₹"
             value={bankUpi} onChange={e => setBankUpi(e.target.value)} />
+          <button
+            onClick={async () => {
+              setFetchingBank(true);
+              try {
+                const { data } = await api.get(`/financial/bank-transactions?date=${date}&type=upi`);
+                const total = (data || []).reduce((s: number, t: any) => s + Number(t.credit_amount || 0), 0);
+                if (total > 0) {
+                  setBankUpi(String(total));
+                  toast.success(`Fetched ₹${total.toFixed(2)} UPI from bank import`);
+                } else {
+                  toast.error('No UPI transactions found in bank import for this date. Upload bank CSV first.');
+                }
+              } catch {
+                toast.error('Failed to fetch bank data');
+              } finally { setFetchingBank(false); }
+            }}
+            disabled={fetchingBank}
+            className="flex items-center gap-1.5 px-3 py-2 bg-purple-50 text-purple-700 border border-purple-200 rounded-xl text-xs font-semibold hover:bg-purple-100 disabled:opacity-50 whitespace-nowrap">
+            {fetchingBank ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+            From Bank CSV
+          </button>
           {bankUpi && (
             <span className={`text-sm font-bold px-3 py-2 rounded-lg ${upiMatched ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
               {upiMatched ? '✅ Match' : `⚠️ Diff: ${fmt(Math.abs(upiDiff))}`}
@@ -409,7 +431,7 @@ function OwnerView({ data, date, onApprove, submitting }: any) {
           )}
         </div>
         <div className="text-xs text-gray-400">
-          System expects: {fmt(systemUpi)} UPI today
+          System expects: {fmt(systemUpi)} UPI today · <span className="text-purple-600 cursor-pointer hover:underline" onClick={() => window.location.href='/financial'}>Upload bank CSV →</span>
         </div>
       </div>
 
