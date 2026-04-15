@@ -760,21 +760,68 @@ export default function DispensingPage() {
     }
   };
 
-  const handleLoadPrescription = (data: { prescriptionId: string; patientName: string; doctorName: string; items: Array<{ medicine_name: string; medicine_id?: string; dosage?: string; frequency?: string; quantity?: number; }> }) => {
+  const handleLoadPrescription = async (data: { prescriptionId: string; patientName: string; doctorName: string; items: Array<{ medicine_name: string; medicine_id?: string; dosage?: string; frequency?: string; quantity?: number; }> }) => {
     setActivePrescriptionId(data.prescriptionId);
     setCompliance(p => ({ ...p, patient_name: data.patientName, doctor_name: data.doctorName, referring_doctor: data.doctorName }));
     setPatientSearch(data.patientName);
-    data.items.forEach(async (item) => {
+    setShowRxPanel(false);
+
+    // Clear cart first, then add items sequentially so indices are correct
+    setCart([]);
+    setSearchValues(['']);
+
+    const loadingToast = toast.loading(`Loading ${data.items.length} medicines...`);
+    let added = 0;
+    const newCart: CartItem[] = [];
+
+    for (const item of data.items) {
       try {
         const res = await api.get(`/medicines/search-enriched?search=${encodeURIComponent(item.medicine_name)}&limit=1`);
         const med = res.data?.[0];
-        if (med && Number(med.total_stock) > 0) {
-          await handleSelectMedicine(med, cart.length);
+        if (med) {
+          const { data: bestBatch } = await api.get(`/stock/${med.id}/best-batch`).catch(() => ({ data: null }));
+          if (bestBatch) {
+            const qty = item.quantity || 1;
+            newCart.push({
+              medicine_id:       med.id,
+              batch_id:          bestBatch.id,
+              medicine_name:     med.brand_name,
+              molecule:          med.molecule || '',
+              batch_number:      bestBatch.batch_number,
+              expiry_date:       bestBatch.expiry_date,
+              qty,
+              rate:              Number(bestBatch.sale_rate),
+              line_discount_pct: 0,
+              gst_percent:       Number(med.gst_percent || 0),
+              avl_qty:           Number(bestBatch.quantity || 0),
+              rack_location:     med.rack_location || '',
+              is_substituted:    false,
+              schedule_class:    med.schedule_class || 'OTC',
+              tabs_per_strip:    med.tabs_per_strip || 1,
+              max_discount_pct:  med.max_discount_pct ?? null,
+              is_chronic:        med.is_chronic || false,
+              chronic_category:  med.chronic_category || '',
+              create_care_plan:  med.is_chronic || false,
+              all_batches:       med.all_batches || [],
+            });
+            added++;
+          }
         }
       } catch {}
-    });
-    setShowRxPanel(false);
-    toast.success(`Prescription loaded — ${data.items.length} medicines added`);
+    }
+
+    setCart(newCart);
+    setSearchValues([...newCart.map(() => ''), '']);
+    toast.dismiss(loadingToast);
+
+    if (added > 0) {
+      toast.success(`✅ ${added} medicine${added > 1 ? 's' : ''} loaded from prescription`);
+      if (added < data.items.length) {
+        toast(`⚠️ ${data.items.length - added} medicine${data.items.length - added > 1 ? 's' : ''} not in stock — check substitutes`, { duration: 5000 });
+      }
+    } else {
+      toast.error('No medicines could be loaded — check stock');
+    }
   };
 
   const today = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -843,7 +890,7 @@ export default function DispensingPage() {
           </div>
           <button
             onClick={() => setShowRxPanel(v => !v)}
-            className="flex-shrink-0 text-white/80 hover:text-white text-xs underline"
+            className="flex-shrink-0 text-white/80 hover:text-white text-xs underline whitespace-nowrap"
           >
             {showRxPanel ? 'Hide panel' : 'Show panel'}
           </button>
