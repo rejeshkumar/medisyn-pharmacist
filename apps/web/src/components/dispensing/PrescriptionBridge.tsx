@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 interface PrescriptionBridgeProps {
   onLoadPrescription: (data: {
     prescriptionId: string;
+    queueId?: string;
     patientName: string;
     doctorName: string;
     items: Array<{
@@ -71,6 +72,7 @@ export default function PrescriptionBridge({ onLoadPrescription, onPendingCountC
 
     onLoadPrescription({
       prescriptionId: rx.id,
+      queueId: selectedId || undefined,
       patientName: patientName(rx.patient),
       doctorName: consult.doctor?.full_name || '',
       items: rx.items || [],
