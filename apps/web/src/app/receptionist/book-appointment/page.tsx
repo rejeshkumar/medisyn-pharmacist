@@ -102,6 +102,8 @@ export default function BookAppointmentPage() {
   const [selectedSlot, setSelectedSlot]     = useState<string | null>(null);
   const [bookedSlots, setBookedSlots]       = useState<string[]>([]);
   const [loadingSlots, setLoadingSlots]     = useState(false);
+  const [doctorSlots, setDoctorSlots]       = useState<string[]>([]);
+  const [doctorUnavailable, setDoctorUnavailable] = useState<string | null>(null);
 
   // Form
   const [visitType, setVisitType]           = useState('new');
@@ -131,6 +133,34 @@ export default function BookAppointmentPage() {
     const t = setTimeout(() => searchPatients(patientSearch), 350);
     return () => clearTimeout(t);
   }, [patientSearch, searchPatients]);
+
+  // ── Load doctor slots from availability API ────────────────────
+  useEffect(() => {
+    if (!selectedDoctor || selectedDoctor.id === 'any') {
+      setDoctorSlots(generateSlots());
+      setDoctorUnavailable(null);
+      return;
+    }
+    setLoadingDoctorSlots(true);
+    setDoctorUnavailable(null);
+    const dateStr = `${cursor.getFullYear()}-${pad(cursor.getMonth()+1)}-${pad(cursor.getDate())}`;
+    api.get(`/availability/${selectedDoctor.id}/slots?date=${dateStr}`)
+      .then(r => {
+        const data = r.data;
+        if (!data.is_available) {
+          setDoctorSlots([]);
+          setDoctorUnavailable(data.reason || 'Doctor not available');
+        } else {
+          setDoctorSlots(data.slots.filter((s: any) => s.available).map((s: any) => s.time));
+          setDoctorUnavailable(null);
+        }
+      })
+      .catch(() => {
+        setDoctorSlots(generateSlots());
+        setDoctorUnavailable(null);
+      })
+      .finally(() => setLoadingDoctorSlots(false));
+  }, [selectedDoctor, cursor]);
 
   // ── Load booked slots when doctor+date change ────────────────
   useEffect(() => {
@@ -174,13 +204,14 @@ export default function BookAppointmentPage() {
     return matchSpec && matchQ;
   });
 
-  // ── Slot groups ──────────────────────────────────────────────
-  const allSlots = generateSlots();
-  const dateForSlots = view === 'day' ? cursor : cursor;
+  // ── Slot groups (from API if doctor selected, else default) ─────
+  const activeSlots = (selectedDoctor && selectedDoctor.id !== 'any' && doctorSlots.length > 0)
+    ? doctorSlots.filter(s => !isPastSlot(cursor, s))
+    : generateSlots().filter(s => !isPastSlot(cursor, s));
   const slots = {
-    morning:   allSlots.filter(s => parseInt(s) < 12  && !isPastSlot(dateForSlots, s)),
-    afternoon: allSlots.filter(s => parseInt(s) >= 12 && parseInt(s) < 17 && !isPastSlot(dateForSlots, s)),
-    evening:   allSlots.filter(s => parseInt(s) >= 17 && !isPastSlot(dateForSlots, s)),
+    morning:   activeSlots.filter(s => parseInt(s) < 12),
+    afternoon: activeSlots.filter(s => parseInt(s) >= 12 && parseInt(s) < 17),
+    evening:   activeSlots.filter(s => parseInt(s) >= 17),
   };
 
   // ── Book ──────────────────────────────────────────────────────
@@ -583,6 +614,11 @@ export default function BookAppointmentPage() {
                   {!selectedDoctor && (
                     <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-2.5 mb-3 text-center">
                       Select a doctor above to see available slots
+                    </p>
+                  )}
+                  {selectedDoctor && selectedDoctor.id !== 'any' && doctorUnavailable && (
+                    <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg p-2.5 mb-3 text-center">
+                      ⚠️ {doctorUnavailable}
                     </p>
                   )}
                   {(['morning','afternoon','evening'] as const).map(band => {
