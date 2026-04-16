@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Patch, Param, Body, Req, UseGuards } from '@nestjs/common';
 import { ConsultationBillService } from './consultation-bill.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { TenantGuard } from '../auth/tenant.guard';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { TenantGuard } from '../common/guards/tenant.guard';
 
 @Controller('consultation-bills')
 @UseGuards(JwtAuthGuard, TenantGuard)
