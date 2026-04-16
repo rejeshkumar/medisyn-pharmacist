@@ -225,7 +225,7 @@ export default function BookAppointmentPage() {
         visit_type:    visitType,
         chief_complaint: chiefComplaint || undefined,
       };
-      if (selectedDoctor)  payload.doctor_id = selectedDoctor.id;
+      if (selectedDoctor && selectedDoctor.id !== 'any')  payload.doctor_id = selectedDoctor.id;
       if (selectedSlot) {
         const dateStr = `${cursor.getFullYear()}-${pad(cursor.getMonth()+1)}-${pad(cursor.getDate())}`;
         payload.scheduled_time = `${dateStr}T${selectedSlot}:00`;
