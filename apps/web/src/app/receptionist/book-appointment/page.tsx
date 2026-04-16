@@ -104,6 +104,7 @@ export default function BookAppointmentPage() {
   const [loadingSlots, setLoadingSlots]     = useState(false);
   const [doctorSlots, setDoctorSlots]       = useState<string[]>([]);
   const [doctorUnavailable, setDoctorUnavailable] = useState<string | null>(null);
+  const [loadingDoctorSlots, setLoadingDoctorSlots] = useState(false);
 
   // Form
   const [visitType, setVisitType]           = useState('new');
