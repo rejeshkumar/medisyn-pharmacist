@@ -1,4 +1,4 @@
-import { IsUUID, IsEnum, IsOptional, IsString, IsInt, IsDateString } from 'class-validator';
+import { IsUUID, IsEnum, IsOptional, IsString, IsInt, IsBoolean, IsNumber } from 'class-validator';
 import { ConsultationType } from './queue.entity';
 
 export class CreateQueueDto {
@@ -20,16 +20,36 @@ export class CreateQueueDto {
   @IsString()
   @IsOptional()
   notes?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  is_emergency?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  skip_precheck?: boolean;
+
+  @IsString()
+  @IsOptional()
+  skip_reason?: string;
+
+  @IsNumber()
+  @IsOptional()
+  consultation_fee?: number;
 }
 
 export class UpdateQueueStatusDto {
   @IsEnum(['waiting','in_precheck','precheck_done','in_consultation',
-           'consultation_done','dispensing','completed','cancelled','no_show'])
+           'consultation_done','dispensing','completed','cancelled','no_show','emergency','payment_pending'])
   status: string;
 
   @IsUUID()
   @IsOptional()
   doctor_id?: string;
+
+  @IsString()
+  @IsOptional()
+  override_reason?: string;
 }
 
 export class RecordPreCheckDto {

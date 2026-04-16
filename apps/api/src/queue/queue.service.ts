@@ -40,16 +40,25 @@ export class QueueService {
     const token = await this.getNextToken(tenantId);
     const today = new Date().toISOString().split('T')[0];
 
+    // Determine initial status
+    let initialStatus = QueueStatus.WAITING;
+    if (dto.is_emergency) initialStatus = QueueStatus.EMERGENCY;
+    else if (dto.skip_precheck) initialStatus = QueueStatus.PRECHECK_DONE;
+
     const queue = this.queueRepo.create({
       tenant_id: tenantId,
       patient_id: dto.patient_id,
       doctor_id: dto.doctor_id ?? null,
       token_number: token,
       visit_date: today,
-      visit_type: dto.visit_type,
+      visit_type: dto.is_emergency ? 'emergency' as any : (dto.visit_type ?? 'new' as any),
       chief_complaint: dto.chief_complaint,
       notes: dto.notes,
-      status: QueueStatus.WAITING,
+      status: initialStatus,
+      is_emergency: dto.is_emergency ?? false,
+      skip_precheck: dto.skip_precheck ?? false,
+      skip_reason: dto.skip_reason ?? null,
+      consultation_fee: dto.consultation_fee ?? 0,
       created_by: user.id,
       updated_by: user.id,
     });
@@ -64,7 +73,12 @@ export class QueueService {
       action: AuditAction.CREATE,
       entity: 'queues',
       entityId: saved.id,
-      newValue: { patient_id: dto.patient_id, token, visit_type: dto.visit_type },
+      newValue: {
+        patient_id: dto.patient_id, token,
+        visit_type: dto.visit_type,
+        is_emergency: dto.is_emergency,
+        skip_precheck: dto.skip_precheck,
+      },
     });
 
     return saved;
@@ -80,7 +94,9 @@ export class QueueService {
       .where('q.tenant_id = :tenantId', { tenantId })
       .andWhere('q.visit_date = :today', { today })
       .andWhere('q.is_active = true')
-      .orderBy('q.token_number', 'ASC');
+      // Emergency first, then by token
+      .orderBy('q.is_emergency', 'DESC')
+      .addOrderBy('q.token_number', 'ASC');
 
     if (doctorId) {
       qb.andWhere('q.doctor_id = :doctorId', { doctorId });
@@ -103,7 +119,7 @@ export class QueueService {
     return queue;
   }
 
-  // ── Update queue status ───────────────────────────────────────────
+  // ── Update queue status (no restriction — any role can move to any status) ──
   async updateStatus(
     id: string,
     dto: UpdateQueueStatusDto,
@@ -134,13 +150,27 @@ export class QueueService {
       entity: 'queues',
       entityId: id,
       oldValue: { status: oldStatus },
-      newValue: { status: dto.status },
+      newValue: { status: dto.status, override_reason: dto.override_reason },
     });
 
     return saved;
   }
 
-  // ── Get queue stats for today ─────────────────────────────────────
+  // ── Doctor pulls patient directly (skip precheck) ─────────────────
+  async pullToConsultation(
+    id: string,
+    tenantId: string,
+    user: UserContext,
+  ): Promise<Queue> {
+    return this.updateStatus(
+      id,
+      { status: QueueStatus.IN_CONSULTATION, doctor_id: user.id, override_reason: 'Doctor pulled from queue' },
+      tenantId,
+      user,
+    );
+  }
+
+  // ── Get today's stats ─────────────────────────────────────────────
   async getTodayStats(tenantId: string): Promise<any> {
     const today = new Date().toISOString().split('T')[0];
     const rows = await this.queueRepo
@@ -156,6 +186,7 @@ export class QueueService {
     const stats: any = {
       total: 0, waiting: 0, in_precheck: 0, precheck_done: 0,
       in_consultation: 0, consultation_done: 0, completed: 0, cancelled: 0,
+      emergency: 0,
     };
     rows.forEach(r => {
       stats[r.status] = parseInt(r.count);
@@ -164,7 +195,7 @@ export class QueueService {
     return stats;
   }
 
-  // ── Record pre-check vitals (upsert — safe to call multiple times) ──
+  // ── Record pre-check vitals ───────────────────────────────────────
   async recordPreCheck(
     dto: RecordPreCheckDto,
     tenantId: string,
@@ -172,7 +203,6 @@ export class QueueService {
   ): Promise<PreCheck> {
     const queue = await this.getById(dto.queue_id, tenantId);
 
-    // Auto-calculate BMI if weight and height provided
     let bmi: number | null = null;
     if (dto.weight && dto.height) {
       const heightM = dto.height / 100;
@@ -180,23 +210,22 @@ export class QueueService {
     }
 
     const vitalsData = {
-      bp_systolic:      dto.bp_systolic,
-      bp_diastolic:     dto.bp_diastolic,
-      pulse_rate:       dto.pulse_rate,
-      temperature:      dto.temperature,
-      weight:           dto.weight,
-      height:           dto.height,
+      bp_systolic: dto.bp_systolic,
+      bp_diastolic: dto.bp_diastolic,
+      pulse_rate: dto.pulse_rate,
+      temperature: dto.temperature,
+      weight: dto.weight,
+      height: dto.height,
       bmi,
-      spo2:             dto.spo2,
-      blood_sugar:      dto.blood_sugar,
-      chief_complaint:  dto.chief_complaint,
-      allergies:        dto.allergies,
+      spo2: dto.spo2,
+      blood_sugar: dto.blood_sugar,
+      chief_complaint: dto.chief_complaint,
+      allergies: dto.allergies,
       current_medicines: dto.current_medicines,
-      notes:            dto.notes,
-      updated_by:       user.id,
+      notes: dto.notes,
+      updated_by: user.id,
     };
 
-    // Upsert: update if pre-check already exists (unique constraint on queue_id)
     let preCheck = await this.preCheckRepo.findOne({
       where: { queue_id: dto.queue_id, tenant_id: tenantId },
     });
@@ -205,22 +234,18 @@ export class QueueService {
       Object.assign(preCheck, vitalsData);
     } else {
       preCheck = this.preCheckRepo.create({
-        tenant_id:   tenantId,
-        queue_id:    dto.queue_id,
-        patient_id:  queue.patient_id,
+        tenant_id: tenantId,
+        queue_id: dto.queue_id,
+        patient_id: queue.patient_id,
         recorded_by: user.id,
-        created_by:  user.id,
+        created_by: user.id,
         ...vitalsData,
       });
     }
 
     const saved = await this.preCheckRepo.save(preCheck);
 
-    // Only advance queue to precheck_done if it's still in an early stage
-    const earlyStatuses: QueueStatus[] = [
-      QueueStatus.WAITING,
-      QueueStatus.IN_PRECHECK,
-    ];
+    const earlyStatuses: QueueStatus[] = [QueueStatus.WAITING, QueueStatus.IN_PRECHECK];
     if (earlyStatuses.includes(queue.status as QueueStatus)) {
       await this.updateStatus(
         dto.queue_id,

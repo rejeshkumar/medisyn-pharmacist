@@ -17,6 +17,7 @@ export enum QueueStatus {
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',
   NO_SHOW = 'no_show',
+  EMERGENCY = 'emergency',
 }
 
 export enum ConsultationType {
@@ -68,6 +69,29 @@ export class Queue {
 
   @Column({ type: 'text', nullable: true })
   notes: string;
+
+  // ── Emergency & bypass flags ──────────────────────────────────────
+  @Column({ type: 'boolean', default: false })
+  is_emergency: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  skip_precheck: boolean;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  skip_reason: string;
+
+  // ── Consultation fee billing ──────────────────────────────────────
+  @Column({ type: 'numeric', precision: 10, scale: 2, default: 0 })
+  consultation_fee: number;
+
+  @Column({ type: 'boolean', default: false })
+  fee_paid: boolean;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  fee_paid_at: Date;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  fee_payment_mode: string;
 
   @Column({ type: 'timestamptz', default: () => 'NOW()' })
   registered_at: Date;
