@@ -4,16 +4,16 @@ import { useRef } from 'react';
 import { Printer, X } from 'lucide-react';
 import { formatDate, formatDateTime, formatCurrency } from '@/lib/utils';
 
-// ── Clinic details ────────────────────────────────────────────────────────────
-const CLINIC = {
+// ── Fallback clinic details (used if tenant data not available) ──────────────
+const CLINIC_FALLBACK = {
   name: 'MEDISYN SPECIALITY CLINIC',
-  subname: '',
   address: 'TMC XVII-1260,1261,1264,1265, CHIRVAKKU JUNCTION, TALIPARAMBA, KANNUR KERALA, PO 670141',
   phone: '6282208880',
   landline: '04602 220880',
   email: 'pharmacy@medisyn.in',
-  gstin: 'GSTIN: 32ACEFM2008C1Z1',
-  dl_no: 'DL: RLF20KL2025003081 / RLF21KL2025003073',
+  gstin: '32ACEFM2008C1Z1',
+  pan: 'ACEFM2008C',
+  dl_numbers: 'RLF20KL2025003081 / RLF21KL2025003073',
 };
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -29,8 +29,21 @@ export interface BillItem {
   isSubstituted?: boolean;
 }
 
+export interface ClinicInfo {
+  name: string;
+  address?: string;
+  phone?: string;
+  landline?: string;
+  email?: string;
+  gstin?: string;
+  pan?: string;
+  dl_numbers?: string;
+  logo_url?: string;
+}
+
 export interface BillData {
   billNumber?: string;
+  clinic?: ClinicInfo;
   date?: Date | string;
   pharmacist?: string;
   patientName?: string;
@@ -135,6 +148,7 @@ export default function BillDocument({ data, mode, onClose, onConfirm, isLoading
   };
 
   const isPreview = mode === 'preview';
+  const CLINIC = data.clinic || CLINIC_FALLBACK;
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
@@ -171,179 +185,125 @@ export default function BillDocument({ data, mode, onClose, onConfirm, isLoading
         {/* Bill content */}
         <div className="overflow-y-auto max-h-[65vh] p-5">
           <div ref={printRef}>
-            <div className="bill-wrap font-['Arial',sans-serif] text-[12px] text-gray-900 bg-white w-full">
+            <div style={{fontFamily:'Arial,sans-serif', fontSize:'12px', color:'#111', background:'#fff', width:'100%', maxWidth:'680px', margin:'0 auto'}}>
 
-              {/* Clinic header */}
-              <div className="text-center border-b-2 border-gray-800 pb-3 mb-3">
-                <p className="text-lg font-bold tracking-wide">{CLINIC.name}</p>
-                {CLINIC.subname && <p className="text-sm font-semibold text-gray-600">{CLINIC.subname}</p>}
-                <p className="text-[11px] text-gray-500 mt-1 leading-5">
-                  {CLINIC.address}<br />
-                  Ph: {CLINIC.phone} &nbsp;|&nbsp; Land: {CLINIC.landline} &nbsp;|&nbsp; {CLINIC.email}<br />
-                  {CLINIC.gstin} &nbsp;|&nbsp; {CLINIC.dl_no}
-                </p>
-                <p className="mt-2 text-sm font-bold uppercase tracking-widest text-gray-800">
-                  {isPreview ? '— Bill Preview —' : 'Tax Invoice'}
+              {/* ── Clinic Header ── */}
+              <div style={{textAlign:'center', borderBottom:'2px solid #111', paddingBottom:'10px', marginBottom:'8px'}}>
+                <p style={{fontSize:'18px', fontWeight:'700', letterSpacing:'0.5px'}}>{CLINIC.name}</p>
+                <p style={{fontSize:'11px', color:'#333', marginTop:'3px', lineHeight:'1.7'}}>
+                  {CLINIC.address}<br/>
+                  {CLINIC.phone && <>Ph: {CLINIC.phone}</>}
+                  {CLINIC.landline && <> &nbsp;|&nbsp; Land: {CLINIC.landline}</>}
+                  {CLINIC.email && <> &nbsp;|&nbsp; {CLINIC.email}<br/></>}
+                  {CLINIC.gstin && <>GST: {CLINIC.gstin}</>}
+                  {CLINIC.pan && <> &nbsp;&nbsp; PAN: {CLINIC.pan}</>}
+                  {CLINIC.dl_numbers && <><br/>DL NO: {CLINIC.dl_numbers}</>}
                 </p>
               </div>
 
-              {/* Bill info + Patient info */}
-              <div className="flex justify-between text-[11.5px] my-2.5">
-                <div className="space-y-1">
-                  <p><span className="text-gray-500">Bill No: </span>
-                    <span className="font-semibold">{data.billNumber || <span className="italic text-gray-400">Will be assigned</span>}</span>
-                  </p>
-                  <p><span className="text-gray-500">Date: </span>
-                    <span className="font-semibold">{data.date ? formatDateTime(data.date) : new Date().toLocaleString('en-IN')}</span>
-                  </p>
-                  {data.pharmacist && (
-                    <p><span className="text-gray-500">Pharmacist: </span>
-                      <span className="font-semibold">{data.pharmacist}</span>
-                    </p>
-                  )}
-                  <p><span className="text-gray-500">Payment: </span>
-                    <span className="inline-block bg-blue-100 text-blue-800 text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase">{data.paymentMode}</span>
-                  </p>
-                </div>
-                <div className="text-right space-y-1">
-                  {data.patientName && (
-                    <p><span className="text-gray-500">Patient: </span>
-                      <span className="font-semibold">{data.patientName}</span>
-                      {data.patientId && <span className="text-gray-400 text-[10px] ml-1">(ID: {data.patientId})</span>}
-                    </p>
-                  )}
-                  {data.doctorName && (
-                    <p><span className="text-gray-500">Doctor: </span>
-                      <span className="font-semibold">Dr. {data.doctorName}</span>
-                    </p>
-                  )}
-                  {data.doctorRegNo && (
-                    <p><span className="text-gray-500">Reg. No: </span>
-                      <span className="font-semibold">{data.doctorRegNo}</span>
-                    </p>
-                  )}
+              {/* ── Patient + Bill Info ── */}
+              <div style={{borderBottom:'1px dashed #555', paddingBottom:'6px', marginBottom:'6px', fontSize:'11.5px'}}>
+                <div style={{display:'flex', justifyContent:'space-between'}}>
+                  <div>
+                    {data.patientName && <p><strong>Patient: {data.patientName}</strong></p>}
+                    {data.doctorName && <p>Doctor: Dr. {data.doctorName}</p>}
+                  </div>
+                  <div style={{textAlign:'right'}}>
+                    <p><strong>Bill No: {data.billNumber || 'Preview'}</strong></p>
+                    <p>Date: {data.date ? formatDate(data.date) : new Date().toLocaleDateString('en-IN')}</p>
+                  </div>
                 </div>
               </div>
 
-              {/* Items table */}
-              <table className="w-full border-collapse text-[11.5px] mt-3">
+              {/* ── Items Table ── */}
+              <table style={{width:'100%', borderCollapse:'collapse', fontSize:'11px', marginBottom:'4px'}}>
                 <thead>
-                  <tr className="bg-gray-100">
-                    <th className="border border-gray-300 px-2 py-1.5 text-left font-semibold w-6">#</th>
-                    <th className="border border-gray-300 px-2 py-1.5 text-left font-semibold">Medicine</th>
-                    <th className="border border-gray-300 px-2 py-1.5 text-left font-semibold">Mfg</th>
-                    <th className="border border-gray-300 px-2 py-1.5 text-left font-semibold">Batch</th>
-                    <th className="border border-gray-300 px-2 py-1.5 text-left font-semibold">Expiry</th>
-                    <th className="border border-gray-300 px-2 py-1.5 text-center font-semibold">Qty</th>
-                    <th className="border border-gray-300 px-2 py-1.5 text-right font-semibold">Rate (₹)</th>
-                    <th className="border border-gray-300 px-2 py-1.5 text-center font-semibold">GST%</th>
-                    <th className="border border-gray-300 px-2 py-1.5 text-right font-semibold">Amount (₹)</th>
+                  <tr style={{borderTop:'1px solid #111', borderBottom:'1px solid #111'}}>
+                    <th style={{padding:'4px 4px', textAlign:'left', fontWeight:'600', width:'28px'}}>SNo</th>
+                    <th style={{padding:'4px 4px', textAlign:'left', fontWeight:'600'}}>Particulars</th>
+                    <th style={{padding:'4px 4px', textAlign:'left', fontWeight:'600'}}>Mfg</th>
+                    <th style={{padding:'4px 4px', textAlign:'left', fontWeight:'600'}}>Batch</th>
+                    <th style={{padding:'4px 4px', textAlign:'left', fontWeight:'600', width:'60px'}}>Exp</th>
+                    <th style={{padding:'4px 4px', textAlign:'center', fontWeight:'600', width:'32px'}}>Qty</th>
+                    <th style={{padding:'4px 4px', textAlign:'right', fontWeight:'600', width:'80px'}}>Amount(INR)</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.items.map((item, i) => (
-                    <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      <td className="border border-gray-200 px-2 py-1.5 text-gray-500">{i + 1}</td>
-                      <td className="border border-gray-200 px-2 py-1.5">
-                        <p className="font-medium text-gray-900">{item.medicineName}</p>
-                        {item.isSubstituted && (
-                          <p className="text-[10px] text-blue-600">Substituted</p>
-                        )}
+                    <tr key={i} style={{borderBottom:'1px dashed #ddd'}}>
+                      <td style={{padding:'4px 4px', color:'#555'}}>{i + 1}</td>
+                      <td style={{padding:'4px 4px'}}>
+                        <span style={{fontWeight:'600'}}>{item.medicineName}</span>
+                        {item.isSubstituted && <span style={{fontSize:'10px', color:'#2563eb', display:'block'}}>Substituted</span>}
                       </td>
-                      <td className="border border-gray-200 px-2 py-1.5 text-gray-600 text-[10.5px]">
-                        {(item as any).manufacturer || '—'}
-                      </td>
-                      <td className="border border-gray-200 px-2 py-1.5 text-gray-600 font-mono text-[10.5px]">
-                        {item.batchNumber || '—'}
-                      </td>
-                      <td className="border border-gray-200 px-2 py-1.5 text-gray-600 text-[10.5px]">
-                        {item.expiryDate ? formatDate(item.expiryDate) : '—'}
-                      </td>
-                      <td className="border border-gray-200 px-2 py-1.5 text-center font-semibold">
-                        {item.qty}
-                      </td>
-                      <td className="border border-gray-200 px-2 py-1.5 text-right">
-                        {item.rate.toFixed(2)}
-                      </td>
-                      <td className="border border-gray-200 px-2 py-1.5 text-center text-gray-600">
-                        {item.gstPercent}%
-                      </td>
-                      <td className="border border-gray-200 px-2 py-1.5 text-right font-semibold">
-                        {item.itemTotal.toFixed(2)}
-                      </td>
+                      <td style={{padding:'4px 4px', color:'#555', fontSize:'10.5px'}}>{item.manufacturer || '—'}</td>
+                      <td style={{padding:'4px 4px', color:'#555', fontSize:'10.5px', fontFamily:'monospace'}}>{item.batchNumber || '—'}</td>
+                      <td style={{padding:'4px 4px', color:'#555', fontSize:'10.5px'}}>{item.expiryDate ? formatDate(item.expiryDate) : '—'}</td>
+                      <td style={{padding:'4px 4px', textAlign:'center', fontWeight:'600'}}>{item.qty}</td>
+                      <td style={{padding:'4px 4px', textAlign:'right', fontWeight:'600'}}>{item.itemTotal.toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
 
-              {/* Totals */}
-              <div className="flex justify-end mt-3">
-                <div className="w-64 text-[12px]">
-                  <div className="flex justify-between py-1 border-b border-gray-100">
-                    <span className="text-gray-500">Subtotal</span>
-                    <span>{formatCurrency(data.subtotal)}</span>
+              {/* ── Totals ── */}
+              <div style={{borderTop:'1px solid #111', paddingTop:'6px', fontSize:'11.5px'}}>
+                <div style={{display:'flex', justifyContent:'space-between', marginBottom:'3px'}}>
+                  <span>Items: {data.items.length} &nbsp;&nbsp; Qty: {data.items.reduce((s, i) => s + i.qty, 0)}</span>
+                </div>
+                {data.taxAmount > 0 && (
+                  <div style={{display:'flex', justifyContent:'space-between', marginBottom:'2px'}}>
+                    <span>GST Amount:</span><span>{formatCurrency(data.taxAmount)}</span>
                   </div>
-                  <div className="flex justify-between py-1 border-b border-gray-100">
-                    <span className="text-gray-500">GST</span>
-                    <span>{formatCurrency(data.taxAmount)}</span>
+                )}
+                {data.discountAmount > 0 && (
+                  <div style={{display:'flex', justifyContent:'space-between', marginBottom:'2px', color:'#16a34a'}}>
+                    <span>Discount:</span><span>− {formatCurrency(data.discountAmount)}</span>
                   </div>
-                  {data.discountAmount > 0 && (
-                    <div className="flex justify-between py-1 border-b border-gray-100 text-green-700">
-                      <span>Discount</span>
-                      <span>− {formatCurrency(data.discountAmount)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between py-2 border-t-2 border-gray-800 font-bold text-[14px] mt-1">
-                    <span>Net Total</span>
-                    <span>{formatCurrency(data.totalAmount)}</span>
+                )}
+                <div style={{display:'flex', justifyContent:'space-between', borderTop:'1px solid #111', paddingTop:'4px', fontWeight:'700', fontSize:'13px', marginTop:'4px'}}>
+                  <span>Total Amt:</span><span>{formatCurrency(data.totalAmount)}</span>
+                </div>
+                <div style={{display:'flex', justifyContent:'space-between', borderTop:'1px dashed #aaa', paddingTop:'3px', marginTop:'3px'}}>
+                  <span>Amount Paid:</span>
+                  <span style={{fontWeight:'600'}}>{formatCurrency((data as any).amountPaid ?? data.totalAmount)}</span>
+                </div>
+                {(data as any).amountPaid !== undefined && (data as any).amountPaid < data.totalAmount - 0.5 && (
+                  <div style={{display:'flex', justifyContent:'space-between', color:'#dc2626', fontWeight:'700', marginTop:'2px'}}>
+                    <span>Balance Due:</span><span>{formatCurrency(data.totalAmount - (data as any).amountPaid)}</span>
                   </div>
-                  {(data as any).amountPaid !== undefined && (
-                    <div className="flex justify-between py-1 border-b border-gray-100">
-                      <span className="text-gray-500">Amount Paid</span>
-                      <span>{formatCurrency((data as any).amountPaid)}</span>
-                    </div>
-                  )}
-                  {(data as any).amountPaid !== undefined && (data as any).amountPaid < data.totalAmount && (
-                    <div className="flex justify-between py-1 font-semibold text-red-600">
-                      <span>Balance Due</span>
-                      <span>{formatCurrency(data.totalAmount - (data as any).amountPaid)}</span>
-                    </div>
-                  )}
+                )}
+                <div style={{marginTop:'4px', fontSize:'10.5px', color:'#555'}}>
+                  Payment: <strong style={{textTransform:'uppercase'}}>{data.paymentMode}</strong>
                 </div>
               </div>
 
-              {/* Scheduled drug notice */}
+              {/* ── Schedule H notice ── */}
               {data.hasScheduledDrugs && (
-                <div className="mt-3 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 text-[11px] text-orange-800">
-                  <strong>Note:</strong> This bill contains Schedule H/H1/X drugs. Dispensed against valid prescription.
-                  Patient compliance details recorded as per Drugs & Cosmetics Act.
+                <div style={{marginTop:'8px', background:'#fff7ed', border:'1px solid #fed7aa', padding:'6px 10px', fontSize:'10px', color:'#9a3412', borderRadius:'4px'}}>
+                  <strong>Note:</strong> Contains Schedule H/H1/X drugs. Dispensed against valid prescription per Drugs & Cosmetics Act.
                 </div>
               )}
 
-              {/* Footer */}
-              <div className="mt-5 border-t border-gray-200 pt-3 flex justify-between items-end text-[11px] text-gray-500">
-                <div>
-                  <p>Items: {data.items.length} &nbsp;|&nbsp; Units: {data.items.reduce((s, i) => s + i.qty, 0)}</p>
-                  {data.notes && <p className="mt-1">Note: {data.notes}</p>}
+              {/* ── Footer ── */}
+              <div style={{marginTop:'20px', borderTop:'1px dashed #aaa', paddingTop:'8px', display:'flex', justifyContent:'space-between', alignItems:'flex-end', fontSize:'10px', color:'#555'}}>
+                <div style={{flex:1}}>
+                  {data.notes && <p style={{marginBottom:'4px'}}>Note: {data.notes}</p>}
+                  <p>Disclaimer: Medicines once dispensed cannot be returned or exchanged. Please verify medicines at time of purchase. Keep medicines out of reach of children. Store as per label instructions.</p>
                 </div>
-                <div className="text-right">
-                  <div className="border-t border-gray-800 w-36 text-center pt-1 mt-8 ml-auto">
-                    Pharmacist Signature
+                <div style={{textAlign:'center', marginLeft:'20px', flexShrink:0}}>
+                  <div style={{borderTop:'1px solid #111', width:'130px', paddingTop:'3px', marginTop:'36px', fontSize:'10px', textAlign:'center'}}>
+                    PHARMACIST SIGN
                   </div>
                 </div>
               </div>
 
-              <div className="mt-4 bg-gray-50 border border-gray-200 rounded px-3 py-2 text-[10px] text-gray-500">
-                <strong>Disclaimer:</strong> Medicines once dispensed cannot be returned or exchanged. 
-                Please verify medicines at the time of purchase. Keep medicines out of reach of children. 
-                Store as per label instructions.
-              </div>
-              <div className="text-center mt-3 text-[11px] text-gray-400 border-t border-dashed border-gray-300 pt-3">
-                Thank you for choosing MediSyn Specialty Clinic &nbsp;•&nbsp; Get well soon!<br />
-                <span className="text-[10px]">This is a computer-generated bill &nbsp;|&nbsp; Powered by MediSyn</span>
+              <div style={{textAlign:'center', marginTop:'10px', borderTop:'1px dashed #ccc', paddingTop:'8px', fontSize:'10px', color:'#888'}}>
+                Thank you for choosing MediSyn Specialty Clinic • Get well soon!<br/>
+                This is a computer-generated bill | Powered by MediSyn
               </div>
 
-            </div>
+                        </div>
           </div>
         </div>
 

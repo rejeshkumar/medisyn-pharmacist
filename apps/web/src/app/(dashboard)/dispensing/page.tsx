@@ -1548,6 +1548,7 @@ export default function DispensingPage() {
         <BillDocument
           data={{
             billNumber: completedSale.bill_number, date: completedSale.created_at,
+            clinic: completedSale.clinic,
             patientName: completedSale.customer_name, patientId: completedSale.patient_id, doctorName: completedSale.doctor_name,
             paymentMode: completedSale.payment_mode,
             items: completedSale.items?.map((item: any) => ({

@@ -7,12 +7,13 @@ import { SaleItem } from '../database/entities/sale-item.entity';
 import { StockBatch } from '../database/entities/stock-batch.entity';
 import { Medicine } from '../database/entities/medicine.entity';
 import { ScheduleDrugLog } from '../database/entities/schedule-drug-log.entity';
+import { Tenant } from '../database/entities/tenant.entity';
 import { AuditModule } from '../audit/audit.module';
 import { AutoCarePlanService } from '../ai-care/auto-care-plan.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Sale, SaleItem, StockBatch, Medicine, ScheduleDrugLog]),
+    TypeOrmModule.forFeature([Sale, SaleItem, StockBatch, Medicine, ScheduleDrugLog, Tenant]),
     AuditModule,
   ],
   controllers: [SalesController],

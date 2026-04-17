@@ -7,6 +7,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Sale } from '../database/entities/sale.entity';
+import { Tenant } from '../database/entities/tenant.entity';
 import { SaleItem } from '../database/entities/sale-item.entity';
 import { StockBatch } from '../database/entities/stock-batch.entity';
 import { Medicine, ScheduleClass } from '../database/entities/medicine.entity';
@@ -39,6 +40,8 @@ export class SalesService {
     private medicineRepo: Repository<Medicine>,
     @InjectRepository(ScheduleDrugLog)
     private scheduleLogRepo: Repository<ScheduleDrugLog>,
+    @InjectRepository(Tenant)
+    private tenantRepo: Repository<Tenant>,
     private dataSource: DataSource,
     private auditService: AuditService,
     private autoCarePlan: AutoCarePlanService,
@@ -251,7 +254,20 @@ export class SalesService {
       relations: ['items', 'items.medicine', 'items.batch'],
     });
     if (!sale) throw new NotFoundException('Sale not found');
-    return sale;
+
+    // Attach tenant/clinic info for bill rendering
+    const tenant = await this.tenantRepo.findOne({ where: { id: tenantId } });
+    return { ...sale, clinic: tenant ? {
+      name:       tenant.name,
+      address:    tenant.address,
+      phone:      tenant.phone,
+      landline:   (tenant as any).landline,
+      email:      tenant.email,
+      gstin:      tenant.gstin,
+      pan:        (tenant as any).pan,
+      dl_numbers: (tenant as any).dl_numbers,
+      logo_url:   tenant.logo_url,
+    } : null };
   }
 
   async findByBillNumber(billNumber: string, tenantId: string) {
