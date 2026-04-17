@@ -108,6 +108,7 @@ export class SalesService {
           original_medicine_id: item.original_medicine_id,
           substitution_reason: item.substitution_reason,
           medicine_name: medicine.brand_name,
+          manufacturer: medicine.manufacturer || '',
           batch_number: batch.batch_number,
           medicine,
         });

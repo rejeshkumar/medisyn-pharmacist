@@ -1056,6 +1056,9 @@ export default function DispensingPage() {
                         </span>
                         <div>
                           <p className="text-sm font-semibold text-slate-800">{item.medicine_name}</p>
+                          {(item as any).manufacturer && (
+                            <p className="text-[10px] text-slate-500 italic">{(item as any).manufacturer}</p>
+                          )}
                           <div className="flex items-center gap-2 text-[10px] text-slate-400 flex-wrap">
                             <span>Batch: {item.batch_number}</span>
                             <span className={daysExp < 30 ? 'text-red-500 font-semibold' : daysExp < 90 ? 'text-amber-600' : ''}>
