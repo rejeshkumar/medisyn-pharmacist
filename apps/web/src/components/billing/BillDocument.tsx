@@ -7,7 +7,7 @@ import { formatDate, formatDateTime, formatCurrency } from '@/lib/utils';
 // ── Clinic details ────────────────────────────────────────────────────────────
 const CLINIC = {
   name: 'MEDISYN SPECIALITY CLINIC',
-  subname: 'Pharmacy',
+  subname: '',
   address: 'TMC XVII-1260,1261,1264,1265, CHIRVAKKU JUNCTION, TALIPARAMBA, KANNUR KERALA, PO 670141',
   phone: '6282208880',
   landline: '04602 220880',
@@ -19,6 +19,7 @@ const CLINIC = {
 // ── Types ─────────────────────────────────────────────────────────────────────
 export interface BillItem {
   medicineName: string;
+  manufacturer?: string;
   batchNumber?: string;
   expiryDate?: string;
   qty: number;
@@ -43,6 +44,7 @@ export interface BillData {
   discountAmount: number;
   totalAmount: number;
   hasScheduledDrugs?: boolean;
+  amountPaid?: number;
   notes?: string;
 }
 
@@ -174,7 +176,7 @@ export default function BillDocument({ data, mode, onClose, onConfirm, isLoading
               {/* Clinic header */}
               <div className="text-center border-b-2 border-gray-800 pb-3 mb-3">
                 <p className="text-lg font-bold tracking-wide">{CLINIC.name}</p>
-                <p className="text-sm font-semibold text-gray-600">{CLINIC.subname}</p>
+                {CLINIC.subname && <p className="text-sm font-semibold text-gray-600">{CLINIC.subname}</p>}
                 <p className="text-[11px] text-gray-500 mt-1 leading-5">
                   {CLINIC.address}<br />
                   Ph: {CLINIC.phone} &nbsp;|&nbsp; Land: {CLINIC.landline} &nbsp;|&nbsp; {CLINIC.email}<br />
@@ -229,6 +231,7 @@ export default function BillDocument({ data, mode, onClose, onConfirm, isLoading
                   <tr className="bg-gray-100">
                     <th className="border border-gray-300 px-2 py-1.5 text-left font-semibold w-6">#</th>
                     <th className="border border-gray-300 px-2 py-1.5 text-left font-semibold">Medicine</th>
+                    <th className="border border-gray-300 px-2 py-1.5 text-left font-semibold">Mfg</th>
                     <th className="border border-gray-300 px-2 py-1.5 text-left font-semibold">Batch</th>
                     <th className="border border-gray-300 px-2 py-1.5 text-left font-semibold">Expiry</th>
                     <th className="border border-gray-300 px-2 py-1.5 text-center font-semibold">Qty</th>
@@ -246,6 +249,9 @@ export default function BillDocument({ data, mode, onClose, onConfirm, isLoading
                         {item.isSubstituted && (
                           <p className="text-[10px] text-blue-600">Substituted</p>
                         )}
+                      </td>
+                      <td className="border border-gray-200 px-2 py-1.5 text-gray-600 text-[10.5px]">
+                        {(item as any).manufacturer || '—'}
                       </td>
                       <td className="border border-gray-200 px-2 py-1.5 text-gray-600 font-mono text-[10.5px]">
                         {item.batchNumber || '—'}
@@ -291,6 +297,18 @@ export default function BillDocument({ data, mode, onClose, onConfirm, isLoading
                     <span>Net Total</span>
                     <span>{formatCurrency(data.totalAmount)}</span>
                   </div>
+                  {(data as any).amountPaid !== undefined && (
+                    <div className="flex justify-between py-1 border-b border-gray-100">
+                      <span className="text-gray-500">Amount Paid</span>
+                      <span>{formatCurrency((data as any).amountPaid)}</span>
+                    </div>
+                  )}
+                  {(data as any).amountPaid !== undefined && (data as any).amountPaid < data.totalAmount && (
+                    <div className="flex justify-between py-1 font-semibold text-red-600">
+                      <span>Balance Due</span>
+                      <span>{formatCurrency(data.totalAmount - (data as any).amountPaid)}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 

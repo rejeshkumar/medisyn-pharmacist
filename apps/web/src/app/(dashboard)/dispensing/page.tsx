@@ -1533,7 +1533,9 @@ export default function DispensingPage() {
             })),
             subtotal, taxAmount: taxTotal,
             discountAmount: overallDiscAmt + lineDiscTotal,
-            totalAmount: netTotal, hasScheduledDrugs,
+            totalAmount: netTotal,
+            amountPaid: typeof amountPaid === 'number' ? amountPaid : netTotal,
+            hasScheduledDrugs,
           }}
           mode="preview"
           onClose={() => setShowPreview(false)}
@@ -1550,6 +1552,7 @@ export default function DispensingPage() {
             paymentMode: completedSale.payment_mode,
             items: completedSale.items?.map((item: any) => ({
               medicineName: item.medicine?.brand_name || item.medicine_name,
+              manufacturer: item.medicine?.manufacturer || '',
               batchNumber: item.batch?.batch_number || item.batch_number,
               expiryDate: item.batch?.expiry_date, qty: item.qty,
               rate: Number(item.rate), gstPercent: Number(item.gst_percent),
@@ -1559,6 +1562,7 @@ export default function DispensingPage() {
             taxAmount: Number(completedSale.tax_amount),
             discountAmount: Number(completedSale.discount_amount),
             totalAmount: Number(completedSale.total_amount),
+            amountPaid: Number(completedSale.amount_paid || completedSale.total_amount),
             hasScheduledDrugs: completedSale.has_scheduled_drugs,
           }}
           mode="print" onClose={() => setCompletedSale(null)} />
