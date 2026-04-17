@@ -59,6 +59,8 @@ export class QueueService {
       skip_precheck: dto.skip_precheck ?? false,
       skip_reason: dto.skip_reason ?? null,
       consultation_fee: dto.consultation_fee ?? 0,
+      scheduled_time: dto.scheduled_time ? new Date(dto.scheduled_time) : null,
+      slot_date: dto.slot_date ?? null,
       created_by: user.id,
       updated_by: user.id,
     });

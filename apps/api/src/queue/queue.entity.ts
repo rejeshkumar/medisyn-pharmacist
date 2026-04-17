@@ -93,6 +93,12 @@ export class Queue {
   @Column({ type: 'varchar', length: 20, nullable: true })
   fee_payment_mode: string;
 
+  @Column({ type: 'timestamptz', nullable: true })
+  scheduled_time: Date;
+
+  @Column({ type: 'date', nullable: true })
+  slot_date: string;
+
   @Column({ type: 'timestamptz', default: () => 'NOW()' })
   registered_at: Date;
 

@@ -36,6 +36,14 @@ export class CreateQueueDto {
   @IsNumber()
   @IsOptional()
   consultation_fee?: number;
+
+  @IsString()
+  @IsOptional()
+  scheduled_time?: string;
+
+  @IsString()
+  @IsOptional()
+  slot_date?: string;
 }
 
 export class UpdateQueueStatusDto {
