@@ -290,6 +290,13 @@ export default function DispensingPage() {
 
   // UI state
   const [showBillPanel, setShowBillPanel] = useState(false);
+
+  // Auto-hide compliance when no scheduled drugs in cart
+  useEffect(() => {
+    if (!cart.some(i => ['H', 'H1', 'X'].includes(i.schedule_class))) {
+      setShowCompliance(false);
+    }
+  }, [cart]);
   const [showCompliance, setShowCompliance] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [completedSale, setCompletedSale] = useState<any>(null);
@@ -910,7 +917,12 @@ export default function DispensingPage() {
         <div className="flex items-center gap-4 flex-wrap">
           {/* Patient search */}
           <div className="flex items-center gap-2 flex-1 min-w-48">
-            <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">Patient:</span>
+            <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">
+              Patient:
+              {!hasScheduledDrugs && cart.length > 0 && (
+                <span className="ml-1 text-[10px] font-normal text-green-600 bg-green-50 px-1.5 py-0.5 rounded">OTC — optional</span>
+              )}
+            </span>
             <div className="flex-1 relative">
               <PatientSearch
                 value={patientSearch}
@@ -1219,7 +1231,7 @@ export default function DispensingPage() {
               ))}
 
               {/* Schedule compliance row */}
-              {(hasScheduledDrugs || showCompliance) && (
+              {hasScheduledDrugs && (
                 <tr className="bg-orange-50/50 border-b border-orange-200">
                   <td colSpan={8} className="px-3 py-2">
                     <div className="flex items-center gap-2 flex-wrap">
