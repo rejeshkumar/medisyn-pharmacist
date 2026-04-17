@@ -286,6 +286,7 @@ export default function DispensingPage() {
   // Payment
   const [paymentMode, setPaymentMode] = useState('');
   const [overallDiscount, setOverallDiscount] = useState(0);
+  const [overallDiscountReason, setOverallDiscountReason] = useState('');
   const [amountPaid, setAmountPaid] = useState<number | ''>(''); // NEW: partial payment
 
   // UI state
@@ -524,7 +525,7 @@ export default function DispensingPage() {
       });
       setCart([]); setSearchValues(['']);
       setCompliance({ patient_name:'', patient_id:'', patient_age:'', patient_gender:'', doctor_name:'', doctor_reg_no:'', referring_doctor:'' });
-      setOverallDiscount(0); setAmountPaid('');
+      setOverallDiscount(0); setOverallDiscountReason(''); setAmountPaid('');
       setActiveDraftId('current');
       toast.success('Bill held — start a new one');
       await loadDrafts();
@@ -574,7 +575,7 @@ export default function DispensingPage() {
       setCompletedSale(data);
       setCart([]); setSearchValues(['']);
       setCompliance({ patient_name:'', patient_id:'', patient_age:'', patient_gender:'', doctor_name:'', doctor_reg_no:'', referring_doctor:'' });
-      setOverallDiscount(0); setAmountPaid('');
+      setOverallDiscount(0); setOverallDiscountReason(''); setAmountPaid('');
       setAiResult(null); setAiPrescriptionId(null);
       if (activeDraftId !== 'current') {
         await api.patch(`/draft-bills/${activeDraftId}/confirm`, {}).catch(() => {});
@@ -671,6 +672,7 @@ export default function DispensingPage() {
       chronic_category: i.chronic_category,
     })),
     discount_amount:   overallDiscAmt + lineDiscTotal,
+    discount_reason:   overallDiscountReason || undefined,
     payment_mode:      paymentMode === 'hybrid' ? 'cash_upi' : paymentMode,
     hybrid_cash:       paymentMode === 'hybrid' ? hybridCash : undefined,
     hybrid_upi:        paymentMode === 'hybrid' ? hybridUpi : undefined,
@@ -1030,7 +1032,6 @@ export default function DispensingPage() {
                 <th className="px-3 py-2 text-center text-[10px] font-bold text-slate-500 uppercase w-20">Avl.Qty</th>
                 <th className="px-3 py-2 text-center text-[10px] font-bold text-slate-500 uppercase w-20">Qty</th>
                 <th className="px-3 py-2 text-right text-[10px] font-bold text-slate-500 uppercase w-24">Rate</th>
-                <th className="px-3 py-2 text-center text-[10px] font-bold text-slate-500 uppercase w-36">Discount</th>
                 <th className="px-3 py-2 text-right text-[10px] font-bold text-slate-500 uppercase w-28">Amount</th>
                 <th className="px-3 py-2 w-8"></th>
               </tr>
@@ -1105,7 +1106,14 @@ export default function DispensingPage() {
                         onKeyDown={e => {
                           if (e.key === 'Tab') {
                             e.preventDefault();
-                            document.getElementById(`disc-${idx}`)?.focus();
+                            const nextSearch = document.getElementById(`search-${idx + 1}`);
+                            if (nextSearch) nextSearch.focus();
+                            else {
+                              const newSearchVals = [...searchValues];
+                              if (newSearchVals.length <= idx + 1) newSearchVals.push('');
+                              setSearchValues(newSearchVals);
+                              setTimeout(() => document.getElementById(`search-${idx + 1}`)?.focus(), 50);
+                            }
                           }
                         }}
                         className="w-16 text-center text-sm font-bold border border-slate-200 rounded focus:outline-none focus:border-[#00475a] py-1" />
@@ -1123,60 +1131,7 @@ export default function DispensingPage() {
                     <td className="px-3 py-2 text-right text-sm font-medium text-slate-700">
                       ₹{Number(item.rate).toFixed(2)}
                     </td>
-                    <td className="px-3 py-2">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-1">
-                          <span className="text-[10px] text-slate-400">₹</span>
-                          <input type="number" min={0}
-                            value={item.line_discount_pct > 0 ? (item.qty * item.rate * item.line_discount_pct / 100).toFixed(0) : ''}
-                            onChange={e => {
-                              const amt = Number(e.target.value) || 0;
-                              const base = item.qty * item.rate;
-                              if (base > 0) updateItem(idx, 'line_discount_pct', Math.min(100, parseFloat(((amt / base) * 100).toFixed(2))));
-                            }}
-                            placeholder="0"
-                            className="w-12 text-center text-xs border border-slate-200 rounded focus:outline-none focus:border-[#00475a] px-1 py-0.5" />
-                          <input id={`disc-${idx}`} type="number" min={0} max={100}
-                            value={item.line_discount_pct || ''}
-                            onChange={e => updateItem(idx, 'line_discount_pct', Math.min(100, Math.max(0, Number(e.target.value))))}
-                            onKeyDown={e => {
-                              if (e.key === 'Tab') {
-                                e.preventDefault();
-                                const nextSearch = document.getElementById(`search-${idx + 1}`);
-                                if (nextSearch) nextSearch.focus();
-                                else {
-                                  const newSearchVals = [...searchValues];
-                                  if (newSearchVals.length <= idx + 1) newSearchVals.push('');
-                                  setSearchValues(newSearchVals);
-                                  setTimeout(() => document.getElementById(`search-${idx + 1}`)?.focus(), 50);
-                                }
-                              }
-                            }}
-                            placeholder="0"
-                            className="w-10 text-center text-xs border border-slate-200 rounded focus:outline-none focus:border-[#00475a] px-1 py-0.5" />
-                          <span className="text-[10px] text-slate-400">%</span>
-                        </div>
-                        {item.line_discount_pct > 0 && (
-                          <select
-                            value={item.discount_reason || ''}
-                            onChange={e => updateItem(idx, 'discount_reason', e.target.value)}
-                            className={`w-full text-[10px] border rounded px-1 py-0.5 focus:outline-none ${
-                              !item.discount_reason ? 'border-red-300 bg-red-50 text-red-600' : 'border-amber-200 bg-amber-50'
-                            }`}>
-                            <option value="">Reason *</option>
-                            <option>Staff discount</option>
-                            <option>Owner discount</option>
-                            <option>Round off</option>
-                            <option>VIP Pass</option>
-                            <option>Special doctor discount</option>
-                            <option>Other</option>
-                          </select>
-                        )}
-                        {item.line_discount_pct > 0 && item.max_discount_pct != null && item.line_discount_pct > item.max_discount_pct && (
-                          <p className="text-[9px] text-red-600 font-bold">⚠ Max {item.max_discount_pct}% allowed</p>
-                        )}
-                      </div>
-                    </td>
+
                     <td className="px-3 py-2 text-right text-sm font-semibold text-slate-800">
                       ₹{amt.toFixed(2)}
                     </td>
@@ -1271,25 +1226,44 @@ export default function DispensingPage() {
             <div className="flex justify-between text-slate-600">
               <span>Subtotal</span><span>{formatCurrency(subtotal)}</span>
             </div>
-            {lineDiscTotal > 0 && (
-              <div className="flex justify-between text-amber-600">
-                <span>Line discounts</span><span>−{formatCurrency(lineDiscTotal)}</span>
-              </div>
-            )}
+
             <div className="flex justify-between text-slate-600">
               <span>GST</span><span>{formatCurrency(taxTotal)}</span>
             </div>
             <div className="flex justify-between items-center text-slate-600">
-              <span>Overall discount%</span>
-              <input type="number" min={0} max={100} value={overallDiscount}
-                onChange={e => setOverallDiscount(Math.min(100, Math.max(0, Number(e.target.value))))}
-                className="w-16 text-right border border-slate-200 rounded px-2 py-0.5 text-xs focus:outline-none focus:border-[#00475a]" />
+              <span className="text-xs">Discount ₹</span>
+              <input type="number" min={0} value={overallDiscount > 0 ? overallDiscAmt.toFixed(0) : ''}
+                onChange={e => {
+                  const amt = Number(e.target.value) || 0;
+                  const base = subtotal + taxTotal;
+                  if (base > 0) setOverallDiscount(Math.min(100, parseFloat(((amt / base) * 100).toFixed(2))));
+                  else setOverallDiscount(0);
+                }}
+                placeholder="0"
+                className="w-20 text-right border border-slate-200 rounded px-2 py-0.5 text-xs focus:outline-none focus:border-[#00475a]" />
             </div>
-            {overallDiscAmt > 0 && (
-              <div className="flex justify-between text-amber-600">
-                <span>Discount amount</span><span>−{formatCurrency(overallDiscAmt)}</span>
-              </div>
-            )}
+            <div className="flex justify-between items-center text-slate-600">
+              <span className="text-xs">Discount %</span>
+              <input type="number" min={0} max={100} value={overallDiscount || ''}
+                onChange={e => setOverallDiscount(Math.min(100, Math.max(0, Number(e.target.value))))}
+                placeholder="0"
+                className="w-20 text-right border border-slate-200 rounded px-2 py-0.5 text-xs focus:outline-none focus:border-[#00475a]" />
+            </div>
+            <div className="flex justify-between items-center text-slate-600">
+              <span className="text-xs">Reason</span>
+              <select
+                value={overallDiscountReason || ''}
+                onChange={e => setOverallDiscountReason(e.target.value)}
+                className="w-32 text-xs border border-slate-200 rounded px-1 py-0.5 focus:outline-none focus:border-[#00475a]">
+                <option value="">— select —</option>
+                <option>Staff discount</option>
+                <option>Owner discount</option>
+                <option>Round off</option>
+                <option>VIP Pass</option>
+                <option>Special doctor discount</option>
+                <option>Other</option>
+              </select>
+            </div>
             {roundOff !== 0 && (
               <div className="flex justify-between text-slate-400 text-xs">
                 <span>Round off</span>
