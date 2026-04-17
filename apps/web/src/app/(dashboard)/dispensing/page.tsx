@@ -41,6 +41,7 @@ interface CartItem {
   discount_reason?: string;
   tabs_per_strip?: number;
   max_discount_pct?: number | null;
+  manufacturer?: string;
 }
 
 interface DraftBill {
@@ -386,6 +387,7 @@ export default function DispensingPage() {
         chronic_category:  med.chronic_category || '',
         create_care_plan:  isChronicDetected,
         all_batches:       med.all_batches || [],
+        manufacturer:      med.manufacturer || '',
       };
 
       if (rowIdx < cart.length) {
