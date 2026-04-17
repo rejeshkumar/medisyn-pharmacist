@@ -510,6 +510,7 @@ function POTab() {
         expiry_date: '',
         sale_rate: '',
         mrp: '',
+        manufacturer: item.medicine?.manufacturer || '',
       })));
     } catch { toast.error('Failed to load PO'); }
   };
@@ -536,6 +537,7 @@ function POTab() {
           unit_price: Number(poDetail.items.find((x: any) => x.id === i.id)?.unit_price || 0),
           sale_rate: i.sale_rate ? Number(i.sale_rate) : null,
           mrp: i.mrp ? Number(i.mrp) : null,
+          manufacturer: i.manufacturer || '',
         })),
         invoice_number: poDetail.invoice_number,
         supplier_id: poDetail.supplier_id,
@@ -694,6 +696,16 @@ function POTab() {
                               i === idx ? { ...x, sale_rate: e.target.value } : x))}
                             placeholder="0.00"
                             className="w-full px-2 py-1 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00475a]" />
+                        </div>
+                        <div className="col-span-2">
+                          <label className="text-[10px] text-slate-400 block mb-1">Manufacturer <span className="text-amber-500 font-semibold">*</span></label>
+                          <input type="text" value={ri.manufacturer || ''}
+                            onChange={e => setReceiveItems(prev => prev.map((x,i) =>
+                              i === idx ? { ...x, manufacturer: e.target.value } : x))}
+                            placeholder="e.g. Sun Pharma, Cipla, Abbott"
+                            className={`w-full px-2 py-1 border rounded-lg text-sm focus:outline-none focus:border-[#00475a] ${
+                              !ri.manufacturer ? 'border-amber-300 bg-amber-50' : 'border-slate-200'
+                            }`} />
                         </div>
                       </div>
                     )}
