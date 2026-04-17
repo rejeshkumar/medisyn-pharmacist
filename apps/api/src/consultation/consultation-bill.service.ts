@@ -109,6 +109,23 @@ export class ConsultationBillService {
     return this.billRepo.save(bill);
   }
 
+  // ── Add procedure items to existing bill ────────────────────────────
+  async addItems(
+    id: string,
+    tenantId: string,
+    data: { items: Array<{ label: string; amount: number }>; total_amount: number; balance_due: number },
+    user: UserContext,
+  ): Promise<ConsultationBill> {
+    const bill = await this.getById(id, tenantId);
+    bill.items = data.items;
+    bill.total_amount = data.total_amount;
+    bill.balance_due = data.balance_due;
+    bill.procedure_charges = data.items
+      .filter(i => !i.label.toLowerCase().includes('consultation'))
+      .reduce((s, i) => s + i.amount, 0);
+    return this.billRepo.save(bill);
+  }
+
   // ── Get by ID ─────────────────────────────────────────────────────
   async getById(id: string, tenantId: string): Promise<ConsultationBill> {
     const bill = await this.billRepo

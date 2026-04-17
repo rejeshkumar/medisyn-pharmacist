@@ -42,6 +42,15 @@ export class ConsultationBillController {
     return this.svc.collectPayment(id, req.tenantId, body, req.user);
   }
 
+  @Patch(':id/add-items')
+  addItems(
+    @Param('id') id: string,
+    @Body() body: { items: Array<{ label: string; amount: number }>; total_amount: number; balance_due: number },
+    @Req() req: any,
+  ) {
+    return this.svc.addItems(id, req.tenantId, body, req.user);
+  }
+
   @Patch(':id/waive')
   waive(
     @Param('id') id: string,
