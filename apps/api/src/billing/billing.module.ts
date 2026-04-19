@@ -6,6 +6,9 @@ import { ClinicBill, ClinicBillItem } from './clinic-bill.entity';
 import { VipTierConfig } from './vip-tier.entity';
 import { DoctorRateConfig } from './doctor-rate-config.entity';
 import { ServiceRate } from './service-rate.entity';
+import { EncounterService } from './encounter-service.entity';
+import { EncounterServicesService } from './encounter.service';
+import { EncounterController } from './encounter.controller';
 
 @Module({
   imports: [
@@ -15,10 +18,11 @@ import { ServiceRate } from './service-rate.entity';
       VipTierConfig,
       DoctorRateConfig,
       ServiceRate,
+      EncounterService,
     ]),
   ],
-  providers: [BillingService],
-  controllers: [BillingController],
-  exports: [BillingService],
+  providers: [BillingService, EncounterServicesService],
+  controllers: [BillingController, EncounterController],
+  exports: [BillingService, EncounterServicesService],
 })
 export class BillingModule {}
