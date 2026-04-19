@@ -345,7 +345,7 @@ export default function ReceptionistBillingPage() {
   };
 
   // ── Done screen ──────────────────────────────────────────────
-  if (doneBill) return (
+  const doneBillScreen = doneBill ? (
     <div className="p-6 max-w-lg mx-auto">
       <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center shadow-sm">
         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -387,10 +387,12 @@ export default function ReceptionistBillingPage() {
         </div>
       </div>
     </div>
-  );
+  ) : null;
 
   return (
     <div className="p-6 max-w-3xl">
+      {doneBillScreen}
+      {!doneBill && <>
       <h1 className="text-xl font-bold text-slate-900 mb-1">Billing</h1>
       <p className="text-sm text-slate-400 mb-4">Collect consultation fees and service charges</p>
 
@@ -721,6 +723,7 @@ export default function ReceptionistBillingPage() {
       {showAddModal && (
         <AddServiceModal onAdd={addItem} onClose={() => setShowAddModal(false)} />
       )}
+      </>}
     </div>
   );
 }
