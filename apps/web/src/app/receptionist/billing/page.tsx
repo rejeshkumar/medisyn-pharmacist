@@ -558,11 +558,11 @@ export default function ReceptionistBillingPage() {
           </div>
         )}
 
-        </div>
+      </div>
       )}
 
       {/* VIP discount preview */}
-        {vipInfo?.tier && (
+      {(activeTab === 'manual' || (activeTab === 'today' && selectedEncounter && !loadingEncounter)) && vipInfo?.tier && (
           <div className="mt-3 grid grid-cols-3 gap-2">
             {[
               { label: 'Doctor',   pct: vipInfo.doctor_discount },
