@@ -21,16 +21,48 @@ import PrescriptionScanner from '@/components/ai/PrescriptionScanner';
 interface PrescriptionItem {
   medicine_name: string;
   dosage: string;
-  frequency: string;
-  duration: string;
-  quantity: string;
-  instructions: string;
+  morning: string;    // 0, 0.5, 1, 1.5, 2
+  afternoon: string;
+  night: string;
+  duration: string;   // number of days
+  food_relation: string; // 'before' | 'after' | 'with' | 'empty_stomach'
+  instructions: string;  // extra notes
+  quantity: string;   // auto-calculated
+  frequency: string;  // kept for API compat, auto-derived
   stock_status?: 'in_stock' | 'low_stock' | 'out_of_stock' | 'checking' | null;
   alternatives?: { id: string; brand_name: string; strength: string; quantity: number }[];
 }
 
+// Auto-calculate qty from dosage pattern × days
+function calcQty(morning: string, afternoon: string, night: string, duration: string): string {
+  const m = parseFloat(morning) || 0;
+  const a = parseFloat(afternoon) || 0;
+  const n = parseFloat(night) || 0;
+  const d = parseInt(duration) || 0;
+  if (!d || (m + a + n) === 0) return '';
+  return String(Math.ceil((m + a + n) * d));
+}
+
+// Derive frequency label from pattern
+function deriveFrequency(morning: string, afternoon: string, night: string): string {
+  const m = parseFloat(morning) || 0;
+  const a = parseFloat(afternoon) || 0;
+  const n = parseFloat(night) || 0;
+  const total = m + a + n;
+  if (total === 0) return '';
+  if (m > 0 && a > 0 && n > 0) return 'TDS';
+  if (m > 0 && n > 0 && a === 0) return 'BD';
+  if (n > 0 && m === 0 && a === 0) return 'OD (night)';
+  if (m > 0 && a === 0 && n === 0) return 'OD (morning)';
+  if (a > 0 && m === 0 && n === 0) return 'OD (afternoon)';
+  return `${m}-${a}-${n}`;
+}
+
 const emptyItem = (): PrescriptionItem => ({
-  medicine_name: '', dosage: '', frequency: '', duration: '', quantity: '', instructions: '',
+  medicine_name: '', dosage: '',
+  morning: '1', afternoon: '0', night: '1',
+  duration: '5', food_relation: 'after',
+  instructions: '', quantity: '10', frequency: 'BD',
   stock_status: null, alternatives: [],
 });
 
@@ -399,7 +431,17 @@ export default function ConsultPage() {
   };
 
   const updateItem = (idx: number, field: keyof PrescriptionItem, value: string) => {
-    setItems(prev => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it));
+    setItems(prev => prev.map((it, i) => {
+      if (i !== idx) return it;
+      const updated = { ...it, [field]: value };
+      // Auto-recalculate qty when dosage pattern or duration changes
+      if (['morning','afternoon','night','duration'].includes(field)) {
+        const qty = calcQty(updated.morning, updated.afternoon, updated.night, updated.duration);
+        const freq = deriveFrequency(updated.morning, updated.afternoon, updated.night);
+        return { ...updated, quantity: qty, frequency: freq };
+      }
+      return updated;
+    }));
     if (field === 'medicine_name') {
       clearTimeout(stockCheckTimer.current[idx]);
       clearTimeout(medSearchTimer.current[idx]);
@@ -479,7 +521,23 @@ export default function ConsultPage() {
       await api.post(`/prescriptions`, {
         consultation_id: consultId,
         patient_id: queueEntry?.patient_id,
-        items: filledItems.map((i: any) => ({ medicine_name: i.medicine_name, dosage: i.dosage, frequency: i.frequency, duration: i.duration, quantity: Number(i.quantity) || 1, instructions: i.instructions })),
+        items: filledItems.map((i: any) => {
+          const foodLabel: Record<string, string> = {
+            before: 'Before food', after: 'After food', with: 'With food',
+            empty_stomach: 'Empty stomach', at_night: 'At night', sos: 'SOS'
+          };
+          const pattern = `${i.morning}-${i.afternoon}-${i.night}`;
+          const freq = deriveFrequency(i.morning, i.afternoon, i.night);
+          const instructions = [foodLabel[i.food_relation] || i.food_relation, i.instructions].filter(Boolean).join('. ');
+          return {
+            medicine_name: i.medicine_name,
+            dosage: i.dosage,
+            frequency: freq || i.frequency,
+            duration: i.duration ? `${i.duration} days` : '',
+            quantity: Number(i.quantity) || 1,
+            instructions: instructions || pattern,
+          };
+        }),
         notes: rxNotes,
       });
       await api.patch(`/queue/${queueId}/status`, { status: 'consultation_done' });
@@ -731,14 +789,15 @@ export default function ConsultPage() {
                       )}
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3 mb-2">
-                    <div className="col-span-2 relative">
+                  <div className="space-y-2">
+                    {/* Medicine name + autocomplete */}
+                    <div className="relative">
                       <input type="text" value={item.medicine_name}
                         onChange={e => updateItem(idx, 'medicine_name', e.target.value)}
                         onFocus={() => { if (medSuggestions[idx]?.length) setShowSuggestions(p => ({ ...p, [idx]: true })); }}
                         onBlur={() => setTimeout(() => setShowSuggestions(p => ({ ...p, [idx]: false })), 200)}
-                        placeholder="Medicine name (type to search pharmacy stock or enter any name)"
-                        className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#00475a]/20 focus:border-[#00475a] bg-white" />
+                        placeholder="Medicine name (search pharmacy or type any name)"
+                        className="w-full text-sm font-semibold border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#00475a]/20 focus:border-[#00475a] bg-white" />
                       {showSuggestions[idx] && medSuggestions[idx]?.length > 0 && (
                         <div className="absolute top-full left-0 right-0 z-50 bg-white border border-slate-200 rounded-xl shadow-xl mt-1 max-h-52 overflow-y-auto">
                           {medSuggestions[idx].map((med: any) => {
@@ -748,29 +807,99 @@ export default function ConsultPage() {
                                 onMouseDown={() => selectMedicine(idx, med)}
                                 className="w-full px-3 py-2 text-left hover:bg-teal-50 border-b border-slate-50 last:border-0 flex items-center justify-between gap-2">
                                 <div>
-                                  <p className="text-sm font-semibold text-slate-800">{med.brand_name}</p>
-                                  <p className="text-[10px] text-slate-400">{med.molecule} · {med.strength} · {med.dosage_form}</p>
+                                  <p className="text-sm font-semibold text-slate-800">{med.brand_name} <span className="text-slate-400 font-normal">{med.strength}</span></p>
+                                  <p className="text-[10px] text-slate-400">{med.molecule} · {med.dosage_form}</p>
                                 </div>
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
-                                  stock <= 0 ? 'bg-red-100 text-red-600' : stock < 10 ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'
-                                }`}>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${stock <= 0 ? 'bg-red-100 text-red-600' : stock < 10 ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
                                   {stock <= 0 ? 'OOS' : stock + ' left'}
                                 </span>
                               </button>
                             );
                           })}
-                          <div className="px-3 py-2 text-[10px] text-slate-400 border-t border-slate-100 bg-slate-50">
-                            Not found? Type the full name — doctor can prescribe any medicine
+                          <div className="px-3 py-1.5 text-[10px] text-slate-400 border-t bg-slate-50 italic">
+                            Not in list? Type full name and prescribe anyway
                           </div>
                         </div>
                       )}
                     </div>
-                    <input type="text" value={item.dosage} onChange={e => updateItem(idx, 'dosage', e.target.value)} placeholder="Dosage (e.g. 500mg)" className="text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#00475a]/20 focus:border-[#00475a] bg-white" />
-                    <input type="text" value={item.frequency} onChange={e => updateItem(idx, 'frequency', e.target.value)} placeholder="Frequency (TDS/BD/OD)" className="text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#00475a]/20 focus:border-[#00475a] bg-white" />
-                    <input type="text" value={item.duration} onChange={e => updateItem(idx, 'duration', e.target.value)} placeholder="Duration (e.g. 5 days)" className="text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#00475a]/20 focus:border-[#00475a] bg-white" />
-                    <input type="number" value={item.quantity} onChange={e => updateItem(idx, 'quantity', e.target.value)} placeholder="Qty" className="text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#00475a]/20 focus:border-[#00475a] bg-white" />
+
+                    {/* Dosage + Dosage pattern M-A-N + Duration */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <input type="text" value={item.dosage}
+                        onChange={e => updateItem(idx, 'dosage', e.target.value)}
+                        placeholder="Strength (e.g. 500mg)"
+                        className="text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#00475a] bg-white w-32" />
+
+                      {/* Morning - Afternoon - Night pattern */}
+                      <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5">
+                        {(['morning','afternoon','night'] as const).map((period, pi) => (
+                          <span key={period} className="flex items-center gap-1">
+                            {pi > 0 && <span className="text-slate-300 font-bold">-</span>}
+                            <div className="flex flex-col items-center">
+                              <span className="text-[8px] text-slate-400 uppercase">{period.slice(0,3)}</span>
+                              <select value={item[period]}
+                                onChange={e => updateItem(idx, period, e.target.value)}
+                                className="text-sm font-bold text-slate-800 bg-transparent border-none outline-none w-10 text-center">
+                                <option value="0">0</option>
+                                <option value="0.5">½</option>
+                                <option value="1">1</option>
+                                <option value="1.5">1½</option>
+                                <option value="2">2</option>
+                              </select>
+                            </div>
+                          </span>
+                        ))}
+                        <span className="text-[10px] text-slate-400 ml-1">
+                          ({deriveFrequency(item.morning, item.afternoon, item.night)})
+                        </span>
+                      </div>
+
+                      {/* Duration */}
+                      <div className="flex items-center gap-1">
+                        <input type="number" min="1" value={item.duration}
+                          onChange={e => updateItem(idx, 'duration', e.target.value)}
+                          className="text-sm border border-slate-200 rounded-lg px-2 py-2 focus:outline-none focus:border-[#00475a] bg-white w-14 text-center font-semibold" />
+                        <span className="text-xs text-slate-500">days</span>
+                      </div>
+
+                      {/* Auto qty */}
+                      {item.quantity && (
+                        <div className="flex items-center gap-1 text-xs text-slate-500">
+                          <span>→</span>
+                          <span className="font-bold text-[#00475a]">{item.quantity} tabs</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Food relation */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs text-slate-500">Timing:</span>
+                      {[
+                        { val: 'before', label: 'Before food' },
+                        { val: 'after', label: 'After food' },
+                        { val: 'with', label: 'With food' },
+                        { val: 'empty_stomach', label: 'Empty stomach' },
+                        { val: 'at_night', label: 'At night' },
+                        { val: 'sos', label: 'SOS' },
+                      ].map(opt => (
+                        <button key={opt.val} type="button"
+                          onClick={() => updateItem(idx, 'food_relation', opt.val)}
+                          className={`text-xs px-2.5 py-1 rounded-full border transition-all ${
+                            item.food_relation === opt.val
+                              ? 'bg-[#00475a] text-white border-[#00475a]'
+                              : 'border-slate-200 text-slate-500 hover:border-[#00475a]'
+                          }`}>
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Extra instructions */}
+                    <input type="text" value={item.instructions}
+                      onChange={e => updateItem(idx, 'instructions', e.target.value)}
+                      placeholder="Additional instructions (optional)"
+                      className="w-full text-xs border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#00475a] bg-white text-slate-600" />
                   </div>
-                  <input type="text" value={item.instructions} onChange={e => updateItem(idx, 'instructions', e.target.value)} placeholder="Instructions (e.g. after food, at night)" className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#00475a]/20 focus:border-[#00475a] bg-white" />
 
                   {item.stock_status === 'out_of_stock' && item.alternatives && item.alternatives.length > 0 && (
                     <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
