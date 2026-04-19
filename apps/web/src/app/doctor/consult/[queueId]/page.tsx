@@ -377,11 +377,34 @@ export default function ConsultPage() {
     }
   }, []);
 
+  // ── Medicine autocomplete ──────────────────────────────────────────────────
+  const [medSuggestions, setMedSuggestions] = useState<Record<number, any[]>>({});
+  const [showSuggestions, setShowSuggestions] = useState<Record<number, boolean>>({});
+  const medSearchTimer = useRef<Record<number, any>>({});
+
+  const searchMedicines = useCallback(async (idx: number, q: string) => {
+    if (q.length < 2) { setMedSuggestions(p => ({ ...p, [idx]: [] })); return; }
+    try {
+      const res = await api.get(`/medicines/search-enriched?search=${encodeURIComponent(q)}&limit=8`);
+      setMedSuggestions(p => ({ ...p, [idx]: res.data || [] }));
+      setShowSuggestions(p => ({ ...p, [idx]: true }));
+    } catch {}
+  }, []);
+
+  const selectMedicine = (idx: number, med: any) => {
+    const name = med.brand_name + (med.strength ? ' ' + med.strength : '');
+    setItems(prev => prev.map((it, i) => i === idx ? { ...it, medicine_name: name } : it));
+    setShowSuggestions(p => ({ ...p, [idx]: false }));
+    checkStock(idx, name);
+  };
+
   const updateItem = (idx: number, field: keyof PrescriptionItem, value: string) => {
     setItems(prev => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it));
     if (field === 'medicine_name') {
       clearTimeout(stockCheckTimer.current[idx]);
+      clearTimeout(medSearchTimer.current[idx]);
       stockCheckTimer.current[idx] = setTimeout(() => checkStock(idx, value), 600);
+      medSearchTimer.current[idx] = setTimeout(() => searchMedicines(idx, value), 300);
     }
   };
 
@@ -696,7 +719,7 @@ export default function ConsultPage() {
 
             <div className="space-y-3 mb-4">
               {items.map((item, idx) => (
-                <div key={idx} className={cn('rounded-xl p-4 border', item.stock_status === 'out_of_stock' ? 'border-red-200 bg-red-50/30' : 'bg-slate-50 border-slate-100')}>
+                <div key={idx} className="rounded-xl p-4 border bg-slate-50 border-slate-100">
                   <div className="flex items-start justify-between mb-2">
                     <span className="text-xs font-semibold text-slate-500">Medicine {idx + 1}</span>
                     <div className="flex items-center gap-2">
@@ -709,11 +732,38 @@ export default function ConsultPage() {
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3 mb-2">
-                    <div className="col-span-2">
+                    <div className="col-span-2 relative">
                       <input type="text" value={item.medicine_name}
                         onChange={e => updateItem(idx, 'medicine_name', e.target.value)}
-                        placeholder="Medicine name *"
+                        onFocus={() => { if (medSuggestions[idx]?.length) setShowSuggestions(p => ({ ...p, [idx]: true })); }}
+                        onBlur={() => setTimeout(() => setShowSuggestions(p => ({ ...p, [idx]: false })), 200)}
+                        placeholder="Medicine name (type to search pharmacy stock or enter any name)"
                         className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#00475a]/20 focus:border-[#00475a] bg-white" />
+                      {showSuggestions[idx] && medSuggestions[idx]?.length > 0 && (
+                        <div className="absolute top-full left-0 right-0 z-50 bg-white border border-slate-200 rounded-xl shadow-xl mt-1 max-h-52 overflow-y-auto">
+                          {medSuggestions[idx].map((med: any) => {
+                            const stock = Number(med.total_stock || 0);
+                            return (
+                              <button key={med.id} type="button"
+                                onMouseDown={() => selectMedicine(idx, med)}
+                                className="w-full px-3 py-2 text-left hover:bg-teal-50 border-b border-slate-50 last:border-0 flex items-center justify-between gap-2">
+                                <div>
+                                  <p className="text-sm font-semibold text-slate-800">{med.brand_name}</p>
+                                  <p className="text-[10px] text-slate-400">{med.molecule} · {med.strength} · {med.dosage_form}</p>
+                                </div>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
+                                  stock <= 0 ? 'bg-red-100 text-red-600' : stock < 10 ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'
+                                }`}>
+                                  {stock <= 0 ? 'OOS' : stock + ' left'}
+                                </span>
+                              </button>
+                            );
+                          })}
+                          <div className="px-3 py-2 text-[10px] text-slate-400 border-t border-slate-100 bg-slate-50">
+                            Not found? Type the full name — doctor can prescribe any medicine
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <input type="text" value={item.dosage} onChange={e => updateItem(idx, 'dosage', e.target.value)} placeholder="Dosage (e.g. 500mg)" className="text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#00475a]/20 focus:border-[#00475a] bg-white" />
                     <input type="text" value={item.frequency} onChange={e => updateItem(idx, 'frequency', e.target.value)} placeholder="Frequency (TDS/BD/OD)" className="text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#00475a]/20 focus:border-[#00475a] bg-white" />
