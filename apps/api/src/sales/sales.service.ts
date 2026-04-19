@@ -263,7 +263,7 @@ export class SalesService {
       address:    tenant.address,
       phone:      tenant.phone,
       landline:   (tenant as any).landline,
-      email:      tenant.email,
+      email:      (tenant as any).email,
       gstin:      tenant.gstin,
       pan:        (tenant as any).pan,
       dl_numbers: (tenant as any).dl_numbers,
