@@ -15,25 +15,25 @@ export class EncounterController {
   // ── Today's encounters for receptionist ──────────────────────
   @Get('today')
   getTodayEncounters(@Req() req: any) {
-    return this.svc.getTodayEncounters(req.tenantId);
+    return this.svc.getTodayEncounters(req.user.tenant_id);
   }
 
   // ── Pending services by role (nurse, lab) ────────────────────
   @Get('pending')
   getPending(@Query('role') role: string, @Req() req: any) {
-    return this.svc.getPendingByRole(req.tenantId, role ?? 'nurse');
+    return this.svc.getPendingByRole(req.user.tenant_id, role ?? 'nurse');
   }
 
   // ── Encounter summary for a queue entry ──────────────────────
   @Get(':queueId/summary')
   getSummary(@Param('queueId') queueId: string, @Req() req: any) {
-    return this.svc.getEncounterSummary(queueId, req.tenantId);
+    return this.svc.getEncounterSummary(queueId, req.user.tenant_id);
   }
 
   // ── Services for a queue entry ────────────────────────────────
   @Get(':queueId/services')
   getServices(@Param('queueId') queueId: string, @Req() req: any) {
-    return this.svc.getByQueue(queueId, req.tenantId);
+    return this.svc.getByQueue(queueId, req.user.tenant_id);
   }
 
   // ── Order a service ───────────────────────────────────────────
@@ -43,7 +43,7 @@ export class EncounterController {
     @Body() body: any,
     @Req() req: any,
   ) {
-    return this.svc.orderService(req.tenantId, {
+    return this.svc.orderService(req.user.tenant_id, {
       ...body,
       queue_id:      queueId,
       ordered_by:    req.user.id,
@@ -58,12 +58,12 @@ export class EncounterController {
     @Body() body: { status: EncounterServiceStatus; notes?: string },
     @Req() req: any,
   ) {
-    return this.svc.updateStatus(id, req.tenantId, body.status, req.user.id, body.notes);
+    return this.svc.updateStatus(id, req.user.tenant_id, body.status, req.user.id, body.notes);
   }
 
   // ── Cancel a service ──────────────────────────────────────────
   @Delete('services/:id')
   cancel(@Param('id') id: string, @Req() req: any) {
-    return this.svc.cancel(id, req.tenantId);
+    return this.svc.cancel(id, req.user.tenant_id);
   }
 }
