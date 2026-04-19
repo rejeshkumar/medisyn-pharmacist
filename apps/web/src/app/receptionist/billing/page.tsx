@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
@@ -183,6 +184,59 @@ function AddServiceModal({
 export default function ReceptionistBillingPage() {
   const router = useRouter();
 
+  const [activeTab, setActiveTab] = useState<'today' | 'manual'>('today');
+  const [selectedEncounter, setSelectedEncounter] = useState<any>(null);
+  const [encounterDetail, setEncounterDetail] = useState<any>(null);
+  const [loadingEncounter, setLoadingEncounter] = useState(false);
+
+  // Today's encounters
+  const { data: todayEncounters = [], refetch: refetchEncounters } = useQuery({
+    queryKey: ['today-encounters'],
+    queryFn: () => api.get('/encounters/today').then(r => r.data),
+    refetchInterval: 30000,
+  });
+
+  const loadEncounterDetail = async (queueId: string) => {
+    setLoadingEncounter(true);
+    try {
+      const r = await api.get(`/encounters/${queueId}/summary`);
+      setEncounterDetail(r.data);
+      setSelectedEncounter(queueId);
+      // Pre-populate items from encounter services
+      const svcItems: LineItem[] = (r.data.services || [])
+        .filter((s: any) => s.status !== 'cancelled')
+        .map((s: any) => ({
+          category: s.category || 'procedure',
+          name: s.name,
+          qty: 1,
+          unit_rate: Number(s.price),
+          gst_percent: Number(s.gst_percent || 0),
+          source: 'encounter_service',
+          source_id: s.id,
+        }));
+      // Add consultation fee
+      if (r.data.summary?.consultation_fee > 0) {
+        svcItems.unshift({
+          category: 'consultation',
+          name: `Consultation — ${r.data.queue?.visit_type || 'new visit'}`,
+          qty: 1,
+          unit_rate: Number(r.data.summary.consultation_fee),
+          gst_percent: 0,
+          source: 'consultation',
+        });
+      }
+      setItems(svcItems);
+      // Set patient
+      if (r.data.queue?.patient_id) {
+        setSelectedPatient({ id: r.data.queue.patient_id, first_name: r.data.queue.patient_name });
+      }
+    } catch (e: any) {
+      toast.error('Failed to load encounter');
+    } finally {
+      setLoadingEncounter(false);
+    }
+  };
+
   const [patientSearch, setPatientSearch]   = useState('');
   const [patients, setPatients]             = useState<any[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
@@ -337,8 +391,106 @@ export default function ReceptionistBillingPage() {
 
   return (
     <div className="p-6 max-w-3xl">
-      <h1 className="text-xl font-bold text-slate-900 mb-1">New bill</h1>
-      <p className="text-sm text-slate-400 mb-6">Create a cumulative bill covering all services</p>
+      <h1 className="text-xl font-bold text-slate-900 mb-1">Billing</h1>
+      <p className="text-sm text-slate-400 mb-4">Collect consultation fees and service charges</p>
+
+      {/* Tab selector */}
+      <div className="flex gap-1 bg-slate-100 p-1 rounded-xl mb-4">
+        <button onClick={() => setActiveTab('today')}
+          className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'today' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}>
+          Today&apos;s Patients
+          {todayEncounters.filter((e: any) => ['consultation_done','completed'].includes(e.status)).length > 0 && (
+            <span className="ml-2 bg-amber-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+              {todayEncounters.filter((e: any) => ['consultation_done','completed'].includes(e.status)).length}
+            </span>
+          )}
+        </button>
+        <button onClick={() => { setActiveTab('manual'); setSelectedEncounter(null); setEncounterDetail(null); setItems([]); setSelectedPatient(null); }}
+          className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'manual' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}>
+          Manual Bill
+        </button>
+      </div>
+
+      {/* ── Today's patients tab ── */}
+      {activeTab === 'today' && !selectedEncounter && (
+        <div className="space-y-2">
+          {todayEncounters.length === 0 ? (
+            <div className="text-center py-12 text-slate-400">
+              <p className="text-sm">No patients today yet</p>
+            </div>
+          ) : todayEncounters.map((enc: any) => {
+            const pendingSvcs = Number(enc.pending_services || 0);
+            const clinicTotal = Number(enc.consultation_fee || 0) + Number(enc.services_total || 0);
+            const statusColors: Record<string,string> = {
+              waiting: 'bg-slate-100 text-slate-500',
+              in_consultation: 'bg-blue-100 text-blue-700',
+              consultation_done: 'bg-amber-100 text-amber-700',
+              completed: 'bg-green-100 text-green-700',
+            };
+            return (
+              <button key={enc.queue_id}
+                onClick={() => loadEncounterDetail(enc.queue_id)}
+                className="w-full bg-white border border-slate-100 rounded-xl p-4 text-left hover:border-[#00475a] hover:shadow-sm transition-all">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 bg-teal-50 rounded-xl flex items-center justify-center text-[#00475a] font-bold text-sm">
+                      #{enc.token_number}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-800">{enc.patient_name}</p>
+                      <p className="text-xs text-slate-400">{enc.doctor_name ? `Dr. ${enc.doctor_name}` : 'Walk-in'}</p>
+                    </div>
+                  </div>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[enc.status] || 'bg-slate-100 text-slate-600'}`}>
+                    {enc.status?.replace(/_/g,' ')}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-xs text-slate-500">
+                  <div className="flex gap-3">
+                    <span>Clinic: <strong className="text-slate-700">₹{clinicTotal.toFixed(0)}</strong></span>
+                    {Number(enc.pharmacy_total) > 0 && <span>Pharmacy: <strong className="text-slate-700">₹{Number(enc.pharmacy_total).toFixed(0)}</strong></span>}
+                    {pendingSvcs > 0 && <span className="text-amber-600 font-medium">⏳ {pendingSvcs} pending</span>}
+                  </div>
+                  <span className="text-[#00475a] font-medium">Open & collect →</span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Back button when encounter selected */}
+      {activeTab === 'today' && selectedEncounter && !loadingEncounter && (
+        <button onClick={() => { setSelectedEncounter(null); setEncounterDetail(null); setItems([]); setSelectedPatient(null); }}
+          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mb-3">
+          ← Back to today&apos;s patients
+        </button>
+      )}
+
+      {loadingEncounter && (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-5 h-5 animate-spin text-[#00475a]" />
+        </div>
+      )}
+
+      {/* Pharmacy bill info */}
+      {activeTab === 'today' && selectedEncounter && encounterDetail?.pharmacy_bills?.length > 0 && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-3 mb-3 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-green-800">Pharmacy bill already generated separately</p>
+            {encounterDetail.pharmacy_bills.map((b: any) => (
+              <p key={b.id} className="text-xs text-green-600">{b.bill_number} — ₹{Number(b.total_amount).toFixed(2)}</p>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Patient search - show for manual tab OR when encounter selected */}
+      {(activeTab === 'manual' || (activeTab === 'today' && selectedEncounter && !loadingEncounter)) && (
+      <div className="bg-white rounded-xl border border-slate-100 p-5 mb-4">
+        <h2 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+          <Search className="w-4 h-4 text-[#00475a]" /> Patient
+        </h2>
 
       {/* Patient search */}
       <div className="bg-white rounded-xl border border-slate-100 p-5 mb-4">
@@ -406,7 +558,10 @@ export default function ReceptionistBillingPage() {
           </div>
         )}
 
-        {/* VIP discount preview */}
+        </div>
+      )}
+
+      {/* VIP discount preview */}
         {vipInfo?.tier && (
           <div className="mt-3 grid grid-cols-3 gap-2">
             {[
