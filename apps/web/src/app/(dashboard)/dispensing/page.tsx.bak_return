@@ -1,6 +1,5 @@
 'use client';
 import { useState, useRef, useEffect, useCallback, useId } from 'react';
-import ReturnMedicinesDialog from '@/components/bills/ReturnMedicinesDialog';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import dynamic from 'next/dynamic';
@@ -294,7 +293,6 @@ export default function DispensingPage() {
   // UI state
   const [showBillPanel, setShowBillPanel] = useState(false);
 
-  const [returnSale, setReturnSale] = useState<{id: string, bill_number: string} | null>(null);
   // Auto-hide compliance when no scheduled drugs in cart
   useEffect(() => {
     if (!cart.some(i => ['H', 'H1', 'X'].includes(i.schedule_class))) {
@@ -1783,13 +1781,5 @@ export default function DispensingPage() {
         </div>
       )}
     </div>
-      {returnSale && (
-        <ReturnMedicinesDialog
-          saleId={returnSale.id}
-          billNumber={returnSale.bill_number}
-          onClose={() => setReturnSale(null)}
-          onSuccess={() => { setReturnSale(null); refetch(); }}
-        />
-      )}
   );
 }
