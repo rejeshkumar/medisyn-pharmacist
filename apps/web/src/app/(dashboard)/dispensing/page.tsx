@@ -1783,6 +1783,7 @@ export default function DispensingPage() {
         </div>
       )}
     </div>
+
       {returnSale && (
         <ReturnMedicinesDialog
           saleId={returnSale.id}
