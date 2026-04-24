@@ -1,0 +1,2109 @@
+'use client';
+// Place at: apps/web/src/app/(dashboard)/financial/page.tsx
+
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import api from '@/lib/api';
+import toast from 'react-hot-toast';
+import {
+  TrendingUp, TrendingDown, DollarSign, ShoppingCart,
+  Users, Wallet, AlertTriangle, CheckCircle, Plus,
+  Loader2, X, ChevronDown, RefreshCw, ArrowUpRight,
+  ArrowDownRight, Building2, CreditCard, Smartphone,
+  Banknote, ReceiptText, Upload, Hash, Link2, Link2Off,
+} from 'lucide-react';
+
+const EXPENSE_CATEGORIES = [
+  { value: 'Staff Salary',       label: 'Staff Salary' },
+  { value: 'Salary Advance',     label: 'Salary Advance' },
+  { value: 'Consultation',       label: 'Doctor Consultation' },
+  { value: 'Doctor Sourcing',    label: 'Doctor Sourcing / Agent' },
+  { value: 'Pharmacy Purchases', label: 'Pharmacy Purchases' },
+  { value: 'Medicine Travel',    label: 'Medicine Travel / Delivery' },
+  { value: 'Rent',               label: 'Rent' },
+  { value: 'Electricity',        label: 'Electricity Bill' },
+  { value: 'Water',              label: 'Water' },
+  { value: 'BSNL/Internet',      label: 'BSNL / Internet' },
+  { value: 'Marketing',          label: 'Marketing / Advertising' },
+  { value: 'Equipment',          label: 'Equipment Purchase' },
+  { value: 'Maintenance',        label: 'Maintenance / Repair' },
+  { value: 'CCTV',               label: 'CCTV' },
+  { value: 'Stationery',         label: 'Stationery / Printing' },
+  { value: 'CA/Tax',             label: 'CA / Tax / GST' },
+  { value: 'Food Safety',        label: 'Food Safety / License' },
+  { value: 'Municipality',       label: 'Municipality / Waste' },
+  { value: 'POS Rent',           label: 'POS Rent' },
+  { value: 'Bank Deposit',       label: 'Bank Deposit' },
+  { value: 'Refund',             label: 'Refund to Patient' },
+  { value: 'Lab',                label: 'Lab Expense' },
+  { value: 'Others',             label: 'Others (specify below)' },
+];
+
+const TABS = [
+  { key: 'dashboard', label: 'Daily P&L' },
+  { key: 'pnl',       label: 'Monthly P&L' },
+  { key: 'expenses',  label: 'Expenses' },
+  { key: 'payables',  label: 'Supplier Payables' },
+  { key: 'salaries',  label: 'Salaries' },
+  { key: 'upi',       label: 'UPI Reconciliation' },
+  { key: 'cash',      label: 'Cash Register' },
+  { key: 'credit',    label: 'Credit Sales' },
+  { key: 'petty',     label: 'Petty Cash' },
+  { key: 'bank',      label: 'Bank Import' },
+  { key: 'budget',    label: 'Budget vs Actual' },
+  { key: 'gstr2',     label: 'GST Input Credit' },
+  { key: 'invoices',  label: 'Purchase Invoices' },
+  { key: 'inspector', label: 'Drug Inspector' },
+];
+
+function fmt(n: number) {
+  return `₹${Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+}
+
+function StatCard({ label, value, sub, color = 'gray', trend }: any) {
+  const colors: Record<string, string> = {
+    green:  'bg-green-50 text-green-700',
+    red:    'bg-red-50 text-red-700',
+    blue:   'bg-blue-50 text-blue-700',
+    amber:  'bg-amber-50 text-amber-700',
+    teal:   'bg-teal-50 text-teal-700',
+    gray:   'bg-gray-50 text-gray-700',
+  };
+  return (
+    <div className={`rounded-2xl p-4 ${colors[color]}`}>
+      <p className="text-xs font-medium opacity-70 mb-1">{label}</p>
+      <p className="text-2xl font-bold">{value}</p>
+      {sub && <p className="text-xs opacity-60 mt-0.5">{sub}</p>}
+    </div>
+  );
+}
+
+// ── Daily P&L Tab ──────────────────────────────────────────────────────────
+function DailyPnL() {
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['financial-dashboard', date],
+    queryFn: () => api.get(`/financial/dashboard?date=${date}`).then(r => r.data),
+  });
+
+  if (isLoading) return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-[#00475a]" /></div>;
+
+  const d = data || {};
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-3 flex-wrap">
+        <input type="date" className="input" value={date} onChange={e => setDate(e.target.value)} />
+        <button onClick={() => refetch()} className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200">
+          <RefreshCw className="w-4 h-4 text-gray-500" />
+        </button>
+      </div>
+
+      {/* Revenue breakdown */}
+      <div>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Revenue</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <StatCard label="Total Revenue" value={fmt(d.revenue?.total)} sub={`${d.revenue?.bills || 0} bills`} color="teal" />
+          <StatCard label="Cash" value={fmt(d.revenue?.cash)} color="green" />
+          <StatCard label="UPI" value={fmt(d.revenue?.upi)} color="blue" />
+          <StatCard label="Card" value={fmt(d.revenue?.card)} color="blue" />
+        </div>
+      </div>
+
+      {/* P&L */}
+      <div>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Profit & Loss</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <StatCard label="Cost of Goods" value={fmt(d.cogs)} sub="Purchase price × qty sold" color="amber" />
+          <StatCard label="Gross Profit" value={fmt(d.gross_profit)} sub={`${d.gross_margin || 0}% margin`} color={d.gross_profit >= 0 ? 'green' : 'red'} />
+          <StatCard label="Expenses" value={fmt(d.expenses)} color="amber" />
+          <StatCard label="Net Profit" value={fmt(d.net_profit)} color={d.net_profit >= 0 ? 'green' : 'red'} />
+        </div>
+      </div>
+
+      {/* Alerts */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {d.revenue?.discounts > 0 && (
+          <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-100 rounded-2xl">
+            <TrendingDown className="w-5 h-5 text-amber-500 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-amber-800">Discounts Given</p>
+              <p className="text-xs text-amber-600">{fmt(d.revenue?.discounts)} revenue lost to discounts today</p>
+            </div>
+          </div>
+        )}
+        {d.supplier_payable > 0 && (
+          <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-100 rounded-2xl">
+            <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-red-800">Supplier Payable</p>
+              <p className="text-xs text-red-600">{fmt(d.supplier_payable)} outstanding to suppliers</p>
+            </div>
+          </div>
+        )}
+        {d.upi_pending > 0 && (
+          <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-100 rounded-2xl">
+            <Smartphone className="w-5 h-5 text-blue-500 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-blue-800">UPI Settlement Pending</p>
+              <p className="text-xs text-blue-600">{fmt(d.upi_pending)} UPI collections not yet reconciled</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Monthly P&L Tab ────────────────────────────────────────────────────────
+function MonthlyPnL() {
+  const now = new Date();
+  const [from, setFrom] = useState(new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]);
+  const [to, setTo]     = useState(now.toISOString().split('T')[0]);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['financial-pnl', from, to],
+    queryFn: () => api.get(`/financial/pnl?from=${from}&to=${to}`).then(r => r.data),
+  });
+
+  if (isLoading) return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-[#00475a]" /></div>;
+
+  const s = data?.summary || {};
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-gray-500">From</label>
+          <input type="date" className="input" value={from} onChange={e => setFrom(e.target.value)} />
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-gray-500">To</label>
+          <input type="date" className="input" value={to} onChange={e => setTo(e.target.value)} />
+        </div>
+      </div>
+
+      {/* P&L Summary */}
+      <div className="card">
+        <h3 className="font-semibold text-gray-900 mb-4">P&L Summary</h3>
+        <div className="space-y-3">
+          {[
+            { label: 'Total Revenue', value: s.total_revenue, color: 'text-teal-700', bold: false },
+            { label: 'Cost of Goods Sold', value: -s.total_cogs, color: 'text-red-600', bold: false },
+            { label: 'Gross Profit', value: s.gross_profit, color: s.gross_profit >= 0 ? 'text-green-700' : 'text-red-700', bold: true, sub: `${s.gross_margin}% margin` },
+            { label: 'Operating Expenses', value: -s.total_expenses, color: 'text-red-600', bold: false },
+            { label: 'Net Profit', value: s.net_profit, color: s.net_profit >= 0 ? 'text-green-700' : 'text-red-700', bold: true, sub: `${s.net_margin}% margin` },
+          ].map((row, i) => (
+            <div key={i} className={`flex items-center justify-between py-2 ${row.bold ? 'border-t border-gray-200 pt-3' : ''}`}>
+              <span className={`text-sm ${row.bold ? 'font-semibold text-gray-900' : 'text-gray-600'}`}>
+                {row.label}
+                {row.sub && <span className="ml-2 text-xs text-gray-400">{row.sub}</span>}
+              </span>
+              <span className={`text-sm font-semibold ${row.color}`}>
+                {row.value >= 0 ? '+' : ''}{fmt(Math.abs(row.value))}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Expenses by category */}
+      {data?.expenses_by_category?.length > 0 && (
+        <div className="card">
+          <h3 className="font-semibold text-gray-900 mb-4">Expenses by Category</h3>
+          <div className="space-y-2">
+            {data.expenses_by_category.map((e: any) => (
+              <div key={e.category} className="flex items-center justify-between py-1.5">
+                <span className="text-sm text-gray-700">{e.category}</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-gray-400">{e.count} entries</span>
+                  <span className="text-sm font-semibold text-red-600">{fmt(e.total)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Top medicines by margin */}
+      {data?.top_medicines?.length > 0 && (
+        <div className="card">
+          <h3 className="font-semibold text-gray-900 mb-4">Top Medicines by Profit</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  <th className="text-left py-2 font-medium text-gray-500">Medicine</th>
+                  <th className="text-right py-2 font-medium text-gray-500">Qty</th>
+                  <th className="text-right py-2 font-medium text-gray-500">Revenue</th>
+                  <th className="text-right py-2 font-medium text-gray-500">Cost</th>
+                  <th className="text-right py-2 font-medium text-gray-500">Profit</th>
+                  <th className="text-right py-2 font-medium text-gray-500">Margin</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.top_medicines.slice(0, 15).map((m: any) => (
+                  <tr key={m.brand_name} className="border-b border-gray-50 hover:bg-gray-50">
+                    <td className="py-2">
+                      <p className="font-medium text-gray-900 text-xs">{m.brand_name}</p>
+                      {m.category && <p className="text-xs text-gray-400">{m.category}</p>}
+                    </td>
+                    <td className="py-2 text-right text-gray-600">{m.qty_sold}</td>
+                    <td className="py-2 text-right text-gray-700">{fmt(m.revenue)}</td>
+                    <td className="py-2 text-right text-gray-500">{fmt(m.cost)}</td>
+                    <td className="py-2 text-right text-green-700 font-medium">{fmt(m.gross_profit)}</td>
+                    <td className="py-2 text-right">
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${Number(m.margin_pct) >= 30 ? 'bg-green-100 text-green-700' : Number(m.margin_pct) >= 15 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
+                        {m.margin_pct}%
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Expenses Tab ───────────────────────────────────────────────────────────
+
+// ── Recurring Expenses Banner ──────────────────────────────────────────────
+function RecurringExpensesBanner() {
+  const qc = useQueryClient();
+  const { data: recurring } = useQuery({
+    queryKey: ['recurring-expenses'],
+    queryFn: () => api.get('/financial/expenses?is_recurring=true&limit=20').then(r => r.data).catch(() => []),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.delete(`/financial/expenses/${id}`),
+    onSuccess: () => { toast.success('Recurring expense removed'); qc.invalidateQueries({ queryKey: ['recurring-expenses'] }); },
+  });
+
+  const recurringItems = (recurring || []).filter((e: any) => e.is_recurring);
+  if (!recurringItems.length) return null;
+
+  return (
+    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-2">
+      <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide mb-2">
+        Recurring Monthly Expenses ({recurringItems.length})
+      </p>
+      <div className="space-y-1.5">
+        {recurringItems.map((e: any) => (
+          <div key={e.id} className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-xs text-amber-700 font-medium truncate">{e.description}</span>
+              <span className="text-[10px] bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded shrink-0">
+                Day {e.recurrence_day} monthly
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs font-bold text-red-600">{fmt(e.amount)}</span>
+              <button onClick={() => deleteMutation.mutate(e.id)}
+                className="text-amber-400 hover:text-red-500">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ExpensesTab() {
+  const qc = useQueryClient();
+  const now = new Date();
+  const [from, setFrom] = useState(new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]);
+  const [to, setTo]     = useState(now.toISOString().split('T')[0]);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ expense_date: now.toISOString().split('T')[0], category: 'Rent', description: '', amount: '', payment_mode: 'Cash', vendor_name: '', reference_no: '', is_recurring: false, recurrence_day: '1' , business_unit: 'Pharmacy', paid_by: '', other_category: '', voucher_received: false, notes: '' });
+  const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
+
+  const { data: expenses, isLoading } = useQuery({
+    queryKey: ['expenses', from, to],
+    queryFn: () => api.get(`/financial/expenses?from=${from}&to=${to}`).then(r => r.data),
+  });
+
+  const addMutation = useMutation({
+    mutationFn: (data: any) => api.post('/financial/expenses', data),
+    onSuccess: () => { toast.success('Expense added'); setShowForm(false); qc.invalidateQueries({ queryKey: ['expenses'] }); qc.invalidateQueries({ queryKey: ['financial-dashboard'] }); },
+    onError: () => toast.error('Failed to add expense'),
+  });
+
+  const total = (expenses || []).reduce((s: number, e: any) => s + Number(e.amount), 0);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <input type="date" className="input" value={from} onChange={e => setFrom(e.target.value)} />
+          <span className="text-gray-400 text-sm">to</span>
+          <input type="date" className="input" value={to} onChange={e => setTo(e.target.value)} />
+          {expenses?.length > 0 && <span className="text-sm font-semibold text-red-600">{fmt(total)} total</span>}
+        </div>
+        <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2">
+          <Plus className="w-4 h-4" /> Add Expense
+        </button>
+      </div>
+
+      {/* Recurring expenses info banner */}
+      <RecurringExpensesBanner />
+
+      {isLoading ? <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin" /></div>
+      : !expenses?.length ? (
+        <div className="text-center py-16 text-gray-400">
+          <ReceiptText className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <p className="text-sm">No expenses recorded for this period</p>
+          <p className="text-xs mt-1">Click "Add Expense" to record rent, electricity, etc.</p>
+        </div>
+      ) : (
+        <div className="card p-0 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-100">
+              <tr>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Date</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Category</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Description</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Vendor</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Mode</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {expenses.map((e: any) => (
+                <tr key={e.id} className="border-b border-gray-50 hover:bg-gray-50">
+                  <td className="px-4 py-3 text-gray-500 text-xs">{new Date(e.expense_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</td>
+                  <td className="px-4 py-3"><span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">{e.category}</span></td>
+                  <td className="px-4 py-3 text-gray-700">{e.description}</td>
+                  <td className="px-4 py-3 text-gray-500 text-xs">{e.vendor_name || '—'}</td>
+                  <td className="px-4 py-3 text-gray-500 text-xs capitalize">{e.payment_mode}</td>
+                  <td className="px-4 py-3 text-right font-semibold text-red-600">{fmt(e.amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot className="bg-gray-50 border-t border-gray-200">
+              <tr>
+                <td colSpan={5} className="px-4 py-3 text-sm font-semibold text-gray-700">Total</td>
+                <td className="px-4 py-3 text-right font-bold text-red-700">{fmt(total)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
+
+      {/* Add Expense Modal */}
+      {showForm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="p-5 border-b flex items-center justify-between">
+              <h3 className="font-semibold text-gray-900">Add Expense</h3>
+              <button onClick={() => setShowForm(false)}><X className="w-5 h-5 text-gray-400" /></button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Date</label>
+                  <input type="date" className="input" value={form.expense_date} onChange={e => set('expense_date', e.target.value)} />
+                </div>
+                <div>
+                  <label className="label">Category</label>
+                  <select className="input" value={form.category} onChange={e => set('category', e.target.value)}>
+                    {EXPENSE_CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                  </select>
+              {form.category === 'Others' && (
+                <div>
+                  <label className="form-label">Specify expense type *</label>
+                  <input
+                    className="input"
+                    placeholder="e.g. Donation, Festival, Petrol..."
+                    value={form.other_category}
+                    onChange={e => set('other_category', e.target.value)}
+                  />
+                </div>
+              )}
+                </div>
+              </div>
+              <div>
+                <label className="label">Description *</label>
+                <input className="input" value={form.description} onChange={e => set('description', e.target.value)} placeholder="e.g. March rent payment" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Amount (₹) *</label>
+                  <input type="number" className="input" value={form.amount} onChange={e => set('amount', e.target.value)} placeholder="0.00" min={0} />
+                </div>
+                <div>
+                  <label className="label">Payment Mode</label>
+                  <select className="input" value={form.payment_mode} onChange={e =>
+                  <option value="Cash">Cash</option>
+                  <option value="UPI">UPI</option>
+                  <option value="Bank Transfer">Bank Transfer</option>
+                  <option value="Cheque">Cheque</option>
+                </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Vendor Name</label>
+                  <input className="input" value={form.vendor_name} onChange={e => set('vendor_name', e.target.value)} placeholder="e.g. KSEB" />
+                </div>
+                <div>
+                  <label className="label">Reference No.</label>
+                  <input className="input" value={form.reference_no} onChange={e => set('reference_no', e.target.value)} placeholder="Cheque/UPI ref" />
+                </div>
+              </div>
+            </div>
+            <div className="px-5 pb-3">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" checked={form.is_recurring}
+                  onChange={e => set('is_recurring', e.target.checked)}
+                  className="w-4 h-4 accent-[#00475a] rounded" />
+                <span className="text-sm font-medium text-gray-700">Recurring monthly expense</span>
+              </label>
+              {form.is_recurring && (
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-xs text-gray-500">Auto-add on day</span>
+                  <select className="input w-20 text-sm" value={form.recurrence_day}
+                    onChange={e => set('recurrence_day', e.target.value)}>
+                    {Array.from({length: 28}, (_, i) => i + 1).map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                  <span className="text-xs text-gray-500">of every month</span>
+                </div>
+              )}
+              {form.is_recurring && (
+                <p className="text-xs text-amber-600 mt-1">
+                  ⚠ This expense will auto-appear in your P&L every month on day {form.recurrence_day}
+                </p>
+              )}
+            </div>
+            <div className="p-5 border-t flex gap-3">
+              <button onClick={() => setShowForm(false)} className="btn-secondary flex-1">Cancel</button>
+              <button
+                onClick={() => addMutation.mutate(form)}
+                disabled={addMutation.isPending || !form.description || !form.amount}
+                className="btn-primary flex-1 disabled:opacity-50">
+                {addMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin inline mr-1" /> : null}
+                {form.is_recurring ? 'Add Recurring Expense' : 'Add Expense'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Payables Tab ───────────────────────────────────────────────────────────
+function PayablesTab() {
+  const qc = useQueryClient();
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ supplier_name: '', entry_type: 'invoice', amount: '', entry_date: new Date().toISOString().split('T')[0], due_date: '', reference_no: '', notes: '', payment_mode: 'bank_transfer' });
+  const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
+
+  const { data: payables, isLoading } = useQuery({
+    queryKey: ['payables'],
+    queryFn: () => api.get('/financial/payables').then(r => r.data),
+  });
+
+  const addMutation = useMutation({
+    mutationFn: (data: any) => api.post('/financial/supplier-ledger', data),
+    onSuccess: () => { toast.success('Entry added'); setShowForm(false); qc.invalidateQueries({ queryKey: ['payables'] }); },
+  });
+
+  const total = (payables || []).reduce((s: number, p: any) => s + Number(p.balance), 0);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          {payables?.length > 0 && (
+            <p className="text-sm text-gray-500">Total outstanding: <span className="font-bold text-red-600">{fmt(total)}</span></p>
+          )}
+        </div>
+        <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2">
+          <Plus className="w-4 h-4" /> Add Entry
+        </button>
+      </div>
+
+      {isLoading ? <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin" /></div>
+      : !payables?.length ? (
+        <div className="text-center py-16 text-gray-400">
+          <Building2 className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <p className="text-sm">No supplier payables recorded</p>
+          <p className="text-xs mt-1">Add invoice entries when you receive stock on credit</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {payables.map((p: any) => (
+            <div key={p.supplier_name} className={`card flex items-center gap-4 ${p.overdue_count > 0 ? 'border-red-200' : ''}`}>
+              <div className="w-10 h-10 bg-[#00475a]/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                <Building2 className="w-5 h-5 text-[#00475a]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-gray-900">{p.supplier_name}</p>
+                <div className="flex items-center gap-3 text-xs text-gray-500 mt-0.5">
+                  <span>Invoiced: {fmt(p.total_invoiced)}</span>
+                  <span>Paid: {fmt(p.total_paid)}</span>
+                  {p.overdue_count > 0 && (
+                    <span className="text-red-600 font-medium">⚠️ {p.overdue_count} overdue</span>
+                  )}
+                </div>
+              </div>
+              <div className="text-right flex-shrink-0">
+                <p className={`text-lg font-bold ${Number(p.balance) > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  {fmt(p.balance)}
+                </p>
+                <p className="text-xs text-gray-400">outstanding</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Add Entry Modal */}
+      {showForm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="p-5 border-b flex items-center justify-between">
+              <h3 className="font-semibold">Add Supplier Entry</h3>
+              <button onClick={() => setShowForm(false)}><X className="w-5 h-5 text-gray-400" /></button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="label">Supplier Name *</label>
+                <input className="input" value={form.supplier_name} onChange={e => set('supplier_name', e.target.value)} placeholder="e.g. RR Pharma" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Entry Type</label>
+                  <select className="input" value={form.entry_type} onChange={e => set('entry_type', e.target.value)}>
+                    <option value="invoice">Invoice (I owe)</option>
+                    <option value="payment">Payment (I paid)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="label">Amount (₹) *</label>
+                  <input type="number" className="input" value={form.amount} onChange={e => set('amount', e.target.value)} placeholder="0.00" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Date</label>
+                  <input type="date" className="input" value={form.entry_date} onChange={e => set('entry_date', e.target.value)} />
+                </div>
+                {form.entry_type === 'invoice' && (
+                  <div>
+                    <label className="label">Due Date</label>
+                    <input type="date" className="input" value={form.due_date} onChange={e => set('due_date', e.target.value)} />
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="label">Reference / Invoice No.</label>
+                <input className="input" value={form.reference_no} onChange={e => set('reference_no', e.target.value)} placeholder="Invoice or payment ref" />
+              </div>
+            </div>
+            <div className="p-5 border-t flex gap-3">
+              <button onClick={() => setShowForm(false)} className="btn-secondary flex-1">Cancel</button>
+              <button onClick={() => addMutation.mutate(form)} disabled={addMutation.isPending || !form.supplier_name || !form.amount} className="btn-primary flex-1 disabled:opacity-50">
+                {addMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin inline mr-1" /> : null} Add
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Salaries Tab ───────────────────────────────────────────────────────────
+function SalariesTab() {
+  const qc = useQueryClient();
+  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [editId, setEditId] = useState<string|null>(null);
+  const [form, setForm] = useState<any>({});
+
+  const { data: staff, isLoading } = useQuery({
+    queryKey: ['salaries', month],
+    queryFn: () => api.get(`/financial/salaries?month=${month}`).then(r => r.data),
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: (data: any) => api.post('/financial/salaries', data),
+    onSuccess: () => { toast.success('Salary saved'); setEditId(null); qc.invalidateQueries({ queryKey: ['salaries'] }); },
+  });
+
+  const markPaidMutation = useMutation({
+    mutationFn: ({ id, data }: any) => api.patch(`/financial/salaries/${id}/mark-paid`, data),
+    onSuccess: () => { toast.success('Marked as paid'); qc.invalidateQueries({ queryKey: ['salaries'] }); },
+  });
+
+  const totalPayable = (staff || []).filter((s: any) => s.status !== 'paid').reduce((sum: number, s: any) => sum + Number(s.net_salary || 0), 0);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <input type="month" className="input" value={month} onChange={e => setMonth(e.target.value)} />
+          {totalPayable > 0 && <span className="text-sm text-red-600 font-medium">Pending: {fmt(totalPayable)}</span>}
+        </div>
+      </div>
+
+      {isLoading ? <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin" /></div>
+      : (
+        <div className="card p-0 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-100">
+              <tr>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Employee</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Role</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Basic</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Allowances</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Deductions</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Net</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
+                <th className="px-4 py-3" />
+              </tr>
+            </thead>
+            <tbody>
+              {(staff || []).map((s: any) => (
+                <tr key={s.id} className="border-b border-gray-50 hover:bg-gray-50">
+                  <td className="px-4 py-3 font-medium text-gray-900">{s.full_name}</td>
+                  <td className="px-4 py-3 text-gray-500 capitalize text-xs">{s.role}</td>
+                  {editId === s.id ? (
+                    <>
+                      <td className="px-4 py-2"><input type="number" className="input w-24 text-right" value={form.basic_salary||0} onChange={e => setForm((f: any) => ({...f, basic_salary: e.target.value}))} /></td>
+                      <td className="px-4 py-2"><input type="number" className="input w-24 text-right" value={form.allowances||0} onChange={e => setForm((f: any) => ({...f, allowances: e.target.value}))} /></td>
+                      <td className="px-4 py-2"><input type="number" className="input w-24 text-right" value={form.deductions||0} onChange={e => setForm((f: any) => ({...f, deductions: e.target.value}))} /></td>
+                      <td className="px-4 py-3 text-right font-semibold text-[#00475a]">
+                        {fmt(Number(form.basic_salary||0) + Number(form.allowances||0) - Number(form.deductions||0))}
+                      </td>
+                      <td colSpan={2} className="px-4 py-2">
+                        <div className="flex gap-2">
+                          <button onClick={() => saveMutation.mutate({ ...form, user_id: s.id, employee_name: s.full_name, payment_month: month })} className="btn-primary text-xs px-3 py-1.5">Save</button>
+                          <button onClick={() => setEditId(null)} className="btn-secondary text-xs px-3 py-1.5">Cancel</button>
+                        </div>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="px-4 py-3 text-right text-gray-700">{s.basic_salary ? fmt(s.basic_salary) : '—'}</td>
+                      <td className="px-4 py-3 text-right text-gray-700">{s.allowances ? fmt(s.allowances) : '—'}</td>
+                      <td className="px-4 py-3 text-right text-red-500">{s.deductions ? fmt(s.deductions) : '—'}</td>
+                      <td className="px-4 py-3 text-right font-semibold">{s.net_salary ? fmt(s.net_salary) : '—'}</td>
+                      <td className="px-4 py-3">
+                        {s.status === 'paid'
+                          ? <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Paid</span>
+                          : s.net_salary
+                          ? <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Pending</span>
+                          : <span className="text-xs text-gray-300">Not set</span>
+                        }
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => { setEditId(s.id); setForm({ basic_salary: s.basic_salary||0, allowances: s.allowances||0, deductions: s.deductions||0 }); }} className="text-xs text-[#00475a] hover:underline">Edit</button>
+                          {s.payment_id && s.status !== 'paid' && (
+                            <button onClick={() => markPaidMutation.mutate({ id: s.payment_id, data: { payment_date: new Date().toISOString().split('T')[0] } })} className="text-xs text-green-600 hover:underline">Mark Paid</button>
+                          )}
+                        </div>
+                      </td>
+                    </>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── UPI Reconciliation Tab ─────────────────────────────────────────────────
+function UpiTab() {
+  const qc = useQueryClient();
+  const now = new Date();
+  const [from, setFrom] = useState(new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]);
+  const [to, setTo]     = useState(now.toISOString().split('T')[0]);
+
+  const { data: settlements, isLoading } = useQuery({
+    queryKey: ['upi-settlements', from, to],
+    queryFn: () => api.get(`/financial/upi-settlements?from=${from}&to=${to}`).then(r => r.data),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: any) => id
+      ? api.patch(`/financial/upi-settlements/${id}`, data)
+      : api.post('/financial/upi-settlements', data),
+    onSuccess: () => { toast.success('Settlement updated'); qc.invalidateQueries({ queryKey: ['upi-settlements'] }); },
+  });
+
+  const totalExpected  = (settlements || []).reduce((s: number, r: any) => s + r.expected_amount, 0);
+  const totalSettled   = (settlements || []).filter((r: any) => r.settled_amount).reduce((s: number, r: any) => s + Number(r.settled_amount), 0);
+  const totalPending   = (settlements || []).filter((r: any) => r.status === 'pending').reduce((s: number, r: any) => s + r.expected_amount, 0);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3 flex-wrap">
+        <input type="date" className="input" value={from} onChange={e => setFrom(e.target.value)} />
+        <span className="text-gray-400 text-sm">to</span>
+        <input type="date" className="input" value={to} onChange={e => setTo(e.target.value)} />
+      </div>
+
+      {settlements?.length > 0 && (
+        <div className="grid grid-cols-3 gap-3">
+          <StatCard label="Expected from UPI" value={fmt(totalExpected)} color="blue" />
+          <StatCard label="Bank Credited" value={fmt(totalSettled)} color="green" />
+          <StatCard label="Pending Reconciliation" value={fmt(totalPending)} color={totalPending > 0 ? 'amber' : 'green'} />
+        </div>
+      )}
+
+      {isLoading ? <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin" /></div>
+      : !settlements?.length ? (
+        <div className="text-center py-16 text-gray-400">
+          <Smartphone className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <p className="text-sm">No UPI sales in this period</p>
+        </div>
+      ) : (
+        <div className="card p-0 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-100">
+              <tr>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Date</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Bills</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Expected</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Bank Credit</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Difference</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">App</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
+                <th className="px-4 py-3" />
+              </tr>
+            </thead>
+            <tbody>
+              {settlements.map((row: any) => (
+                <tr key={row.date} className="border-b border-gray-50 hover:bg-gray-50">
+                  <td className="px-4 py-3 text-gray-600">{new Date(row.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</td>
+                  <td className="px-4 py-3 text-right text-gray-500">{row.bill_count}</td>
+                  <td className="px-4 py-3 text-right font-medium text-gray-700">{fmt(row.expected_amount)}</td>
+                  <td className="px-4 py-3 text-right text-gray-700">{row.settled_amount ? fmt(row.settled_amount) : '—'}</td>
+                  <td className="px-4 py-3 text-right">
+                    {row.difference != null
+                      ? <span className={`text-xs font-semibold ${Number(row.difference) < 0 ? 'text-red-600' : Number(row.difference) > 0 ? 'text-green-600' : 'text-gray-400'}`}>
+                          {Number(row.difference) > 0 ? '+' : ''}{fmt(row.difference)}
+                        </span>
+                      : '—'}
+                  </td>
+                  <td className="px-4 py-3 text-gray-500 text-xs">{row.upi_app || '—'}</td>
+                  <td className="px-4 py-3">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      row.status === 'reconciled' ? 'bg-green-100 text-green-700'
+                      : row.status === 'disputed' ? 'bg-red-100 text-red-700'
+                      : 'bg-amber-100 text-amber-700'
+                    }`}>{row.status}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    {row.status === 'pending' && (
+                      <button
+                        onClick={() => {
+                          const amount = prompt(`Enter bank credit amount for ${row.date}:`, String(row.expected_amount));
+                          const app = prompt('UPI app (PhonePe/GPay/Paytm):', 'PhonePe');
+                          const ref = prompt('Bank reference number:', '');
+                          if (amount) updateMutation.mutate({
+                            id: row.settlement_id,
+                            data: { settlement_date: row.date, settled_amount: Number(amount), upi_app: app, bank_reference: ref, expected_amount: row.expected_amount }
+                          });
+                        }}
+                        className="text-xs text-[#00475a] hover:underline font-medium">
+                        Reconcile
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ── Cash Register Tab ──────────────────────────────────────────────────────
+function CashRegisterTab() {
+  const qc = useQueryClient();
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [closing, setClosing] = useState('');
+  const [reason, setReason] = useState('');
+  const [showClose, setShowClose] = useState(false);
+
+  const { data: reg, isLoading, refetch } = useQuery({
+    queryKey: ['cash-register', date],
+    queryFn: () => api.get(`/financial/cash-register?date=${date}`).then(r => r.data),
+  });
+
+  const { data: history } = useQuery({
+    queryKey: ['cash-register-history'],
+    queryFn: () => api.get('/financial/cash-register/history?days=14').then(r => r.data),
+  });
+
+  const closeMutation = useMutation({
+    mutationFn: (data: any) => api.post('/financial/cash-register/close', data),
+    onSuccess: () => { toast.success('Register closed'); setShowClose(false); refetch(); qc.invalidateQueries({ queryKey: ['cash-register-history'] }); },
+    onError: () => toast.error('Failed to close register'),
+  });
+
+  const diff = reg ? Number(closing || 0) - Number(reg.expected_closing || 0) : 0;
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-3">
+        <input type="date" className="input" value={date} onChange={e => setDate(e.target.value)} />
+        <button onClick={() => refetch()} className="p-2 rounded-lg bg-gray-100"><RefreshCw className="w-4 h-4 text-gray-500" /></button>
+      </div>
+
+      {isLoading ? <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin" /></div> : reg ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {/* Today summary */}
+          <div className="card space-y-3">
+            <h3 className="font-semibold text-gray-900">Today's Cash Position</h3>
+            {[
+              { label: 'Opening Balance', value: reg.opening_balance, color: 'text-gray-700' },
+              { label: '+ Cash Sales', value: reg.cash_sales, color: 'text-green-600' },
+              { label: '- Cash Expenses', value: reg.cash_expenses, color: 'text-red-500' },
+              { label: '- Cash Payments to Suppliers', value: reg.cash_payments, color: 'text-red-500' },
+            ].map(row => (
+              <div key={row.label} className="flex justify-between text-sm">
+                <span className="text-gray-500">{row.label}</span>
+                <span className={`font-medium ${row.color}`}>{fmt(row.value)}</span>
+              </div>
+            ))}
+            <div className="border-t pt-3 flex justify-between">
+              <span className="font-semibold text-gray-900">Expected Closing</span>
+              <span className="font-bold text-[#00475a] text-lg">{fmt(reg.expected_closing)}</span>
+            </div>
+            {reg.status === 'closed' ? (
+              <div className={`p-3 rounded-xl ${Number(reg.difference) === 0 ? 'bg-green-50' : Number(reg.difference) > 0 ? 'bg-blue-50' : 'bg-red-50'}`}>
+                <div className="flex justify-between text-sm">
+                  <span className="font-medium">Actual Closing</span>
+                  <span className="font-bold">{fmt(reg.actual_closing)}</span>
+                </div>
+                <div className="flex justify-between text-sm mt-1">
+                  <span>Difference</span>
+                  <span className={`font-bold ${Number(reg.difference) === 0 ? 'text-green-600' : Number(reg.difference) > 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                    {Number(reg.difference) > 0 ? '+' : ''}{fmt(reg.difference)}
+                    {Number(reg.difference) === 0 ? ' ✓ Balanced' : ''}
+                  </span>
+                </div>
+                {reg.difference_reason && <p className="text-xs text-gray-500 mt-1">{reg.difference_reason}</p>}
+              </div>
+            ) : (
+              <button onClick={() => setShowClose(true)} className="btn-primary w-full">
+                Close Register for {new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+              </button>
+            )}
+          </div>
+
+          {/* Close register form */}
+          {showClose && (
+            <div className="card border-[#00475a]/20 space-y-4">
+              <h3 className="font-semibold text-gray-900">Count Cash & Close</h3>
+              <p className="text-sm text-gray-500">Count the cash in your drawer and enter the actual amount.</p>
+              <div>
+                <label className="label">Actual Cash in Drawer (₹)</label>
+                <input type="number" className="input text-lg font-semibold" value={closing}
+                  onChange={e => setClosing(e.target.value)} placeholder="Enter counted amount" />
+              </div>
+              {closing && (
+                <div className={`p-3 rounded-xl text-sm font-semibold ${diff === 0 ? 'bg-green-50 text-green-700' : diff > 0 ? 'bg-blue-50 text-blue-700' : 'bg-red-50 text-red-700'}`}>
+                  {diff === 0 ? '✓ Balanced!' : diff > 0 ? `+${fmt(diff)} excess` : `${fmt(diff)} short`}
+                </div>
+              )}
+              {closing && diff !== 0 && (
+                <div>
+                  <label className="label">Reason for difference</label>
+                  <input className="input" value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g. Change given error, petty cash" />
+                </div>
+              )}
+              <div className="flex gap-3">
+                <button onClick={() => setShowClose(false)} className="btn-secondary flex-1">Cancel</button>
+                <button onClick={() => closeMutation.mutate({ date, actual_closing: Number(closing), difference_reason: reason })}
+                  disabled={!closing || closeMutation.isPending} className="btn-primary flex-1 disabled:opacity-50">
+                  {closeMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin inline mr-1" /> : null}
+                  Confirm & Close
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      {/* History */}
+      {history?.length > 0 && (
+        <div className="card p-0 overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
+            <h3 className="font-semibold text-gray-900 text-sm">Recent History</h3>
+          </div>
+          <table className="w-full text-sm">
+            <thead><tr className="border-b border-gray-100">
+              <th className="text-left px-4 py-2 font-medium text-gray-500">Date</th>
+              <th className="text-right px-4 py-2 font-medium text-gray-500">Expected</th>
+              <th className="text-right px-4 py-2 font-medium text-gray-500">Actual</th>
+              <th className="text-right px-4 py-2 font-medium text-gray-500">Difference</th>
+              <th className="text-left px-4 py-2 font-medium text-gray-500">Status</th>
+            </tr></thead>
+            <tbody>
+              {history.map((h: any) => (
+                <tr key={h.id} className="border-b border-gray-50 hover:bg-gray-50">
+                  <td className="px-4 py-2">{new Date(h.register_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</td>
+                  <td className="px-4 py-2 text-right">{fmt(h.expected_closing)}</td>
+                  <td className="px-4 py-2 text-right">{h.actual_closing ? fmt(h.actual_closing) : '—'}</td>
+                  <td className="px-4 py-2 text-right">
+                    {h.difference != null ? (
+                      <span className={`text-xs font-semibold ${Number(h.difference) === 0 ? 'text-green-600' : Number(h.difference) > 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                        {Number(h.difference) > 0 ? '+' : ''}{fmt(h.difference)}
+                      </span>
+                    ) : '—'}
+                  </td>
+                  <td className="px-4 py-2">
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${h.status === 'closed' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {h.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Credit Sales Tab ───────────────────────────────────────────────────────
+function CreditTab() {
+  const qc = useQueryClient();
+  const [showForm, setShowForm] = useState(false);
+  const [selectedAccount, setSelectedAccount] = useState<any>(null);
+  const [payForm, setPayForm] = useState({ amount: '', payment_mode: 'Cash', reference_no: '' });
+  const [newAccount, setNewAccount] = useState({ patient_name: '', patient_mobile: '', credit_limit: '5000' });
+
+  const { data: accounts, isLoading } = useQuery({
+    queryKey: ['credit-accounts'],
+    queryFn: () => api.get('/financial/credit-accounts').then(r => r.data),
+  });
+
+  const { data: summary } = useQuery({
+    queryKey: ['credit-summary'],
+    queryFn: () => api.get('/financial/credit-summary').then(r => r.data),
+  });
+
+  const { data: txns } = useQuery({
+    queryKey: ['credit-txns', selectedAccount?.id],
+    queryFn: () => selectedAccount ? api.get(`/financial/credit-accounts/${selectedAccount.id}/transactions`).then(r => r.data) : Promise.resolve([]),
+    enabled: !!selectedAccount,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: any) => api.post('/financial/credit-accounts', data),
+    onSuccess: () => { toast.success('Credit account created'); setShowForm(false); qc.invalidateQueries({ queryKey: ['credit-accounts'] }); },
+  });
+
+  const payMutation = useMutation({
+    mutationFn: ({ id, data }: any) => api.post(`/financial/credit-accounts/${id}/payment`, data),
+    onSuccess: () => { toast.success('Payment recorded'); setSelectedAccount(null); qc.invalidateQueries({ queryKey: ['credit-accounts', 'credit-summary'] }); },
+  });
+
+  return (
+    <div className="space-y-4">
+      {summary && (
+        <div className="grid grid-cols-3 gap-3">
+          <StatCard label="Total Accounts" value={summary.total_accounts} color="blue" />
+          <StatCard label="Total Outstanding" value={fmt(summary.total_outstanding)} color="amber" />
+          <StatCard label="Over Limit" value={summary.over_limit} color={summary.over_limit > 0 ? 'red' : 'green'} />
+        </div>
+      )}
+
+      {summary?.overdue_accounts?.length > 0 && (
+        <div className="bg-red-50 border border-red-100 rounded-2xl p-4">
+          <p className="text-sm font-semibold text-red-700 mb-2">⚠️ No payment in 30+ days:</p>
+          {summary.overdue_accounts.map((a: any) => (
+            <div key={a.patient_name} className="flex justify-between text-xs text-red-600 py-1">
+              <span>{a.patient_name} ({a.patient_mobile})</span>
+              <span className="font-bold">{fmt(a.current_balance)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex justify-end">
+        <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2">
+          <Plus className="w-4 h-4" /> New Credit Account
+        </button>
+      </div>
+
+      {isLoading ? <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin" /></div>
+      : !accounts?.length ? (
+        <div className="text-center py-16 text-gray-400">
+          <CreditCard className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <p className="text-sm">No credit accounts yet</p>
+          <p className="text-xs mt-1">Create accounts for patients who pay at month-end</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {accounts.map((a: any) => (
+            <div key={a.id} className="card flex items-center gap-4">
+              <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <span className="text-blue-700 font-bold text-sm">{a.patient_name.charAt(0)}</span>
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-gray-900">{a.patient_name}</p>
+                <p className="text-xs text-gray-500">{a.patient_mobile} · Limit: {fmt(a.credit_limit)}</p>
+              </div>
+              <div className="text-right">
+                <p className={`text-lg font-bold ${Number(a.current_balance) > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  {fmt(a.current_balance)}
+                </p>
+                <p className="text-xs text-gray-400">outstanding</p>
+              </div>
+              {Number(a.current_balance) > 0 && (
+                <button onClick={() => setSelectedAccount(a)} className="btn-primary text-xs px-3 py-1.5">
+                  Collect Payment
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* New account modal */}
+      {showForm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+            <div className="p-5 border-b flex items-center justify-between">
+              <h3 className="font-semibold">New Credit Account</h3>
+              <button onClick={() => setShowForm(false)}><X className="w-5 h-5 text-gray-400" /></button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div><label className="label">Patient Name *</label>
+                <input className="input" value={newAccount.patient_name} onChange={e => setNewAccount(a => ({...a, patient_name: e.target.value}))} placeholder="Full name" /></div>
+              <div><label className="label">Mobile</label>
+                <input className="input" value={newAccount.patient_mobile} onChange={e => setNewAccount(a => ({...a, patient_mobile: e.target.value}))} placeholder="10-digit mobile" /></div>
+              <div><label className="label">Credit Limit (₹)</label>
+                <input type="number" className="input" value={newAccount.credit_limit} onChange={e => setNewAccount(a => ({...a, credit_limit: e.target.value}))} /></div>
+            </div>
+            <div className="p-5 border-t flex gap-3">
+              <button onClick={() => setShowForm(false)} className="btn-secondary flex-1">Cancel</button>
+              <button onClick={() => createMutation.mutate(newAccount)} disabled={!newAccount.patient_name} className="btn-primary flex-1 disabled:opacity-50">Create</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Collect payment modal */}
+      {selectedAccount && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+            <div className="p-5 border-b flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold">Collect Payment</h3>
+                <p className="text-xs text-gray-500">{selectedAccount.patient_name} — Outstanding: {fmt(selectedAccount.current_balance)}</p>
+              </div>
+              <button onClick={() => setSelectedAccount(null)}><X className="w-5 h-5 text-gray-400" /></button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div><label className="label">Amount (₹) *</label>
+                <input type="number" className="input" value={payForm.amount} onChange={e => setPayForm(f => ({...f, amount: e.target.value}))} placeholder={String(selectedAccount.current_balance)} /></div>
+              <div><label className="label">Payment Mode</label>
+                <select className="input" value={payForm.payment_mode} onChange={e =>
+                  <option value="Cash">Cash</option>
+                  <option value="UPI">UPI</option>
+                  <option value="Bank Transfer">Bank Transfer</option>
+                  <option value="Cheque">Cheque</option>
+                </select></div>
+              <div><label className="label">Reference No.</label>
+                <input className="input" value={payForm.reference_no} onChange={e => setPayForm(f => ({...f, reference_no: e.target.value}))} /></div>
+            </div>
+            <div className="p-5 border-t flex gap-3">
+              <button onClick={() => setSelectedAccount(null)} className="btn-secondary flex-1">Cancel</button>
+              <button onClick={() => payMutation.mutate({ id: selectedAccount.id, data: payForm })} disabled={!payForm.amount} className="btn-primary flex-1 disabled:opacity-50">Record Payment</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Petty Cash Tab ─────────────────────────────────────────────────────────
+function PettyCashTab() {
+  const qc = useQueryClient();
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ txn_type: 'expense', amount: '', description: '', category: 'Miscellaneous', txn_date: new Date().toISOString().split('T')[0] });
+
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['petty-cash'],
+    queryFn: () => api.get('/financial/petty-cash').then(r => r.data),
+  });
+
+  const addMutation = useMutation({
+    mutationFn: (d: any) => api.post('/financial/petty-cash', d),
+    onSuccess: () => { toast.success('Entry added'); setShowForm(false); refetch(); },
+    onError: (e: any) => toast.error(e.response?.data?.message || 'Failed'),
+  });
+
+  const balance = data?.balance || 0;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className={`text-2xl font-bold ${balance < 500 ? 'text-red-600' : 'text-[#00475a]'}`}>
+          {fmt(balance)} <span className="text-sm font-normal text-gray-500">in petty cash</span>
+          {balance < 500 && <span className="ml-2 text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">Low — Top up needed</span>}
+        </div>
+        <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2">
+          <Plus className="w-4 h-4" /> Add Entry
+        </button>
+      </div>
+
+      {isLoading ? <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin" /></div>
+      : (
+        <div className="card p-0 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-100">
+              <tr>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Date</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Description</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Type</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Amount</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Balance</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(data?.transactions || []).map((t: any) => (
+                <tr key={t.id} className="border-b border-gray-50">
+                  <td className="px-4 py-2 text-gray-500 text-xs">{new Date(t.txn_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</td>
+                  <td className="px-4 py-2 text-gray-700">{t.description}</td>
+                  <td className="px-4 py-2">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${t.txn_type === 'topup' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {t.txn_type === 'topup' ? '+ Top up' : '- Expense'}
+                    </span>
+                  </td>
+                  <td className={`px-4 py-2 text-right font-semibold ${t.txn_type === 'topup' ? 'text-green-600' : 'text-red-600'}`}>
+                    {t.txn_type === 'topup' ? '+' : '-'}{fmt(t.amount)}
+                  </td>
+                  <td className="px-4 py-2 text-right text-gray-600">{fmt(t.balance_after)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {showForm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm">
+            <div className="p-5 border-b flex items-center justify-between">
+              <h3 className="font-semibold">Petty Cash Entry</h3>
+              <button onClick={() => setShowForm(false)}><X className="w-5 h-5 text-gray-400" /></button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="grid grid-cols-2 gap-2">
+                {['expense','topup'].map(t => (
+                  <button key={t} onClick={() => setForm(f => ({...f, txn_type: t}))}
+                    className={`py-2 rounded-xl text-sm font-medium border-2 transition-all ${form.txn_type === t ? 'border-[#00475a] bg-[#00475a] text-white' : 'border-gray-200 text-gray-600'}`}>
+                    {t === 'topup' ? '+ Top Up' : '- Expense'}
+                  </button>
+                ))}
+              </div>
+              <div><label className="label">Description *</label>
+                <input className="input" value={form.description} onChange={e => setForm(f => ({...f, description: e.target.value}))} placeholder="What was this for?" /></div>
+              <div className="grid grid-cols-2 gap-4">
+                <div><label className="label">Amount (₹) *</label>
+                  <input type="number" className="input" value={form.amount} onChange={e => setForm(f => ({...f, amount: e.target.value}))} /></div>
+                <div><label className="label">Date</label>
+                  <input type="date" className="input" value={form.txn_date} onChange={e => setForm(f => ({...f, txn_date: e.target.value}))} /></div>
+              </div>
+              <div><label className="label">Category</label>
+                <select className="input" value={form.category} onChange={e => setForm(f => ({...f, category: e.target.value}))}>
+                  {EXPENSE_CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                </select></div>
+            </div>
+            <div className="p-5 border-t flex gap-3">
+              <button onClick={() => setShowForm(false)} className="btn-secondary flex-1">Cancel</button>
+              <button onClick={() => addMutation.mutate(form)} disabled={!form.description || !form.amount} className="btn-primary flex-1 disabled:opacity-50">Add</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Bank Import Tab ────────────────────────────────────────────────────────
+function BankImportTab() {
+  const qc = useQueryClient();
+  const now = new Date();
+  const [from, setFrom] = useState(new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]);
+  const [to, setTo]     = useState(now.toISOString().split('T')[0]);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<any>(null);
+
+  const { data: txns, isLoading, refetch } = useQuery({
+    queryKey: ['bank-txns', from, to],
+    queryFn: () => api.get(`/financial/bank-transactions?from=${from}&to=${to}`).then(r => r.data),
+  });
+
+  const unmatched = (txns || []).filter((t: any) => !t.matched_type);
+  const matched   = (txns || []).filter((t: any) => t.matched_type);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+
+    try {
+      const text = await file.text();
+      const rawLines = text.split('\n');
+      const transactions = [];
+
+      // ── Canara Bank / generic CSV parser ──────────────────────────────
+      // Find the header row dynamically — look for 'Txn Date' or 'Date'
+      let dataStartIdx = -1;
+      let colMap = { date: 0, description: 3, debit: 5, credit: 6, balance: 7 }; // Canara defaults
+
+      for (let i = 0; i < rawLines.length; i++) {
+        const lower = rawLines[i].toLowerCase();
+        if (lower.includes('txn date') || lower.includes('transaction date')) {
+          dataStartIdx = i + 1; // data starts after this header row
+          // Canara: Txn Date, Value Date, Cheque No., Description, Branch Code, Debit, Credit, Balance
+          colMap = { date: 0, description: 3, debit: 5, credit: 6, balance: 7 };
+          break;
+        } else if (lower.includes(',date,') || lower.startsWith('date,')) {
+          dataStartIdx = i + 1;
+          // Generic: Date, Description, Debit, Credit, Balance
+          colMap = { date: 0, description: 1, debit: 2, credit: 3, balance: 4 };
+          break;
+        }
+      }
+
+      if (dataStartIdx === -1) {
+        toast.error('Could not find data header row. Check CSV format.');
+        setImporting(false);
+        return;
+      }
+
+      const dataLines = rawLines.slice(dataStartIdx).filter(l => l.trim());
+
+      for (const line of dataLines) {
+        // Handle quoted CSV fields (Canara wraps amounts in quotes)
+        const cols: string[] = [];
+        let current = '';
+        let inQuotes = false;
+        for (const ch of line) {
+          if (ch === '"') { inQuotes = !inQuotes; }
+          else if (ch === ',' && !inQuotes) { cols.push(current.trim()); current = ''; }
+          else { current += ch; }
+        }
+        cols.push(current.trim());
+
+        if (cols.length < 4) continue;
+
+        const rawDate    = cols[colMap.date]    || '';
+        const description = cols[colMap.description] || '';
+        const rawDebit   = cols[colMap.debit]   || '0';
+        const rawCredit  = cols[colMap.credit]  || '0';
+        const rawBalance = cols[colMap.balance] || '0';
+
+        if (!rawDate || rawDate.length < 8) continue;
+        if (!description || description.length < 2) continue;
+
+        // Parse date — handles:
+        // DD-MM-YYYY HH:MM:SS (Canara)
+        // DD/MM/YYYY
+        // YYYY-MM-DD
+        let parsedDate = rawDate;
+        const dateOnly = rawDate.split(' ')[0]; // strip time component
+        const parts = dateOnly.split(/[\/\-]/);
+        if (parts.length === 3) {
+          if (parts[0].length === 2) {
+            // DD-MM-YYYY → YYYY-MM-DD
+            parsedDate = `${parts[2].substring(0,4)}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+          } else if (parts[0].length === 4) {
+            // Already YYYY-MM-DD
+            parsedDate = dateOnly;
+          }
+        }
+
+        // Clean amounts — remove commas, spaces, Rs. prefix
+        const cleanAmt = (s: string) => parseFloat(s.replace(/[,\s₹Rs.]/g, '')) || 0;
+        const debit  = cleanAmt(rawDebit);
+        const credit = cleanAmt(rawCredit);
+        const balance = cleanAmt(rawBalance);
+
+        if (debit === 0 && credit === 0) continue; // skip zero-amount rows
+
+        // Extract UPI reference from Canara description
+        // Format: UPI/CR/644473344037/NAME/BANK/**ref@upi/...
+        const upiRefMatch = description.match(/UPI\/(?:CR|DR)\/([0-9]+)/i);
+        const reference = upiRefMatch ? upiRefMatch[1] : undefined;
+
+        transactions.push({
+          date:        parsedDate,
+          description: description,
+          debit,
+          credit,
+          balance:     balance || null,
+          reference,
+        });
+      }
+
+      const result = await api.post('/financial/bank-import', { transactions });
+      setImportResult(result.data);
+      toast.success(`Imported ${result.data.imported} transactions`);
+      refetch();
+    } catch (err) {
+      toast.error('Failed to parse CSV. Check format.');
+    } finally {
+      setImporting(false);
+      e.target.value = '';
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Upload area */}
+      <div className="border-2 border-dashed border-gray-200 rounded-2xl p-6 text-center">
+        <Upload className="w-8 h-8 text-gray-300 mx-auto mb-3" />
+        <p className="text-sm font-medium text-gray-700 mb-1">Upload bank statement CSV</p>
+        <p className="text-xs text-gray-400 mb-3">
+          Format: Date, Description, Debit, Credit, Balance<br/>
+          Download from your bank&apos;s internet banking portal
+        </p>
+        <label className="btn-primary cursor-pointer">
+          {importing ? <Loader2 className="w-4 h-4 animate-spin inline mr-1" /> : <Upload className="w-4 h-4 inline mr-1" />}
+          {importing ? 'Importing...' : 'Choose CSV File'}
+          <input type="file" accept=".csv" className="hidden" onChange={handleFileUpload} disabled={importing} />
+        </label>
+      </div>
+
+      {importResult && (
+        <div className="grid grid-cols-3 gap-3">
+          <StatCard label="Imported" value={importResult.imported} color="blue" />
+          <StatCard label="Auto-matched" value={importResult.matched} color="green" />
+          <StatCard label="Needs Review" value={importResult.unmatched} color={importResult.unmatched > 0 ? 'amber' : 'green'} />
+        </div>
+      )}
+
+      <div className="flex items-center gap-3">
+        <input type="date" className="input" value={from} onChange={e => setFrom(e.target.value)} />
+        <span className="text-gray-400">to</span>
+        <input type="date" className="input" value={to} onChange={e => setTo(e.target.value)} />
+        <span className="text-sm text-gray-500">{unmatched.length} unmatched</span>
+      </div>
+
+      {isLoading ? <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin" /></div>
+      : !txns?.length ? (
+        <div className="text-center py-16 text-gray-400">
+          <Hash className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <p className="text-sm">No bank transactions imported yet</p>
+        </div>
+      ) : (
+        <div className="card p-0 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-100">
+              <tr>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Date</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Description</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Type</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Credit</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Debit</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Match</th>
+              </tr>
+            </thead>
+            <tbody>
+              {txns.map((t: any) => (
+                <tr key={t.id} className={`border-b border-gray-50 ${!t.matched_type ? 'bg-amber-50/30' : ''}`}>
+                  <td className="px-4 py-2 text-gray-500 text-xs">{new Date(t.txn_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</td>
+                  <td className="px-4 py-2 text-gray-700 text-xs max-w-xs truncate">{t.description}</td>
+                  <td className="px-4 py-2 text-xs text-gray-500">{t.txn_type}</td>
+                  <td className="px-4 py-2 text-right text-green-600 font-medium">{t.credit_amount > 0 ? fmt(t.credit_amount) : '—'}</td>
+                  <td className="px-4 py-2 text-right text-red-500 font-medium">{t.debit_amount > 0 ? fmt(t.debit_amount) : '—'}</td>
+                  <td className="px-4 py-2">
+                    {t.matched_type ? (
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full flex items-center gap-1 w-fit">
+                        <Link2 className="w-3 h-3" /> {t.matched_type}
+                      </span>
+                    ) : (
+                      <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full flex items-center gap-1 w-fit">
+                        <Link2Off className="w-3 h-3" /> Review
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main Page ──────────────────────────────────────────────────────────────
+const TAB_GROUPS = [
+  {
+    group: 'Overview',
+    tabs: [
+      { key: 'dashboard', label: 'Daily P&L',       icon: '📊' },
+      { key: 'pnl',       label: 'Monthly P&L',     icon: '📈' },
+      { key: 'budget',    label: 'Budget vs Actual', icon: '🎯' },
+    ],
+  },
+  {
+    group: 'Transactions',
+    tabs: [
+      { key: 'expenses',  label: 'Expenses',         icon: '💸' },
+      { key: 'invoices',  label: 'Purchase Invoices',icon: '🧾' },
+      { key: 'cash',      label: 'Cash Register',    icon: '🏧' },
+      { key: 'petty',     label: 'Petty Cash',       icon: '💰' },
+    ],
+  },
+  {
+    group: 'Payables & Credit',
+    tabs: [
+      { key: 'payables',  label: 'Supplier Payables',icon: '🏢' },
+      { key: 'credit',    label: 'Credit Sales',     icon: '💳' },
+    ],
+  },
+  {
+    group: 'Payroll',
+    tabs: [
+      { key: 'salaries',  label: 'Salaries',         icon: '👥' },
+    ],
+  },
+  {
+    group: 'Banking & Tax',
+    tabs: [
+      { key: 'upi',       label: 'UPI Reconciliation',icon: '📱' },
+      { key: 'bank',      label: 'Bank Import',      icon: '🏦' },
+      { key: 'gstr2',     label: 'GST Input Credit', icon: '📋' },
+    ],
+  },
+  {
+    group: 'Compliance',
+    tabs: [
+      { key: 'inspector', label: 'Drug Inspector',   icon: '💊' },
+    ],
+  },
+];
+
+export default function FinancialPage() {
+  const [tab, setTab] = useState('dashboard');
+  const [showSidebar, setShowSidebar] = useState(false);
+  const activeTab = TABS.find(t => t.key === tab);
+
+  return (
+    <div className="h-full flex overflow-hidden bg-gray-50 relative">
+
+      {/* ── Vertical sidebar ────────────────────────────────────────────── */}
+      {/* Mobile overlay */}
+      {showSidebar && (
+        <div className="fixed inset-0 bg-black/40 z-20 md:hidden" onClick={() => setShowSidebar(false)} />
+      )}
+
+      <div className={`${showSidebar ? 'flex' : 'hidden'} md:flex w-52 flex-shrink-0 bg-white border-r border-gray-100 flex-col overflow-y-auto fixed md:static h-full z-30 md:z-auto`}>
+        <div className="px-4 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h1 className="text-base font-bold text-gray-900">Financial</h1>
+            <p className="text-xs text-gray-400 mt-0.5">Management console</p>
+          </div>
+          <button onClick={() => setShowSidebar(false)} className="md:hidden text-gray-400 hover:text-gray-600">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <nav className="flex-1 py-3 space-y-0.5">
+          {TAB_GROUPS.map(group => (
+            <div key={group.group}>
+              <p className="px-4 pt-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                {group.group}
+              </p>
+              {group.tabs.map(t => (
+                <button
+                  key={t.key}
+                  onClick={() => { setTab(t.key); if (window.innerWidth < 768) setShowSidebar(false); }}
+                  className={`w-full flex items-center gap-2.5 px-4 py-2 text-sm transition-all text-left ${
+                    tab === t.key
+                      ? 'bg-[#00475a]/10 text-[#00475a] font-semibold border-r-2 border-[#00475a]'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`}
+                >
+                  <span className="text-base leading-none">{t.icon}</span>
+                  <span className="truncate">{t.label}</span>
+                </button>
+              ))}
+            </div>
+          ))}
+        </nav>
+      </div>
+
+      {/* ── Main content ────────────────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="px-4 py-3 bg-white border-b border-gray-100 flex-shrink-0 flex items-center gap-3">
+          <button onClick={() => setShowSidebar(true)}
+            className="md:hidden flex items-center gap-1.5 px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-600 hover:bg-slate-50 flex-shrink-0">
+            <DollarSign className="w-3.5 h-3.5" />
+            Menu
+          </button>
+          <h2 className="text-base font-semibold text-gray-900">
+            {activeTab?.label || 'Financial'}
+          </h2>
+        </div>
+        <div className="flex-1 overflow-auto p-6">
+          {tab === 'dashboard' && <DailyPnL />}
+          {tab === 'pnl'       && <MonthlyPnL />}
+          {tab === 'expenses'  && <ExpensesTab />}
+          {tab === 'payables'  && <PayablesTab />}
+          {tab === 'salaries'  && <SalariesTab />}
+          {tab === 'upi'       && <UpiTab />}
+          {tab === 'cash'      && <CashRegisterTab />}
+          {tab === 'credit'    && <CreditTab />}
+          {tab === 'petty'     && <PettyCashTab />}
+          {tab === 'bank'      && <BankImportTab />}
+          {tab === 'budget'    && <BudgetTab />}
+          {tab === 'gstr2'     && <GSTR2Tab />}
+          {tab === 'invoices'  && <PurchaseInvoicesTab />}
+          {tab === 'inspector' && <DrugInspectorTab />}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Budget vs Actual Tab ───────────────────────────────────────────────────
+function BudgetTab() {
+  const qc = useQueryClient();
+  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [editing, setEditing] = useState(false);
+  const [editValues, setEditValues] = useState<Record<string, string>>({});
+
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['budget', month],
+    queryFn: () => api.get(`/financial/budget?month=${month}`).then(r => r.data),
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: (items: any) => api.post('/financial/budget/bulk', { month, items }),
+    onSuccess: () => { toast.success('Budget saved'); setEditing(false); refetch(); },
+  });
+
+  const copyMutation = useMutation({
+    mutationFn: () => api.post('/financial/budget/copy-last-month', { month }),
+    onSuccess: (r: any) => { toast.success(r.data.message || 'Copied'); refetch(); },
+  });
+
+  const startEdit = () => {
+    const vals: Record<string, string> = {};
+    data?.items?.forEach((i: any) => { vals[i.category] = String(i.budgeted || ''); });
+    setEditValues(vals);
+    setEditing(true);
+  };
+
+  const statusColors: Record<string, string> = {
+    on_track:    'text-green-600 bg-green-50',
+    behind:      'text-red-600 bg-red-50',
+    over_budget: 'text-red-600 bg-red-50',
+    unset:       'text-gray-400 bg-gray-50',
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <input type="month" className="input" value={month} onChange={e => setMonth(e.target.value)} />
+        <div className="flex gap-2">
+          <button onClick={() => copyMutation.mutate()} disabled={copyMutation.isPending}
+            className="btn-secondary flex items-center gap-1 text-sm">
+            {copyMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+            Copy Last Month
+          </button>
+          {editing ? (
+            <button onClick={() => saveMutation.mutate(Object.entries(editValues).map(([category, amount]) => ({ category, amount: Number(amount)||0 })))}
+              className="btn-primary text-sm">Save Budget</button>
+          ) : (
+            <button onClick={startEdit} className="btn-primary text-sm">Set Budget</button>
+          )}
+        </div>
+      </div>
+
+      {isLoading ? <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin" /></div> : (
+        <div className="card p-0 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-100">
+              <tr>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Category</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Budget</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Actual</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Variance</th>
+                <th className="text-center px-4 py-3 font-medium text-gray-600">Status</th>
+                <th className="px-4 py-3 w-32" />
+              </tr>
+            </thead>
+            <tbody>
+              {(data?.items || []).map((item: any) => (
+                <tr key={item.category} className="border-b border-gray-50 hover:bg-gray-50">
+                  <td className="px-4 py-3 font-medium text-gray-900">{item.category}</td>
+                  <td className="px-4 py-3 text-right">
+                    {editing ? (
+                      <input type="number" className="input w-28 text-right" value={editValues[item.category]||''}
+                        onChange={e => setEditValues(v => ({...v, [item.category]: e.target.value}))} placeholder="0" />
+                    ) : (
+                      <span className="text-gray-700">{item.budgeted > 0 ? fmt(item.budgeted) : '—'}</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right font-medium text-gray-900">{fmt(item.actual)}</td>
+                  <td className="px-4 py-3 text-right">
+                    {item.budgeted > 0 && (
+                      <span className={`font-semibold ${item.variance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {item.variance >= 0 ? '+' : ''}{fmt(item.variance)}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    {item.budgeted > 0 && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[item.status]}`}>
+                        {item.status === 'on_track' ? '✓ On track'
+                         : item.status === 'behind' ? '↓ Behind target'
+                         : item.status === 'over_budget' ? '↑ Over budget'
+                         : '—'}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {item.budgeted > 0 && item.variance_pct !== null && (
+                      <div className="flex items-center gap-1">
+                        <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden w-16">
+                          <div className={`h-full rounded-full ${item.status === 'on_track' ? 'bg-green-500' : 'bg-red-500'}`}
+                            style={{ width: `${Math.min(item.variance_pct, 100)}%` }} />
+                        </div>
+                        <span className="text-xs text-gray-400">{item.variance_pct}%</span>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── GSTR-2 Tab ─────────────────────────────────────────────────────────────
+function GSTR2Tab() {
+  const qc = useQueryClient();
+  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({
+    invoice_date: new Date().toISOString().split('T')[0],
+    supplier_name: '', supplier_gstin: '', invoice_number: '',
+    invoice_amount: '', taxable_amount: '', gst_rate: '12',
+    cgst_amount: '', sgst_amount: '',
+  });
+
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['gstr2', month],
+    queryFn: () => api.get(`/financial/gstr2?month=${month}`).then(r => r.data),
+  });
+
+  const addMutation = useMutation({
+    mutationFn: (d: any) => api.post('/financial/gstr2', d),
+    onSuccess: () => { toast.success('Entry added'); setShowForm(false); refetch(); },
+  });
+
+  const importMutation = useMutation({
+    mutationFn: () => api.post('/financial/gstr2/auto-import', { month }),
+    onSuccess: (r: any) => { toast.success(r.data.message); refetch(); },
+  });
+
+  const claimMutation = useMutation({
+    mutationFn: (id: string) => api.patch(`/financial/gstr2/${id}/claim-itc`, { month }),
+    onSuccess: () => { toast.success('ITC claimed'); refetch(); },
+  });
+
+  const s = data?.summary || {};
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <input type="month" className="input" value={month} onChange={e => setMonth(e.target.value)} />
+        <div className="flex gap-2">
+          <button onClick={() => importMutation.mutate()} disabled={importMutation.isPending}
+            className="btn-secondary text-sm flex items-center gap-1">
+            {importMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+            Auto Import from Invoices
+          </button>
+          <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2 text-sm">
+            <Plus className="w-4 h-4" /> Add Entry
+          </button>
+        </div>
+      </div>
+
+      {s.total_invoices > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <StatCard label="ITC Available" value={fmt(s.itc_available)} color="green" sub="From purchases" />
+          <StatCard label="GST Collected" value={fmt(s.gst_collected)} color="amber" sub="From sales" />
+          <StatCard label="Net GST Payable" value={fmt(s.net_gst_payable)} color={s.net_gst_payable > 0 ? 'red' : 'green'} sub="After ITC" />
+          <StatCard label="ITC Savings" value={fmt(s.savings)} color="teal" sub="Tax offset" />
+        </div>
+      )}
+
+      {isLoading ? <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin" /></div>
+      : !data?.entries?.length ? (
+        <div className="text-center py-16 text-gray-400">
+          <ReceiptText className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <p className="text-sm">No purchase invoices in GSTR-2 for this month</p>
+          <p className="text-xs mt-1">Add entries or auto-import from purchase invoices</p>
+        </div>
+      ) : (
+        <div className="card p-0 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-100">
+              <tr>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Date</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Supplier</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Invoice No</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Taxable</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">CGST</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">SGST</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Total ITC</th>
+                <th className="text-center px-4 py-3 font-medium text-gray-600">ITC Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.entries.map((e: any) => (
+                <tr key={e.id} className="border-b border-gray-50 hover:bg-gray-50">
+                  <td className="px-4 py-2 text-gray-500 text-xs">{new Date(e.invoice_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</td>
+                  <td className="px-4 py-2 font-medium text-gray-900">{e.supplier_name}</td>
+                  <td className="px-4 py-2 text-gray-500 font-mono text-xs">{e.invoice_number}</td>
+                  <td className="px-4 py-2 text-right text-gray-700">{fmt(e.taxable_amount)}</td>
+                  <td className="px-4 py-2 text-right text-gray-600">{fmt(e.cgst_amount)}</td>
+                  <td className="px-4 py-2 text-right text-gray-600">{fmt(e.sgst_amount)}</td>
+                  <td className="px-4 py-2 text-right font-semibold text-green-700">{fmt(e.total_tax)}</td>
+                  <td className="px-4 py-2 text-center">
+                    {e.itc_claimed ? (
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Claimed</span>
+                    ) : (
+                      <button onClick={() => claimMutation.mutate(e.id)}
+                        className="text-xs bg-[#00475a] text-white px-2 py-0.5 rounded-full hover:bg-[#003d4d]">
+                        Claim ITC
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {showForm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md">
+            <div className="p-5 border-b flex items-center justify-between">
+              <h3 className="font-semibold">Add GSTR-2 Entry</h3>
+              <button onClick={() => setShowForm(false)}><X className="w-5 h-5 text-gray-400" /></button>
+            </div>
+            <div className="p-5 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="label">Invoice Date</label>
+                  <input type="date" className="input" value={form.invoice_date} onChange={e => setForm(f => ({...f, invoice_date: e.target.value}))} /></div>
+                <div><label className="label">GST Rate %</label>
+                  <select className="input" value={form.gst_rate} onChange={e => setForm(f => ({...f, gst_rate: e.target.value}))}>
+                    {['5','12','18','28'].map(r => <option key={r}>{r}</option>)}
+                  </select></div>
+              </div>
+              <div><label className="label">Supplier Name *</label>
+                <input className="input" value={form.supplier_name} onChange={e => setForm(f => ({...f, supplier_name: e.target.value}))} /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="label">Supplier GSTIN</label>
+                  <input className="input" value={form.supplier_gstin} onChange={e => setForm(f => ({...f, supplier_gstin: e.target.value}))} placeholder="32XXXXX..." /></div>
+                <div><label className="label">Invoice Number *</label>
+                  <input className="input" value={form.invoice_number} onChange={e => setForm(f => ({...f, invoice_number: e.target.value}))} /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="label">Invoice Amount *</label>
+                  <input type="number" className="input" value={form.invoice_amount} onChange={e => setForm(f => ({...f, invoice_amount: e.target.value}))} /></div>
+                <div><label className="label">Taxable Amount</label>
+                  <input type="number" className="input" value={form.taxable_amount} onChange={e => setForm(f => ({...f, taxable_amount: e.target.value}))} placeholder="Auto-calculated" /></div>
+              </div>
+            </div>
+            <div className="p-5 border-t flex gap-3">
+              <button onClick={() => setShowForm(false)} className="btn-secondary flex-1">Cancel</button>
+              <button onClick={() => addMutation.mutate(form)} disabled={!form.supplier_name || !form.invoice_number || !form.invoice_amount} className="btn-primary flex-1 disabled:opacity-50">Add</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Purchase Invoices Tab ──────────────────────────────────────────────────
+function PurchaseInvoicesTab() {
+  const qc = useQueryClient();
+  const now = new Date();
+  const [from, setFrom] = useState(new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]);
+  const [to, setTo]     = useState(now.toISOString().split('T')[0]);
+  const [status, setStatus] = useState('');
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({
+    invoice_date: now.toISOString().split('T')[0],
+    invoice_number: '', supplier_name: '', supplier_gstin: '',
+    subtotal: '', cgst: '', sgst: '', total_amount: '',
+    credit_days: '30', notes: '',
+  });
+
+  const { data: invoices, isLoading, refetch } = useQuery({
+    queryKey: ['purchase-invoices', from, to, status],
+    queryFn: () => api.get(`/financial/purchase-invoices?from=${from}&to=${to}${status?`&status=${status}`:''}`).then(r => r.data),
+  });
+
+  const addMutation = useMutation({
+    mutationFn: (d: any) => api.post('/financial/purchase-invoices', d),
+    onSuccess: () => { toast.success('Invoice added'); setShowForm(false); refetch(); },
+  });
+
+  const payMutation = useMutation({
+    mutationFn: ({ id, data }: any) => api.patch(`/financial/purchase-invoices/${id}/pay`, data),
+    onSuccess: () => { toast.success('Marked as paid'); refetch(); },
+  });
+
+  const totalUnpaid = (invoices||[]).filter((i:any) => i.payment_status!=='paid').reduce((s:number,i:any) => s+Number(i.total_amount),0);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <input type="date" className="input" value={from} onChange={e => setFrom(e.target.value)} />
+          <span className="text-gray-400">to</span>
+          <input type="date" className="input" value={to} onChange={e => setTo(e.target.value)} />
+          <select className="input" value={status} onChange={e => setStatus(e.target.value)}>
+            <option value="">All</option>
+            <option value="unpaid">Unpaid</option>
+            <option value="paid">Paid</option>
+          </select>
+          {totalUnpaid > 0 && <span className="text-sm font-semibold text-red-600">Unpaid: {fmt(totalUnpaid)}</span>}
+        </div>
+        <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2 text-sm">
+          <Plus className="w-4 h-4" /> Add Invoice
+        </button>
+      </div>
+
+      {isLoading ? <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin" /></div>
+      : !invoices?.length ? (
+        <div className="text-center py-16 text-gray-400">
+          <ReceiptText className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <p className="text-sm">No purchase invoices recorded</p>
+        </div>
+      ) : (
+        <div className="card p-0 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-100">
+              <tr>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Date</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Supplier</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Invoice No</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Amount</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Due Date</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
+                <th className="px-4 py-3" />
+              </tr>
+            </thead>
+            <tbody>
+              {invoices.map((inv: any) => (
+                <tr key={inv.id} className={`border-b border-gray-50 hover:bg-gray-50 ${inv.payment_status!=='paid' && inv.due_date && new Date(inv.due_date) < new Date() ? 'bg-red-50/30' : ''}`}>
+                  <td className="px-4 py-2 text-gray-500 text-xs">{new Date(inv.invoice_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</td>
+                  <td className="px-4 py-2 font-medium text-gray-900">{inv.supplier_name}</td>
+                  <td className="px-4 py-2 text-gray-500 font-mono text-xs">{inv.invoice_number}</td>
+                  <td className="px-4 py-2 text-right font-semibold text-gray-900">{fmt(inv.total_amount)}</td>
+                  <td className="px-4 py-2 text-xs">
+                    {inv.due_date ? (
+                      <span className={new Date(inv.due_date) < new Date() && inv.payment_status!=='paid' ? 'text-red-600 font-semibold' : 'text-gray-500'}>
+                        {new Date(inv.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                        {new Date(inv.due_date) < new Date() && inv.payment_status!=='paid' && ' ⚠️'}
+                      </span>
+                    ) : '—'}
+                  </td>
+                  <td className="px-4 py-2">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${inv.payment_status==='paid' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {inv.payment_status==='paid' ? 'Paid' : 'Unpaid'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2">
+                    {inv.payment_status !== 'paid' && (
+                      <button onClick={() => {
+                        const ref = prompt('Payment reference number:', '');
+                        payMutation.mutate({ id: inv.id, data: { amount: inv.total_amount, reference_no: ref, payment_mode: 'bank_transfer' } });
+                      }} className="text-xs text-[#00475a] hover:underline font-medium">
+                        Mark Paid
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {showForm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md">
+            <div className="p-5 border-b flex items-center justify-between">
+              <h3 className="font-semibold">Add Purchase Invoice</h3>
+              <button onClick={() => setShowForm(false)}><X className="w-5 h-5 text-gray-400" /></button>
+            </div>
+            <div className="p-5 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="label">Invoice Date</label>
+                  <input type="date" className="input" value={form.invoice_date} onChange={e => setForm(f=>({...f,invoice_date:e.target.value}))} /></div>
+                <div><label className="label">Credit Days</label>
+                  <input type="number" className="input" value={form.credit_days} onChange={e => setForm(f=>({...f,credit_days:e.target.value}))} /></div>
+              </div>
+              <div><label className="label">Supplier Name *</label>
+                <input className="input" value={form.supplier_name} onChange={e => setForm(f=>({...f,supplier_name:e.target.value}))} /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="label">Invoice Number *</label>
+                  <input className="input" value={form.invoice_number} onChange={e => setForm(f=>({...f,invoice_number:e.target.value}))} /></div>
+                <div><label className="label">Supplier GSTIN</label>
+                  <input className="input" value={form.supplier_gstin} onChange={e => setForm(f=>({...f,supplier_gstin:e.target.value}))} placeholder="32XXXXX..." /></div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div><label className="label">Subtotal</label>
+                  <input type="number" className="input" value={form.subtotal} onChange={e => setForm(f=>({...f,subtotal:e.target.value}))} /></div>
+                <div><label className="label">CGST</label>
+                  <input type="number" className="input" value={form.cgst} onChange={e => setForm(f=>({...f,cgst:e.target.value}))} /></div>
+                <div><label className="label">SGST</label>
+                  <input type="number" className="input" value={form.sgst} onChange={e => setForm(f=>({...f,sgst:e.target.value}))} /></div>
+              </div>
+              <div><label className="label">Total Amount *</label>
+                <input type="number" className="input text-lg font-semibold" value={form.total_amount} onChange={e => setForm(f=>({...f,total_amount:e.target.value}))} /></div>
+            </div>
+            <div className="p-5 border-t flex gap-3">
+              <button onClick={() => setShowForm(false)} className="btn-secondary flex-1">Cancel</button>
+              <button onClick={() => addMutation.mutate(form)} disabled={!form.supplier_name||!form.invoice_number||!form.total_amount} className="btn-primary flex-1 disabled:opacity-50">Add Invoice</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Drug Inspector Tab ─────────────────────────────────────────────────────
+function DrugInspectorTab() {
+  const now = new Date();
+  const [from, setFrom] = useState(new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]);
+  const [to, setTo]     = useState(now.toISOString().split('T')[0]);
+  const [schedule, setSchedule] = useState('');
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['drug-inspector', from, to, schedule],
+    queryFn: () => api.get(`/financial/drug-inspector-report?from=${from}&to=${to}${schedule?`&schedule=${schedule}`:''}`).then(r => r.data),
+  });
+
+  const downloadReport = () => {
+    const url = `/financial/drug-inspector-report/pdf?from=${from}&to=${to}`;
+    window.open(`${process.env.NEXT_PUBLIC_API_URL}${url}`, '_blank');
+  };
+
+  const s = data?.summary || {};
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <input type="date" className="input" value={from} onChange={e => setFrom(e.target.value)} />
+          <span className="text-gray-400">to</span>
+          <input type="date" className="input" value={to} onChange={e => setTo(e.target.value)} />
+          <select className="input" value={schedule} onChange={e => setSchedule(e.target.value)}>
+            <option value="">All (H + H1 + X)</option>
+            <option value="H">Schedule H only</option>
+            <option value="H1">Schedule H1 only</option>
+            <option value="X">Schedule X only</option>
+          </select>
+        </div>
+        <button onClick={downloadReport} className="btn-primary flex items-center gap-2">
+          <ReceiptText className="w-4 h-4" /> Download Report
+        </button>
+      </div>
+
+      {data?.summary && (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <StatCard label="Total Entries" value={s.total_entries} color="blue" />
+          <StatCard label="Schedule H" value={s.schedule_h} color="amber" />
+          <StatCard label="Schedule H1" value={s.schedule_h1} color="red" />
+          <StatCard label="Schedule X" value={s.schedule_x} color="teal" />
+          <StatCard label="Unique Medicines" value={s.unique_medicines} color="gray" />
+        </div>
+      )}
+
+      {isLoading ? <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin" /></div>
+      : !data?.entries?.length ? (
+        <div className="text-center py-16 text-gray-400">
+          <ReceiptText className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <p className="text-sm">No scheduled drug dispensing in this period</p>
+          <p className="text-xs mt-1">Schedule H, H1, and X dispensing will appear here</p>
+        </div>
+      ) : (
+        <div className="card p-0 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-100">
+              <tr>
+                <th className="text-left px-3 py-3 font-medium text-gray-600">Date</th>
+                <th className="text-left px-3 py-3 font-medium text-gray-600">Medicine</th>
+                <th className="text-left px-3 py-3 font-medium text-gray-600">Schedule</th>
+                <th className="text-left px-3 py-3 font-medium text-gray-600">Batch</th>
+                <th className="text-right px-3 py-3 font-medium text-gray-600">Qty</th>
+                <th className="text-left px-3 py-3 font-medium text-gray-600">Patient</th>
+                <th className="text-left px-3 py-3 font-medium text-gray-600">Doctor</th>
+                <th className="text-left px-3 py-3 font-medium text-gray-600">Pharmacist</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.entries.map((e: any, i: number) => (
+                <tr key={i} className="border-b border-gray-50 hover:bg-gray-50">
+                  <td className="px-3 py-2 text-gray-500 text-xs">{new Date(e.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</td>
+                  <td className="px-3 py-2">
+                    <p className="font-medium text-gray-900 text-xs">{e.medicine_name}</p>
+                    <p className="text-xs text-gray-400">{e.generic_name}</p>
+                  </td>
+                  <td className="px-3 py-2">
+                    <span className={`text-xs px-2 py-0.5 rounded font-bold ${
+                      e.schedule_class==='X' ? 'bg-purple-100 text-purple-700'
+                      : e.schedule_class==='H1' ? 'bg-red-100 text-red-700'
+                      : 'bg-amber-100 text-amber-700'}`}>
+                      {e.schedule_class}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-gray-500 text-xs font-mono">{e.batch_number||'—'}</td>
+                  <td className="px-3 py-2 text-right font-medium">{e.quantity_dispensed}</td>
+                  <td className="px-3 py-2 text-gray-700 text-xs">{e.patient_name||'Walk-in'}</td>
+                  <td className="px-3 py-2 text-gray-600 text-xs">{e.doctor_name||'—'}</td>
+                  <td className="px-3 py-2 text-gray-500 text-xs">{e.pharmacist_name||'—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
