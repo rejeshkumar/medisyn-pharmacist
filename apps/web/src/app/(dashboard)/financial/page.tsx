@@ -14,10 +14,29 @@ import {
 } from 'lucide-react';
 
 const EXPENSE_CATEGORIES = [
-  'Rent', 'Electricity', 'Water', 'Internet', 'Phone',
-  'Salary', 'Contract Staff', 'Cleaning', 'Maintenance',
-  'Packaging', 'Stationery', 'Printing', 'Bank Charges',
-  'Insurance', 'Licence Fee', 'Marketing', 'Miscellaneous',
+  { value: 'Staff Salary',       label: 'Staff Salary' },
+  { value: 'Salary Advance',     label: 'Salary Advance' },
+  { value: 'Consultation',       label: 'Doctor Consultation' },
+  { value: 'Doctor Sourcing',    label: 'Doctor Sourcing / Agent' },
+  { value: 'Pharmacy Purchases', label: 'Pharmacy Purchases' },
+  { value: 'Medicine Travel',    label: 'Medicine Travel / Delivery' },
+  { value: 'Rent',               label: 'Rent' },
+  { value: 'Electricity',        label: 'Electricity Bill' },
+  { value: 'Water',              label: 'Water' },
+  { value: 'BSNL/Internet',      label: 'BSNL / Internet' },
+  { value: 'Marketing',          label: 'Marketing / Advertising' },
+  { value: 'Equipment',          label: 'Equipment Purchase' },
+  { value: 'Maintenance',        label: 'Maintenance / Repair' },
+  { value: 'CCTV',               label: 'CCTV' },
+  { value: 'Stationery',         label: 'Stationery / Printing' },
+  { value: 'CA/Tax',             label: 'CA / Tax / GST' },
+  { value: 'Food Safety',        label: 'Food Safety / License' },
+  { value: 'Municipality',       label: 'Municipality / Waste' },
+  { value: 'POS Rent',           label: 'POS Rent' },
+  { value: 'Bank Deposit',       label: 'Bank Deposit' },
+  { value: 'Refund',             label: 'Refund to Patient' },
+  { value: 'Lab',                label: 'Lab Expense' },
+  { value: 'Others',             label: 'Others (specify below)' },
 ];
 
 const TABS = [
@@ -300,7 +319,7 @@ function ExpensesTab() {
   const [from, setFrom] = useState(new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]);
   const [to, setTo]     = useState(now.toISOString().split('T')[0]);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ expense_date: now.toISOString().split('T')[0], category: 'Rent', description: '', amount: '', payment_mode: 'cash', vendor_name: '', reference_no: '', is_recurring: false, recurrence_day: '1' });
+  const [form, setForm] = useState({ expense_date: now.toISOString().split('T')[0], category: 'Staff Salary', description: '', amount: '', payment_mode: 'Cash', vendor_name: '', reference_no: '', is_recurring: false, recurrence_day: '1' , business_unit: 'Pharmacy', paid_by: '', other_category: '', voucher_received: false, notes: '' });
   const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
 
   const { data: expenses, isLoading } = useQuery({
@@ -392,8 +411,19 @@ function ExpensesTab() {
                 <div>
                   <label className="label">Category</label>
                   <select className="input" value={form.category} onChange={e => set('category', e.target.value)}>
-                    {EXPENSE_CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                    {EXPENSE_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                   </select>
+              {form.category === 'Others' && (
+                <div>
+                  <label className="form-label">Specify expense type *</label>
+                  <input
+                    className="input"
+                    placeholder="e.g. Donation, Festival, Petrol..."
+                    value={form.other_category}
+                    onChange={e => set('other_category', e.target.value)}
+                  />
+                </div>
+              )}
                 </div>
               </div>
               <div>
@@ -408,7 +438,10 @@ function ExpensesTab() {
                 <div>
                   <label className="label">Payment Mode</label>
                   <select className="input" value={form.payment_mode} onChange={e => set('payment_mode', e.target.value)}>
-                    {['cash','upi','bank_transfer','cheque'].map(m => <option key={m} value={m}>{m.replace('_', ' ').toUpperCase()}</option>)}
+                    <option value="Cash">Cash</option>
+                    <option value="UPI">UPI</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="Cheque">Cheque</option>
                   </select>
                 </div>
               </div>
@@ -957,7 +990,7 @@ function CreditTab() {
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<any>(null);
-  const [payForm, setPayForm] = useState({ amount: '', payment_mode: 'cash', reference_no: '' });
+  const [payForm, setPayForm] = useState({ amount: '', payment_mode: 'Cash', reference_no: '' });
   const [newAccount, setNewAccount] = useState({ patient_name: '', patient_mobile: '', credit_limit: '5000' });
 
   const { data: accounts, isLoading } = useQuery({
@@ -1088,7 +1121,10 @@ function CreditTab() {
                 <input type="number" className="input" value={payForm.amount} onChange={e => setPayForm(f => ({...f, amount: e.target.value}))} placeholder={String(selectedAccount.current_balance)} /></div>
               <div><label className="label">Payment Mode</label>
                 <select className="input" value={payForm.payment_mode} onChange={e => setPayForm(f => ({...f, payment_mode: e.target.value}))}>
-                  {['cash','upi','bank_transfer','cheque'].map(m => <option key={m} value={m}>{m.toUpperCase()}</option>)}
+                  <option value="Cash">Cash</option>
+                  <option value="UPI">UPI</option>
+                  <option value="Bank Transfer">Bank Transfer</option>
+                  <option value="Cheque">Cheque</option>
                 </select></div>
               <div><label className="label">Reference No.</label>
                 <input className="input" value={payForm.reference_no} onChange={e => setPayForm(f => ({...f, reference_no: e.target.value}))} /></div>
@@ -1195,7 +1231,7 @@ function PettyCashTab() {
               </div>
               <div><label className="label">Category</label>
                 <select className="input" value={form.category} onChange={e => setForm(f => ({...f, category: e.target.value}))}>
-                  {EXPENSE_CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                  {EXPENSE_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                 </select></div>
             </div>
             <div className="p-5 border-t flex gap-3">
