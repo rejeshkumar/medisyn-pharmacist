@@ -1782,8 +1782,6 @@ export default function DispensingPage() {
           </div>
         </div>
       )}
-    </div>
-
       {returnSale && (
         <ReturnMedicinesDialog
           saleId={returnSale.id}
@@ -1792,5 +1790,6 @@ export default function DispensingPage() {
           onSuccess={() => { setReturnSale(null); refetch(); }}
         />
       )}
+    </div>
   );
 }
