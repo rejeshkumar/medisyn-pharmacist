@@ -38,6 +38,7 @@ import { BillingModule } from './billing/billing.module';
 import { FinancialModule } from './financial/financial.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { SuperAdminModule } from './super-admin/super-admin.module';
+import { DemandLogModule } from './demand/demand-log.module';
 
 @Module({
   imports: [
@@ -93,6 +94,7 @@ import { SuperAdminModule } from './super-admin/super-admin.module';
     AnalyticsModule,
     FinancialModule,
     SuperAdminModule,
+    DemandLogModule,
   ],
   providers: [
     // Applied globally in order — JwtAuthGuard first, then TenantGuard

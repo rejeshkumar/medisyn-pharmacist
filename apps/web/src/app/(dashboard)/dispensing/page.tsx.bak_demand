@@ -74,7 +74,7 @@ function MedSearchDropdown({
   value, onChange, onSelect, autoFocus,
 }: {
   value: string; onChange: (v: string) => void;
-  onSelect: (med: any) => void; onDemand?: (query: string) => void; autoFocus?: boolean;
+  onSelect: (med: any) => void; autoFocus?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -109,20 +109,6 @@ function MedSearchDropdown({
         placeholder="Type medicine name..."
         className="w-full px-2 py-1 text-sm border-0 bg-transparent focus:outline-none focus:ring-1 focus:ring-[#00475a] rounded"
       />
-      {open && results?.length === 0 && (value?.length ?? 0) >= 3 && (
-        <div className="absolute top-full left-0 z-50 w-[420px] bg-white border border-gray-200 rounded-xl shadow-2xl p-4">
-          <p className="text-sm font-medium text-gray-700 mb-1">No medicines found for "{value}"</p>
-          <p className="text-xs text-gray-400 mb-3">Not in your stock. You can log this as missed demand.</p>
-          <div className="flex gap-2">
-            <button
-              onClick={() => { setOpen(false); onDemand?.(value); }}
-              className="flex-1 text-xs px-3 py-2 rounded-lg bg-[#00475a] text-white font-medium hover:bg-[#003d4d] transition-colors"
-            >
-              Log demand
-            </button>
-          </div>
-        </div>
-      )}
       {open && results?.length > 0 && (
         <div className="absolute top-full left-0 z-50 w-[420px] bg-white border border-gray-200 rounded-xl shadow-2xl max-h-80 overflow-y-auto">
           {results.map((med: any) => {
@@ -286,130 +272,6 @@ function PatientSearch({ value, onSelect, onChange }: {
 }
 
 // ── Main Page ──────────────────────────────────────────────────────────────
-
-// ── LogDemandDialog ────────────────────────────────────────────────────
-function LogDemandDialog({ query, onClose }: { query: string; onClose: () => void }) {
-  const [name, setName] = useState(query);
-  const [qty, setQty] = useState('');
-  const [hasRx, setHasRx] = useState(false);
-  const [mobile, setMobile] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [validation, setValidation] = useState<any>(null);
-  const [validating, setValidating] = useState(false);
-  const [done, setDone] = useState(false);
-
-  const API = process.env.NEXT_PUBLIC_API_URL;
-
-  const validate = async (n: string) => {
-    if (n.length < 3) return;
-    setValidating(true);
-    try {
-      const token = localStorage.getItem('auth_token');
-      const res = await fetch(`${API}/demand-log`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ medicine_name_raw: n, qty_requested: qty, has_prescription: hasRx, patient_mobile: mobile }),
-      });
-      const data = await res.json();
-      setValidation(data.validation);
-      if (res.ok) setDone(true);
-    } catch { setValidation(null); }
-    finally { setValidating(false); }
-  };
-
-  const handleSubmit = async () => {
-    setLoading(true);
-    await validate(name);
-    setLoading(false);
-  };
-
-  const statusColor = {
-    validated:      'text-green-700 bg-green-50 border-green-200',
-    misspelling:    'text-amber-700 bg-amber-50 border-amber-200',
-    not_a_medicine: 'text-red-700 bg-red-50 border-red-200',
-    pending:        'text-gray-600 bg-gray-50 border-gray-200',
-  };
-
-  const statusLabel = {
-    validated:      'Validated medicine',
-    misspelling:    'Possible misspelling — check suggested name',
-    not_a_medicine: 'Not recognised as a medicine',
-    pending:        'Pending review',
-  };
-
-  if (done && validation) {
-    return (
-      <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
-          <div className="text-center">
-            <div className="text-3xl mb-2">{validation.status === 'validated' ? '✓' : validation.status === 'not_a_medicine' ? '⚠' : '~'}</div>
-            <p className="font-medium text-gray-900">Demand logged</p>
-            <p className="text-sm text-gray-500 mt-1">"{name}" has been recorded</p>
-          </div>
-          {validation.status !== 'pending' && (
-            <div className={`text-xs p-3 rounded-lg border ${statusColor[validation.status as keyof typeof statusColor]}`}>
-              <p className="font-medium">{statusLabel[validation.status as keyof typeof statusLabel]}</p>
-              {validation.inn_name && <p className="mt-1">INN: {validation.inn_name}</p>}
-              {validation.suggested_name && <p className="mt-1">Did you mean: <strong>{validation.suggested_name}</strong>?</p>}
-              {validation.schedule_class && <p className="mt-1">Schedule {validation.schedule_class}</p>}
-              {validation.is_nti && <p className="mt-1 font-medium">⚠ Narrow Therapeutic Index</p>}
-              {validation.notes && <p className="mt-1 text-gray-500">{validation.notes}</p>}
-            </div>
-          )}
-          <button onClick={onClose} className="w-full py-2 bg-[#00475a] text-white rounded-lg text-sm font-medium">Done</button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
-        <div className="p-5 border-b flex items-center justify-between">
-          <div>
-            <p className="font-medium text-gray-900">Log missed demand</p>
-            <p className="text-xs text-gray-400 mt-0.5">We will validate and track this</p>
-          </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
-        </div>
-        <div className="p-5 space-y-3">
-          <div>
-            <label className="text-xs text-gray-500 block mb-1">Medicine name (as patient said/wrote) *</label>
-            <input
-              className="input w-full"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="e.g. Pantop 40, Shelcal 500..."
-            />
-          </div>
-          <div>
-            <label className="text-xs text-gray-500 block mb-1">Quantity patient wanted</label>
-            <input className="input w-full" value={qty} onChange={e => setQty(e.target.value)} placeholder="e.g. 1 strip, 2 boxes" />
-          </div>
-          <div className="flex items-center gap-2">
-            <input type="checkbox" id="hasRx" checked={hasRx} onChange={e => setHasRx(e.target.checked)} className="rounded" />
-            <label htmlFor="hasRx" className="text-sm text-gray-600 cursor-pointer">Patient had a prescription</label>
-          </div>
-          <div>
-            <label className="text-xs text-gray-500 block mb-1">Patient mobile (optional — for callback when stocked)</label>
-            <input className="input w-full" value={mobile} onChange={e => setMobile(e.target.value)} placeholder="9876543210" />
-          </div>
-        </div>
-        <div className="p-5 pt-0 flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2 border border-gray-200 rounded-lg text-sm text-gray-600">Cancel</button>
-          <button
-            onClick={handleSubmit}
-            disabled={!name || loading || validating}
-            className="flex-2 flex-1 py-2 bg-[#00475a] text-white rounded-lg text-sm font-medium disabled:opacity-40"
-          >
-            {loading || validating ? 'Validating...' : 'Log demand'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function DispensingPage() {
   // Cart state
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -433,7 +295,6 @@ export default function DispensingPage() {
   const [showBillPanel, setShowBillPanel] = useState(false);
 
   const [returnSale, setReturnSale] = useState<{id: string, bill_number: string} | null>(null);
-  const [demandQuery, setDemandQuery] = useState<string | null>(null);
   // Auto-hide compliance when no scheduled drugs in cart
   useEffect(() => {
     if (!cart.some(i => ['H', 'H1', 'X'].includes(i.schedule_class))) {
@@ -1920,12 +1781,6 @@ export default function DispensingPage() {
             <p className="text-sm font-medium text-gray-700">Checking drug interactions...</p>
           </div>
         </div>
-      )}
-      {demandQuery && (
-        <LogDemandDialog
-          query={demandQuery}
-          onClose={() => setDemandQuery(null)}
-        />
       )}
       {returnSale && (
         <ReturnMedicinesDialog
