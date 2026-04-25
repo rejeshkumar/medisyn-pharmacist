@@ -39,6 +39,7 @@ import { FinancialModule } from './financial/financial.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { SuperAdminModule } from './super-admin/super-admin.module';
 import { DemandLogModule } from './demand/demand-log.module';
+import { ImportMedicinesController } from './import-medicines.controller';
 
 @Module({
   imports: [
@@ -96,6 +97,7 @@ import { DemandLogModule } from './demand/demand-log.module';
     SuperAdminModule,
     DemandLogModule,
   ],
+  controllers: [ImportMedicinesController],
   providers: [
     // Applied globally in order — JwtAuthGuard first, then TenantGuard
     { provide: APP_GUARD, useClass: JwtAuthGuard },
