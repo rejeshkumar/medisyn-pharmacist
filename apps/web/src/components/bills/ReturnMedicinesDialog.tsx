@@ -75,7 +75,7 @@ export default function ReturnMedicinesDialog({
   const [refundMode, setRefundMode] = useState('Cash');
   const [refundRef, setRefundRef] = useState('');
 
-  const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : '';
+  const token = typeof window !== 'undefined' ? localStorage.getItem('medisyn_token') : '';
 
   const loadItems = useCallback(async () => {
     try {
