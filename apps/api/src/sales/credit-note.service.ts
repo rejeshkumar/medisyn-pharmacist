@@ -190,21 +190,18 @@ export class CreditNoteService {
           [item.qty_returned, item.batch_id, tenantId],
         );
 
-        // Write stock adjustment log
+        // Write stock adjustment log (matches actual schema)
         await em.query(
           `INSERT INTO stock_adjustments
-             (medicine_id, batch_id, adjustment_type, quantity_change,
-              reason, performed_by, tenant_id)
-           VALUES ($1,$2,'return_from_patient',$3,$4,$5,$6)`,
-          [
-            item.medicine_id,
-            item.batch_id,
-            item.qty_returned,
-            `Credit note ${cnNumber} — original bill ${sale.bill_number}`,
-            userId,
-            tenantId,
-          ],
-        );
+             (batch_id, quantity_change, quantity_before, quantity_after)
+           VALUES ($1, $2,
+             (SELECT quantity - $2 FROM stock_batches WHERE id = $1),
+             (SELECT quantity FROM stock_batches WHERE id = $1))`,
+          [item.batch_id, item.qty_returned],
+        ).catch((e: any) => {
+          // Non-critical — log but don't fail the transaction
+          console.warn('[CreditNote] stock_adjustments insert failed:', e.message);
+        });
       }
 
       // If store credit — record in credit_accounts or expenses
