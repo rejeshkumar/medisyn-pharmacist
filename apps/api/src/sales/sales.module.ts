@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SalesController } from './sales.controller';
 import { SalesService } from './sales.service';
+import { CreditNoteController } from './credit-note.controller';
+import { CreditNoteService } from './credit-note.service';
 import { Sale } from '../database/entities/sale.entity';
 import { SaleItem } from '../database/entities/sale-item.entity';
 import { StockBatch } from '../database/entities/stock-batch.entity';
@@ -16,8 +18,8 @@ import { AutoCarePlanService } from '../ai-care/auto-care-plan.service';
     TypeOrmModule.forFeature([Sale, SaleItem, StockBatch, Medicine, ScheduleDrugLog, Tenant]),
     AuditModule,
   ],
-  controllers: [SalesController],
-  providers: [SalesService, AutoCarePlanService],
+  controllers: [SalesController, CreditNoteController],
+  providers: [SalesService, CreditNoteService, AutoCarePlanService],
   exports: [SalesService],
 })
 export class SalesModule {}
