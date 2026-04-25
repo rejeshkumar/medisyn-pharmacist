@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 import { Search, FileText, Loader2, Eye } from 'lucide-react';
 import BillDocument from '@/components/billing/BillDocument';
+import ReturnMedicinesDialog from '@/components/bills/ReturnMedicinesDialog';
 
 export default function BillingPage() {
   const [search, setSearch] = useState('');
@@ -13,6 +14,11 @@ export default function BillingPage() {
   const [to, setTo] = useState('');
   const [selectedSale, setSelectedSale] = useState<any>(null);
   const [printSale, setPrintSale] = useState<any>(null);
+  const [returnSale, setReturnSale] = useState<any>(null);
+  const [voidTarget, setVoidTarget] = useState<any>(null);
+  const [voidReason, setVoidReason] = useState('');
+  const [voidLoading, setVoidLoading] = useState(false);
+  const qc = useQueryClient();
 
   const { data: sales, isLoading } = useQuery({
     queryKey: ['sales', from, to, search],
@@ -24,6 +30,29 @@ export default function BillingPage() {
       return api.get(`/sales?${params}`).then((r) => r.data);
     },
   });
+
+  // Fetch full sale details (with items) when a sale is selected
+  const { data: saleDetail, isLoading: detailLoading } = useQuery({
+    queryKey: ['sale-detail', selectedSale?.id],
+    queryFn: () => api.get(`/sales/${selectedSale.id}`).then(r => r.data),
+    enabled: !!selectedSale?.id,
+  });
+
+  const handleVoid = async () => {
+    if (!voidTarget || !voidReason.trim()) return;
+    setVoidLoading(true);
+    try {
+      await api.post(`/sales/${voidTarget.id}/void`, { reason: voidReason });
+      qc.invalidateQueries({ queryKey: ['sales'] });
+      setVoidTarget(null);
+      setVoidReason('');
+      setSelectedSale(null);
+    } catch (e: any) {
+      alert(e?.response?.data?.message || 'Failed to void bill');
+    } finally {
+      setVoidLoading(false);
+    }
+  };
 
   const totalRevenue = sales?.filter((s: any) => !s.is_voided).reduce((sum: number, s: any) => sum + Number(s.total_amount), 0) || 0;
 
@@ -116,13 +145,19 @@ export default function BillingPage() {
       {selectedSale && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-lg max-h-[92vh] flex flex-col">
+            {/* Header */}
             <div className="p-5 border-b flex items-center justify-between flex-shrink-0">
-              <div><h3 className="font-semibold text-gray-900">Bill #{selectedSale.bill_number}</h3><p className="text-xs text-gray-400">{formatDateTime(selectedSale.created_at)}</p></div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Bill #{selectedSale.bill_number}</h3>
+                <p className="text-xs text-gray-400">{formatDateTime(selectedSale.created_at)}</p>
+              </div>
               <div className="flex items-center gap-2">
-                <button onClick={() => { setPrintSale(selectedSale); setSelectedSale(null); }} className="flex items-center gap-1.5 text-xs bg-gray-900 text-white px-3 py-1.5 rounded-lg hover:bg-gray-700">🖨 Print</button>
+                <button onClick={() => { setPrintSale(saleDetail || selectedSale); setSelectedSale(null); }} className="flex items-center gap-1.5 text-xs bg-gray-900 text-white px-3 py-1.5 rounded-lg hover:bg-gray-700">🖨 Print</button>
                 <button onClick={() => setSelectedSale(null)} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
               </div>
             </div>
+
+            {/* Body */}
             <div className="flex-1 overflow-y-auto p-5 space-y-4">
               {selectedSale.customer_name && (
                 <div className="grid grid-cols-2 gap-2 text-sm">
@@ -130,12 +165,38 @@ export default function BillingPage() {
                   {selectedSale.doctor_name && <div><p className="text-gray-400 text-xs">Doctor</p><p className="font-medium">{selectedSale.doctor_name}</p></div>}
                 </div>
               )}
+
+              {/* Items — loaded from detail fetch */}
               <div className="overflow-x-auto">
                 <table className="w-full text-sm min-w-[320px]">
-                  <thead><tr className="border-b border-gray-100"><th className="text-left py-1.5 text-gray-500 font-medium">Item</th><th className="text-center py-1.5 text-gray-500 font-medium">Qty</th><th className="text-right py-1.5 text-gray-500 font-medium">Rate</th><th className="text-right py-1.5 text-gray-500 font-medium">Total</th></tr></thead>
-                  <tbody>{selectedSale.items?.map((item: any) => (<tr key={item.id} className="border-b border-gray-50"><td className="py-2"><p className="font-medium text-gray-900">{item.medicine?.brand_name||item.medicine_name}</p>{item.is_substituted && <p className="text-xs text-blue-500">Substituted</p>}</td><td className="text-center py-2 text-gray-700">{item.qty}</td><td className="text-right py-2 text-gray-700">₹{Number(item.rate).toFixed(2)}</td><td className="text-right py-2 font-medium">₹{Number(item.item_total).toFixed(2)}</td></tr>))}</tbody>
+                  <thead>
+                    <tr className="border-b border-gray-100">
+                      <th className="text-left py-1.5 text-gray-500 font-medium">Item</th>
+                      <th className="text-center py-1.5 text-gray-500 font-medium">Qty</th>
+                      <th className="text-right py-1.5 text-gray-500 font-medium">Rate</th>
+                      <th className="text-right py-1.5 text-gray-500 font-medium">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {detailLoading ? (
+                      <tr><td colSpan={4} className="py-6 text-center text-gray-400 text-xs"><Loader2 className="w-4 h-4 animate-spin inline mr-1" />Loading items...</td></tr>
+                    ) : (saleDetail?.items || saleDetail?.sale_items)?.map((item: any) => (
+                      <tr key={item.id} className="border-b border-gray-50">
+                        <td className="py-2">
+                          <p className="font-medium text-gray-900">{item.medicine?.brand_name || item.medicine_name}</p>
+                          <p className="text-xs text-gray-400">{item.batch?.batch_number || item.batch_number}</p>
+                          {item.is_substituted && <p className="text-xs text-blue-500">Substituted</p>}
+                        </td>
+                        <td className="text-center py-2 text-gray-700">{item.qty}</td>
+                        <td className="text-right py-2 text-gray-700">₹{Number(item.rate).toFixed(2)}</td>
+                        <td className="text-right py-2 font-medium">₹{Number(item.item_total || (item.qty * item.rate)).toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
                 </table>
               </div>
+
+              {/* Totals */}
               <div className="text-sm space-y-1 pt-2 border-t border-gray-100">
                 <div className="flex justify-between text-gray-600"><span>Subtotal</span><span>{formatCurrency(selectedSale.subtotal)}</span></div>
                 <div className="flex justify-between text-gray-600"><span>Tax</span><span>{formatCurrency(selectedSale.tax_amount)}</span></div>
@@ -144,8 +205,72 @@ export default function BillingPage() {
                 <div className="flex justify-between text-gray-500 text-xs pt-1"><span>Payment</span><span className="uppercase">{selectedSale.payment_mode}</span></div>
               </div>
             </div>
+
+            {/* Action buttons — Void and Return */}
+            {!selectedSale.is_voided && (
+              <div className="p-4 border-t border-gray-100 flex gap-2 flex-shrink-0">
+                <button
+                  onClick={() => { setReturnSale(selectedSale); setSelectedSale(null); }}
+                  className="flex-1 text-sm px-3 py-2 rounded-lg border border-amber-200 text-amber-700 hover:bg-amber-50 font-medium transition-colors"
+                >
+                  ↩ Return medicines
+                </button>
+                <button
+                  onClick={() => { setVoidTarget(selectedSale); setSelectedSale(null); }}
+                  className="flex-1 text-sm px-3 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 font-medium transition-colors"
+                >
+                  🚫 Void bill
+                </button>
+              </div>
+            )}
           </div>
         </div>
+      )}
+
+      {/* Void confirmation dialog */}
+      {voidTarget && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <h3 className="font-semibold text-gray-900">Void bill {voidTarget.bill_number}?</h3>
+            <p className="text-sm text-gray-500">This cannot be undone. Stock will be automatically restored to the batch.</p>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Reason *</label>
+              <select
+                className="input w-full"
+                value={voidReason}
+                onChange={e => setVoidReason(e.target.value)}
+              >
+                <option value="">Select reason...</option>
+                <option value="Billing error">Billing error</option>
+                <option value="Wrong quantity">Wrong quantity</option>
+                <option value="Duplicate bill">Duplicate bill</option>
+                <option value="Patient cancelled">Patient cancelled</option>
+                <option value="Wrong medicine">Wrong medicine</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => { setVoidTarget(null); setVoidReason(''); }} className="flex-1 text-sm px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">Cancel</button>
+              <button
+                onClick={handleVoid}
+                disabled={!voidReason || voidLoading}
+                className="flex-1 text-sm px-3 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-40 font-medium"
+              >
+                {voidLoading ? 'Voiding...' : 'Confirm void'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Return medicines dialog */}
+      {returnSale && (
+        <ReturnMedicinesDialog
+          saleId={returnSale.id}
+          billNumber={returnSale.bill_number}
+          onClose={() => setReturnSale(null)}
+          onSuccess={() => { setReturnSale(null); qc.invalidateQueries({ queryKey: ['sales'] }); }}
+        />
       )}
     </div>
   );
