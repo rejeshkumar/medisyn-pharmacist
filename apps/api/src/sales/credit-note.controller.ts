@@ -7,10 +7,12 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { CreditNoteService, CreateCreditNoteDto } from './credit-note.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @ApiTags('Credit Notes')
 @ApiBearerAuth()
 @Controller('credit-notes')
+@UseGuards(JwtAuthGuard)
 export class CreditNoteController {
   constructor(private readonly cn: CreditNoteService) {}
 
@@ -22,7 +24,7 @@ export class CreditNoteController {
   @Get('returnable/:saleId')
   @ApiOperation({ summary: 'Get returnable items for a bill' })
   getReturnableItems(@Param('saleId') saleId: string, @Request() req) {
-    return this.cn.getReturnableItems(saleId, req.user.tenantId);
+    return this.cn.getReturnableItems(saleId, req.user.tenant_id);
   }
 
   /**
@@ -32,7 +34,7 @@ export class CreditNoteController {
   @Get('by-sale/:saleId')
   @ApiOperation({ summary: 'List credit notes for a bill' })
   listBySale(@Param('saleId') saleId: string, @Request() req) {
-    return this.cn.listBySale(saleId, req.user.tenantId);
+    return this.cn.listBySale(saleId, req.user.tenant_id);
   }
 
   /**
@@ -46,7 +48,7 @@ export class CreditNoteController {
     @Query('to') to: string,
     @Request() req,
   ) {
-    return this.cn.list(req.user.tenantId, from, to);
+    return this.cn.list(req.user.tenant_id, from, to);
   }
 
   /**
@@ -56,7 +58,7 @@ export class CreditNoteController {
   @Get(':cnNumber')
   @ApiOperation({ summary: 'Get credit note by number (for print)' })
   getOne(@Param('cnNumber') cnNumber: string, @Request() req) {
-    return this.cn.getCreditNote(cnNumber, req.user.tenantId);
+    return this.cn.getCreditNote(cnNumber, req.user.tenant_id);
   }
 
   /**
@@ -66,6 +68,6 @@ export class CreditNoteController {
   @Post()
   @ApiOperation({ summary: 'Create a credit note (patient return)' })
   create(@Body() dto: CreateCreditNoteDto, @Request() req) {
-    return this.cn.createCreditNote(dto, req.user.userId, req.user.tenantId);
+    return this.cn.createCreditNote(dto, req.user.sub, req.user.tenant_id);
   }
 }

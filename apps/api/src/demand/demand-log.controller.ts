@@ -13,19 +13,19 @@ export class DemandLogController {
   /** POST /demand-log — log a missed demand with auto-validation */
   @Post()
   log(@Body() dto: LogDemandDto, @Request() req) {
-    return this.svc.logDemand(dto, req.user.userId, req.user.tenantId);
+    return this.svc.logDemand(dto, req.user.sub, req.user.tenant_id);
   }
 
   /** GET /demand-log/summary?days=7 — weekly demand summary for dashboard */
   @Get('summary')
   summary(@Query('days') days: string, @Request() req) {
-    return this.svc.getSummary(req.user.tenantId, parseInt(days || '7', 10));
+    return this.svc.getSummary(req.user.tenant_id, parseInt(days || '7', 10));
   }
 
   /** GET /demand-log?status=open — full list */
   @Get()
   list(@Query('status') status: string, @Request() req) {
-    return this.svc.list(req.user.tenantId, status);
+    return this.svc.list(req.user.tenant_id, status);
   }
 
   /** PATCH /demand-log/:id/resolve — mark stocked/dismissed/added_to_po */
@@ -35,7 +35,7 @@ export class DemandLogController {
     @Body() body: { resolution: 'stocked' | 'dismissed' | 'added_to_po' },
     @Request() req,
   ) {
-    return this.svc.resolve(id, body.resolution, req.user.userId, req.user.tenantId);
+    return this.svc.resolve(id, body.resolution, req.user.sub, req.user.tenant_id);
   }
 }
 
