@@ -321,7 +321,8 @@ export class MedicinesService {
          ), 0) AS total_stock,
          (SELECT row_to_json(fb)
           FROM (
-            SELECT b.id, b.batch_number, b.expiry_date, b.sale_rate, b.quantity
+            SELECT b.id, b.batch_number, b.expiry_date,
+                   b.sale_rate, b.mrp, b.purchase_price, b.quantity
             FROM stock_batches b
             WHERE b.medicine_id = m.id AND b.tenant_id = $1
               AND b.quantity > 0 AND b.expiry_date > CURRENT_DATE
