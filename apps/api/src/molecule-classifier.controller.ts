@@ -34,7 +34,11 @@ export class MoleculeClassifierController {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) return { error: 'ANTHROPIC_API_KEY not set' };
 
-    const medicines = await this.ds.query(`
+    // Use queryRunner for explicit transaction control
+    const runner = this.ds.createQueryRunner();
+    await runner.connect();
+
+    const medicines = await runner.query(`
       SELECT id, brand_name, molecule, strength, dosage_form
       FROM medicines
       WHERE tenant_id = $1
@@ -85,36 +89,44 @@ Return ONLY valid JSON array, no markdown.`;
         const clean = text.replace(/```json|```/g, '').trim();
         const results = JSON.parse(clean);
 
-        for (let j = 0; j < batch.length; j++) {
-          const med = batch[j];
-          const result = results[j];
-          if (!result) { errors++; continue; }
+        // Begin transaction for this batch
+        await runner.startTransaction();
+        try {
+          for (let j = 0; j < batch.length; j++) {
+            const med = batch[j];
+            const result = results[j];
+            if (!result) { errors++; continue; }
 
-          const form = VALID_FORMS.includes(result.dosage_form) ? result.dosage_form : 'Other';
-          const groupKey = makeGroupKey(result.molecule, result.strength, form);
+            const form = VALID_FORMS.includes(result.dosage_form) ? result.dosage_form : 'Other';
+            const groupKey = makeGroupKey(result.molecule, result.strength, form);
 
-          await this.ds.query(`
-            UPDATE medicines SET
-              molecule             = $1,
-              strength             = $2,
-              dosage_form          = $3,
-              molecule_confidence  = $4,
-              molecule_verified    = false,
-              molecule_source      = 'claude-haiku-batch',
-              substitute_group_key = $5,
-              updated_at           = NOW()
-            WHERE id = $6
-          `, [
-            result.molecule || '',
-            result.strength || 'As per label',
-            form,
-            result.confident ? 0.9 : 0.5,
-            groupKey,
-            med.id,
-          ]);
+            await runner.query(`
+              UPDATE medicines SET
+                molecule             = $1,
+                strength             = $2,
+                dosage_form          = $3,
+                molecule_confidence  = $4,
+                molecule_verified    = false,
+                molecule_source      = 'claude-haiku-batch',
+                substitute_group_key = $5,
+                updated_at           = NOW()
+              WHERE id = $6
+            `, [
+              result.molecule || '',
+              result.strength || 'As per label',
+              form,
+              result.confident ? 0.9 : 0.5,
+              groupKey,
+              med.id,
+            ]);
 
-          updated++;
-          if (result.confident) confident++; else uncertain++;
+            updated++;
+            if (result.confident) confident++; else uncertain++;
+          }
+          await runner.commitTransaction();
+        } catch (e: any) {
+          await runner.rollbackTransaction();
+          errors += batch.length;
         }
       } catch (e: any) {
         errors += batch.length;
@@ -122,6 +134,8 @@ Return ONLY valid JSON array, no markdown.`;
 
       await sleep(500);
     }
+
+    await runner.release();
 
     const [{ count: groups }] = await this.ds.query(`
       SELECT COUNT(DISTINCT substitute_group_key) AS count
