@@ -42,6 +42,7 @@ import { DemandLogModule } from './demand/demand-log.module';
 import { ImportMedicinesController } from './import-medicines.controller';
 import { ClearDataController } from './clear-data.controller';
 import { ImportStockController } from './import-stock.controller';
+import { ScheduleClassifierController } from './schedule-classifier.controller';
 
 @Module({
   imports: [
@@ -99,7 +100,7 @@ import { ImportStockController } from './import-stock.controller';
     SuperAdminModule,
     DemandLogModule,
   ],
-  controllers: [ImportMedicinesController, ClearDataController, ImportStockController],
+  controllers: [ImportMedicinesController, ClearDataController, ImportStockController, ScheduleClassifierController],
   providers: [
     // Applied globally in order — JwtAuthGuard first, then TenantGuard
     { provide: APP_GUARD, useClass: JwtAuthGuard },
