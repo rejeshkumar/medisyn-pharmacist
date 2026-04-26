@@ -103,8 +103,8 @@ export class ImportStockController {
         medUpdated++;
       } else {
         const res = await this.ds.query(
-          `INSERT INTO medicines (brand_name,molecule,manufacturer,hsn_code,mrp,sale_rate,gst_percent,tabs_per_strip,dosage_form,is_active,is_rx_required,tenant_id,created_at,updated_at)
-           VALUES ($1,'',$2,$3,$4,$5,$6,$7,$8,true,false,$9,NOW(),NOW()) RETURNING id`,
+          `INSERT INTO medicines (brand_name,molecule,strength,manufacturer,hsn_code,mrp,sale_rate,gst_percent,tabs_per_strip,dosage_form,is_active,is_rx_required,tenant_id,created_at,updated_at)
+           VALUES ($1,'','',$2,$3,$4,$5,$6,$7,$8,true,false,$9,NOW(),NOW()) RETURNING id`,
           [name, String(row['Mfg Name']||'').trim()||null, String(row['HSN Code']||'').trim()||null,
            mrp, mrp, gst(row['Tax%']), num(row['Strip Qty']), inferDosage(name), TENANT]
         );
