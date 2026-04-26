@@ -14,9 +14,9 @@ export class ClearDataController {
     const TENANT = '00000000-0000-0000-0000-000000000001';
     const tables = [
       'refill_followups','medication_plans','demand_requests',
-      'credit_note_items','reorder_flags','purchase_order_items',
-      'prescription_items','sale_items','sales',
-      'stock_batches','medicines'
+      'credit_note_items','schedule_drug_logs','sale_items',
+      'sales','purchase_order_items','reorder_flags',
+      'prescription_items','stock_batches','medicines'
     ];
     const results: any = {};
     for (const table of tables) {
