@@ -43,6 +43,7 @@ interface CartItem {
   tabs_per_strip?: number;
   max_discount_pct?: number | null;
   manufacturer?: string;
+  purchase_price?: number | null;
 }
 
 interface DraftBill {
@@ -529,6 +530,7 @@ export default function DispensingPage() {
         create_care_plan:  isChronicDetected,
         all_batches:       med.all_batches || [],
         manufacturer:      med.manufacturer || '',
+        purchase_price:    bestBatch.purchase_price ? Number(bestBatch.purchase_price) : null,
       };
 
       if (rowIdx < cart.length) {
@@ -1280,6 +1282,23 @@ export default function DispensingPage() {
 
                     <td className="px-3 py-2 text-right text-sm font-semibold text-slate-800">
                       ₹{amt.toFixed(2)}
+                      {/* Live profit indicator */}
+                      {item.purchase_price && item.purchase_price > 0 && item.qty > 0 && (() => {
+                        const sellPrice  = item.rate * (1 - item.line_discount_pct / 100);
+                        const cost       = item.purchase_price;
+                        const profitPer  = sellPrice - cost;
+                        const profitPct  = (profitPer / item.rate) * 100;
+                        const totalProfit= profitPer * item.qty;
+                        const isLoss     = profitPer < 0;
+                        const isThin     = profitPct >= 0 && profitPct < 10;
+                        const color      = isLoss ? 'text-red-600' : isThin ? 'text-amber-600' : 'text-green-600';
+                        const icon       = isLoss ? '⚠️' : isThin ? '↓' : '✓';
+                        return (
+                          <div className={`text-[9px] font-bold mt-0.5 ${color}`} title={`Cost ₹${cost.toFixed(2)} · Sell ₹${sellPrice.toFixed(2)} · Margin ${profitPct.toFixed(1)}%`}>
+                            {icon} {isLoss ? `Loss ₹${Math.abs(totalProfit).toFixed(0)}` : `+₹${totalProfit.toFixed(0)} profit`}
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="px-3 py-2">
                       <button onClick={() => {
@@ -1419,6 +1438,39 @@ export default function DispensingPage() {
             <div className="border-t border-slate-100 pt-2 flex justify-between font-bold text-slate-900 text-base">
               <span>Net total</span><span>{formatCurrency(netTotal)}</span>
             </div>
+
+            {/* Profit summary */}
+            {(() => {
+              const totalCost = cart.reduce((sum, i) => {
+                if (!i.purchase_price || i.purchase_price <= 0) return sum;
+                return sum + i.purchase_price * i.qty;
+              }, 0);
+              const totalSell = cart.reduce((sum, i) => {
+                return sum + i.rate * (1 - i.line_discount_pct / 100) * i.qty;
+              }, 0);
+              const hasCostData = cart.some(i => i.purchase_price && i.purchase_price > 0);
+              if (!hasCostData || cart.length === 0) return null;
+              const profit = totalSell - totalCost;
+              const profitPct = totalSell > 0 ? (profit / totalSell) * 100 : 0;
+              const isLoss = profit < 0;
+              const isThin = profit >= 0 && profitPct < 10;
+              return (
+                <div className={`rounded-lg px-3 py-2 text-xs font-semibold border ${
+                  isLoss ? 'bg-red-50 border-red-200 text-red-700'
+                  : isThin ? 'bg-amber-50 border-amber-200 text-amber-700'
+                  : 'bg-green-50 border-green-200 text-green-700'
+                }`}>
+                  <div className="flex justify-between">
+                    <span>{isLoss ? '⚠️ Loss on this bill' : '✓ Bill profit'}</span>
+                    <span>₹{Math.abs(profit).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-[10px] opacity-75 mt-0.5">
+                    <span>Cost: ₹{totalCost.toFixed(2)}</span>
+                    <span>Margin: {profitPct.toFixed(1)}%</span>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Amount paid */}
             <div className="flex justify-between items-center text-slate-600">
