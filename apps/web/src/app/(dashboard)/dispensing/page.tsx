@@ -634,18 +634,19 @@ export default function DispensingPage() {
   };
 
   // ── Calculations ──────────────────────────────────────────────────────
+  // MRP is GST-inclusive — back-calculate GST from rate
   const lineTotal = (item: CartItem) => {
     const base = item.qty * item.rate;
     const disc = base * (item.line_discount_pct / 100);
-    const gst  = (base - disc) * (item.gst_percent / 100);
-    return base - disc + gst;
+    return base - disc; // No GST added — already in rate
   };
 
   const subtotal     = cart.reduce((s, i) => s + i.qty * i.rate, 0);
   const lineDiscTotal= cart.reduce((s, i) => s + i.qty * i.rate * (i.line_discount_pct / 100), 0);
   const taxTotal     = cart.reduce((s, i) => {
+    // GST back-calculated from GST-inclusive rate
     const base = i.qty * i.rate * (1 - i.line_discount_pct / 100);
-    return s + base * (i.gst_percent / 100);
+    return s + base * (i.gst_percent / (100 + i.gst_percent));
   }, 0);
   const afterLineDisc = subtotal - lineDiscTotal + taxTotal;
   const overallDiscAmt= afterLineDisc * (overallDiscount / 100);
