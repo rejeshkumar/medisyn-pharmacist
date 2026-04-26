@@ -1,4 +1,5 @@
 import { Controller, Post, Headers, ForbiddenException, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Public } from './common/decorators/public.decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { DataSource } from 'typeorm';
 import { InjectDataSource } from '@nestjs/typeorm';
@@ -10,6 +11,7 @@ const TENANT = '00000000-0000-0000-0000-000000000001';
 export class ImportStockController {
   constructor(@InjectDataSource() private ds: DataSource) {}
 
+  @Public()
   @Post('import-stock')
   @UseInterceptors(FileInterceptor('file'))
   async importStock(
