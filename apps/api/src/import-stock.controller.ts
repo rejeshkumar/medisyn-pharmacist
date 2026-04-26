@@ -11,6 +11,31 @@ const TENANT = '00000000-0000-0000-0000-000000000001';
 export class ImportStockController {
   constructor(@InjectDataSource() private ds: DataSource) {}
 
+  // ── Clear all data before fresh import ──────────────────────────────────────
+  @Public()
+  @Post('clear-stock')
+  async clearStock(@Headers('x-admin-key') key: string) {
+    if (key !== 'medisyn-import-2024') throw new ForbiddenException();
+    const tables = [
+      'refill_followups', 'medication_plans', 'demand_requests',
+      'credit_note_items', 'schedule_drug_logs', 'prescription_items',
+      'prescriptions', 'sale_items', 'sales',
+      'purchase_order_items', 'reorder_flags', 'stock_batches', 'medicines',
+    ];
+    const results: any = {};
+    for (const table of tables) {
+      try {
+        const r = await this.ds.query(`DELETE FROM ${table} WHERE tenant_id = $1`, [TENANT]);
+        results[table] = r[1] ?? 'ok';
+      } catch (e: any) {
+        results[table] = `error: ${e.message}`;
+      }
+    }
+    const [{ count }] = await this.ds.query(`SELECT COUNT(*) FROM medicines WHERE tenant_id = $1`, [TENANT]);
+    return { status: 'cleared', medicines_remaining: count, results };
+  }
+
+  // ── Import stock from Purchase/Sales Excel ──────────────────────────────────
   @Public()
   @Post('import-stock')
   @UseInterceptors(FileInterceptor('file'))
@@ -37,35 +62,35 @@ export class ImportStockController {
       return obj;
     });
 
-    // Only rows with stock
+    // Only rows with available stock
     const stockRows = data.filter(r => r['Drug Name'] && Number(r['Avail Qty'] || 0) > 0);
 
     // ── Helpers ───────────────────────────────────────────────────────────────
-    // Safe float — returns null if invalid or negative
+    // Safe float — null if invalid/negative
     const f = (v: any): number | null => {
       const n = parseFloat(String(v ?? '').replace(',', '').trim());
       return isNaN(n) || n < 0 ? null : n;
     };
 
-    // Safe integer — rounds float, returns null if invalid
+    // Safe integer — rounds decimals (tabs_per_strip must be integer in DB)
     const int = (v: any): number | null => {
       const n = f(v);
       return n !== null ? Math.round(n) : null;
     };
 
-    // Safe string — trims, returns null if empty
+    // Safe string — null if empty
     const str = (v: any): string | null => {
       const s = String(v ?? '').trim();
       return s || null;
     };
 
-    // GST — must be 0-100, default 0
+    // GST percent — must be 0-100, default 0 (NOT NULL in DB)
     const gstVal = (v: any): number => {
       const n = f(v);
       return (n !== null && n <= 100) ? n : 0;
     };
 
-    // Dosage form from drug name prefix
+    // Dosage form inferred from drug name prefix
     const dosage = (name: string): string => {
       const n = name.toUpperCase();
       if (n.startsWith('TAB ') || n.includes(' TAB ')) return 'tablet';
@@ -85,7 +110,7 @@ export class ImportStockController {
       return 'other';
     };
 
-    // Parse expiry like 'Apr-2028', 'Apr-28'
+    // Parse expiry: 'Apr-2028', 'Apr-28', 'Sep-27' → YYYY-MM-DD (last day of month)
     const expiry = (v: any): string | null => {
       if (!v) return null;
       const s = String(v).trim();
@@ -111,12 +136,12 @@ export class ImportStockController {
     let medInserted = 0, medUpdated = 0;
 
     for (const [name, row] of uniqueMeds) {
-      const mrp = f(row['Mrp']) ?? 0;
+      const mrp          = f(row['Mrp']) ?? 0;
       const manufacturer = str(row['Mfg Name']);
-      const hsn = str(row['HSN Code']);
-      const gstPct = gstVal(row['Tax%']);
-      const strips = int(row['Strip Qty']);
-      const form = dosage(name);
+      const hsn          = str(row['HSN Code']);
+      const gstPct       = gstVal(row['Tax%']);
+      const strips       = int(row['Strip Qty']);  // MUST be integer
+      const form         = dosage(name);
 
       const existing = await this.ds.query(
         `SELECT id FROM medicines WHERE LOWER(TRIM(brand_name)) = LOWER($1) AND tenant_id = $2 LIMIT 1`,
@@ -127,33 +152,34 @@ export class ImportStockController {
         const id = existing[0].id;
         await this.ds.query(`
           UPDATE medicines SET
-            manufacturer = COALESCE($1, manufacturer),
-            hsn_code     = COALESCE($2, hsn_code),
-            mrp          = $3,
-            sale_rate    = $3,
-            gst_percent  = $4,
+            manufacturer   = COALESCE($1, manufacturer),
+            hsn_code       = COALESCE($2, hsn_code),
+            mrp            = $3,
+            sale_rate      = $3,
+            gst_percent    = $4,
             tabs_per_strip = COALESCE($5, tabs_per_strip),
-            updated_at   = NOW()
+            updated_at     = NOW()
           WHERE id = $6
         `, [manufacturer, hsn, mrp, gstPct, strips, id]);
         medMap.set(name, id);
         medUpdated++;
       } else {
-        // NOT NULL columns with defaults:
-        // brand_name, molecule(''), strength(''), dosage_form, schedule_class('OTC'),
-        // gst_percent(0), discount_percent(0), reorder_qty(0),
-        // is_rx_required(false), is_active(true), is_chronic(false), tenant_id
+        // All NOT NULL columns explicitly set — no DB surprises:
+        // brand_name, molecule(''), strength(''), dosage_form,
+        // schedule_class defaults to 'OTC', gst_percent(0),
+        // discount_percent(0), reorder_qty(0),
+        // is_rx_required(false), is_active(true), is_chronic(false)
         const res = await this.ds.query(`
           INSERT INTO medicines (
             brand_name, molecule, strength, dosage_form,
-            manufacturer, hsn_code, mrp, sale_rate,
-            gst_percent, tabs_per_strip,
+            manufacturer, hsn_code,
+            mrp, sale_rate, gst_percent, tabs_per_strip,
             is_active, is_rx_required, is_chronic,
             tenant_id, created_at, updated_at
           ) VALUES (
             $1, '', '', $2,
-            $3, $4, $5, $5,
-            $6, $7,
+            $3, $4,
+            $5, $5, $6, $7,
             true, false, false,
             $8, NOW(), NOW()
           ) RETURNING id
@@ -164,17 +190,19 @@ export class ImportStockController {
     }
 
     // ── Insert stock batches ─────────────────────────────────────────────────
+    // IMPORTANT: sale_rate = mrp (MRP is GST-inclusive selling price)
+    // purchase_price = Rate from Excel (your cost, GST-inclusive)
     let batchInserted = 0, batchUpdated = 0;
 
     for (const row of stockRows) {
-      const name = String(row['Drug Name']).trim();
-      const medId = medMap.get(name);
+      const name    = String(row['Drug Name']).trim();
+      const medId   = medMap.get(name);
       if (!medId) continue;
 
       const batchNo  = str(row['Batch No']);
       const qty      = f(row['Avail Qty']) ?? 0;
-      const cost     = f(row['Rate']);
-      const mrp      = f(row['Mrp']) ?? 0;
+      const cost     = f(row['Rate']);          // purchase cost (GST-inclusive)
+      const mrp      = f(row['Mrp']) ?? 0;     // MRP = selling price (GST-inclusive)
       const invoiceNo= str(row['Invoice No']);
       const freeQty  = f(row['Free Qty']);
       const batchQty = f(row['Batch Qty']);
@@ -191,15 +219,16 @@ export class ImportStockController {
       if (existing.length > 0) {
         await this.ds.query(`
           UPDATE stock_batches SET
-            quantity       = $1,
-            purchase_price = COALESCE($2, purchase_price),
-            mrp            = $3,
-            free_qty       = $4,
-            batch_qty      = $5,
-            discount_amount= $6,
-            tax_amount     = $7,
-            purchase_value = $8,
-            updated_at     = NOW()
+            quantity        = $1,
+            purchase_price  = COALESCE($2, purchase_price),
+            mrp             = $3,
+            sale_rate       = $3,
+            free_qty        = $4,
+            batch_qty       = $5,
+            discount_amount = $6,
+            tax_amount      = $7,
+            purchase_value  = $8,
+            updated_at      = NOW()
           WHERE id = $9
         `, [qty, cost, mrp, freeQty, batchQty, discAmt, taxAmt, purVal, existing[0].id]);
         batchUpdated++;
@@ -207,24 +236,29 @@ export class ImportStockController {
         await this.ds.query(`
           INSERT INTO stock_batches (
             medicine_id, batch_number, expiry_date, quantity,
-            purchase_price, mrp, purchase_invoice_no,
+            purchase_price, mrp, sale_rate, purchase_invoice_no,
             free_qty, batch_qty, discount_amount, tax_amount, purchase_value,
             is_active, tenant_id, created_at, updated_at
           ) VALUES (
             $1, $2, $3, $4,
-            $5, $6, $7,
+            $5, $6, $6, $7,
             $8, $9, $10, $11, $12,
             true, $13, NOW(), NOW()
           )
-        `, [medId, batchNo, exp, qty, cost, mrp, invoiceNo,
+        `, [medId, batchNo, exp, qty,
+            cost, mrp, invoiceNo,
             freeQty, batchQty, discAmt, taxAmt, purVal, TENANT]);
         batchInserted++;
       }
     }
 
     // ── Summary ──────────────────────────────────────────────────────────────
-    const [{ count: medCount }]   = await this.ds.query(`SELECT COUNT(*) FROM medicines WHERE tenant_id=$1`, [TENANT]);
-    const [{ count: batchCount }] = await this.ds.query(`SELECT COUNT(*) FROM stock_batches WHERE tenant_id=$1 AND quantity>0`, [TENANT]);
+    const [{ count: medCount }]   = await this.ds.query(
+      `SELECT COUNT(*) FROM medicines WHERE tenant_id=$1`, [TENANT]
+    );
+    const [{ count: batchCount }] = await this.ds.query(
+      `SELECT COUNT(*) FROM stock_batches WHERE tenant_id=$1 AND quantity>0`, [TENANT]
+    );
 
     return {
       status: 'success',
