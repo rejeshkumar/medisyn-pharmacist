@@ -648,7 +648,8 @@ export default function DispensingPage() {
     const base = i.qty * i.rate * (1 - i.line_discount_pct / 100);
     return s + base * (i.gst_percent / (100 + i.gst_percent));
   }, 0);
-  const afterLineDisc = subtotal - lineDiscTotal + taxTotal;
+  // MRP is GST-inclusive — taxTotal is informational only, not added to total
+  const afterLineDisc = subtotal - lineDiscTotal;
   const overallDiscAmt= afterLineDisc * (overallDiscount / 100);
   const netBeforeRound= afterLineDisc - overallDiscAmt;
   const roundOff      = Math.round(netBeforeRound) - netBeforeRound;
