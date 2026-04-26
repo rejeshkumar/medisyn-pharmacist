@@ -90,7 +90,7 @@ export class ImportStockController {
     for (const [name, row] of uniqueMeds) {
       const mrp = num(row['Mrp']);
       const existing = await this.ds.query(
-        `SELECT id FROM medicines WHERE LOWER(TRIM(name)) = LOWER($1) AND tenant_id = $2 LIMIT 1`,
+        `SELECT id FROM medicines WHERE LOWER(TRIM(brand_name)) = LOWER($1) AND tenant_id = $2 LIMIT 1`,
         [name, TENANT]
       );
       if (existing.length > 0) {
@@ -103,7 +103,7 @@ export class ImportStockController {
         medUpdated++;
       } else {
         const res = await this.ds.query(
-          `INSERT INTO medicines (name,manufacturer,hsn_code,mrp,sale_rate,gst_percent,tabs_per_strip,dosage_form,is_active,is_rx_required,tenant_id,created_at,updated_at)
+          `INSERT INTO medicines (brand_name,manufacturer,hsn_code,mrp,sale_rate,gst_percent,tabs_per_strip,dosage_form,is_active,is_rx_required,tenant_id,created_at,updated_at)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,true,false,$9,NOW(),NOW()) RETURNING id`,
           [name, String(row['Mfg Name']||'').trim()||null, String(row['HSN Code']||'').trim()||null,
            mrp, mrp, gst(row['Tax%']), num(row['Strip Qty']), inferDosage(name), TENANT]
