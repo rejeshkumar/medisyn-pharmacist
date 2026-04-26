@@ -16,7 +16,7 @@ export class ClearDataController {
       'refill_followups','medication_plans','demand_requests',
       'credit_note_items','schedule_drug_logs','sale_items',
       'sales','purchase_order_items','reorder_flags',
-      'prescription_items','stock_batches','medicines'
+      'prescription_items'
     ];
     const results: any = {};
     for (const table of tables) {
