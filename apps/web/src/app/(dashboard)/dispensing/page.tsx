@@ -1729,6 +1729,7 @@ export default function DispensingPage() {
               expiryDate: i.expiry_date, qty: i.qty, rate: i.rate,
               gstPercent: i.gst_percent, itemTotal: lineTotal(i),
               isSubstituted: i.is_substituted,
+              manufacturer: (i as any).manufacturer || '',
             })),
             subtotal, taxAmount: taxTotal,
             discountAmount: overallDiscAmt + lineDiscTotal,
