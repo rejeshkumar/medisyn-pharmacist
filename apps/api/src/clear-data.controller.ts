@@ -1,4 +1,5 @@
 import { Controller, Post, Headers, ForbiddenException } from '@nestjs/common';
+import { Public } from './common/decorators/public.decorator';
 import { DataSource } from 'typeorm';
 import { InjectDataSource } from '@nestjs/typeorm';
 
@@ -6,6 +7,7 @@ import { InjectDataSource } from '@nestjs/typeorm';
 export class ClearDataController {
   constructor(@InjectDataSource() private ds: DataSource) {}
 
+  @Public()
   @Post('clear-medicines')
   async clear(@Headers('x-admin-key') key: string) {
     if (key !== 'medisyn-import-2024') throw new ForbiddenException();
