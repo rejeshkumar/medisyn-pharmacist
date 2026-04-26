@@ -76,6 +76,7 @@ export class ImportStockController {
       const n = parseFloat(String(v || '').replace(',',''));
       return isNaN(n) || n < 0 ? null : n;
     };
+    const numInt = (v: any) => { const n = num(v); return n !== null ? Math.round(n) : null; };
 
     const gst = (v: any) => { const n = num(v); return n !== null && n <= 100 ? n : null; };
 
@@ -97,7 +98,7 @@ export class ImportStockController {
         const id = existing[0].id;
         await this.ds.query(
           `UPDATE medicines SET manufacturer=COALESCE($1,manufacturer), mrp=COALESCE($2,mrp), gst_percent=COALESCE($3,gst_percent), tabs_per_strip=COALESCE($4,tabs_per_strip), updated_at=NOW() WHERE id=$5`,
-          [String(row['Mfg Name']||'').trim()||null, mrp, gst(row['Tax%']), num(row['Strip Qty']), id]
+          [String(row['Mfg Name']||'').trim()||null, mrp, gst(row['Tax%']), numInt(row['Strip Qty']), id]
         );
         medMap.set(name, id);
         medUpdated++;
@@ -106,7 +107,7 @@ export class ImportStockController {
           `INSERT INTO medicines (brand_name,molecule,strength,manufacturer,hsn_code,mrp,sale_rate,gst_percent,tabs_per_strip,dosage_form,is_active,is_rx_required,tenant_id,created_at,updated_at)
            VALUES ($1,'','',$2,$3,COALESCE($4,0),COALESCE($5,0),COALESCE($6,0),COALESCE($7,1),$8,true,false,$9,NOW(),NOW()) RETURNING id`,
           [name, String(row['Mfg Name']||'').trim()||null, String(row['HSN Code']||'').trim()||null,
-           mrp, mrp, gst(row['Tax%']), num(row['Strip Qty']), inferDosage(name), TENANT]
+           mrp, mrp, gst(row['Tax%']), numInt(row['Strip Qty']), inferDosage(name), TENANT]
         );
         medMap.set(name, res[0].id);
         medInserted++;
