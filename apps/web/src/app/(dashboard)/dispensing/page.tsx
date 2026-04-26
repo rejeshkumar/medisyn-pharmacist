@@ -1447,9 +1447,8 @@ export default function DispensingPage() {
                 if (!i.purchase_price || i.purchase_price <= 0) return sum;
                 return sum + i.purchase_price * i.qty;
               }, 0);
-              const totalSell = cart.reduce((sum, i) => {
-                return sum + i.rate * (1 - i.line_discount_pct / 100) * i.qty;
-              }, 0);
+              // Total sell = net total after ALL discounts (line + overall)
+              const totalSell = netTotal;
               const hasCostData = cart.some(i => i.purchase_price && i.purchase_price > 0);
               if (!hasCostData || cart.length === 0) return null;
               const profit = totalSell - totalCost;
