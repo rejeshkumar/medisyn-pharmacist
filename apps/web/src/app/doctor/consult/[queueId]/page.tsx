@@ -505,25 +505,65 @@ export default function ConsultPage() {
     });
   }, [queueId]);
 
+  // ── Smart voice auto-routing ─────────────────────────────────────────────────
+  // Keywords that help classify spoken text to the right field
+  const SYMPTOM_KEYS = ['patient', 'complains', 'complaint', 'pain', 'fever', 'cough', 'cold', 'vomiting', 'nausea', 'headache', 'since', 'days', 'history', 'presenting', 'symptoms', 'breathless', 'diarrhoea', 'loose', 'burning', 'itching', 'swelling', 'weakness', 'fatigue', 'loss of', 'difficulty'];
+  const EXAM_KEYS = ['examination', 'on exam', 'findings', 'auscultation', 'palpation', 'percussion', 'pupils', 'reflexes', 'tenderness', 'bowel', 'breath sounds', 'heart sounds', 'pallor', 'icterus', 'lymph', 'throat', 'redness', 'inflamed'];
+  const DIAGNOSIS_KEYS = ['diagnosis', 'diagnosed', 'impression', 'likely', 'probable', 'rule out', 'icd', 'case of', 'suffering from', 'condition', 'infection', 'fever', 'diabetes', 'hypertension', 'asthma', 'pneumonia'];
+  const ADVICE_KEYS = ['advice', 'advise', 'rest', 'diet', 'avoid', 'follow', 'return', 'review', 'drink', 'fluid', 'water', 'exercise', 'precaution', 'monitor', 'check', 'report'];
+
+  const autoRouteText = (text: string): 'symptoms' | 'examination' | 'diagnosis' | 'advice' => {
+    const lower = text.toLowerCase();
+    const score = (keys: string[]) => keys.filter(k => lower.includes(k)).length;
+    const scores = {
+      symptoms: score(SYMPTOM_KEYS),
+      examination: score(EXAM_KEYS),
+      diagnosis: score(DIAGNOSIS_KEYS),
+      advice: score(ADVICE_KEYS),
+    };
+    // If manual field selected and has score, use it
+    if (scores[activeVoiceField] > 0) return activeVoiceField;
+    // Otherwise pick highest scoring field
+    const best = Object.entries(scores).sort((a, b) => b[1] - a[1])[0];
+    return (best[1] > 0 ? best[0] : activeVoiceField) as any;
+  };
+
   useEffect(() => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) return;
     const r = new SR();
-    r.continuous = false; r.interimResults = false; r.lang = 'en-IN';
+    r.continuous = true;  // Keep listening until doctor stops
+    r.interimResults = false;
+    r.lang = 'en-IN';
     r.onresult = (e: any) => {
-      const text = e.results[0][0].transcript;
-      setForm(f => ({ ...f, [activeVoiceField]: (f as any)[activeVoiceField] ? (f as any)[activeVoiceField] + ' ' + text : text }));
-      toast.success(`Added to ${activeVoiceField}`);
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) {
+          const text = e.results[i][0].transcript.trim();
+          if (!text) continue;
+          const targetField = autoRouteText(text);
+          setForm(f => ({ ...f, [targetField]: (f as any)[targetField] ? (f as any)[targetField] + ' ' + text : text }));
+          setActiveVoiceField(targetField);
+          toast.success(`→ ${targetField.charAt(0).toUpperCase() + targetField.slice(1)}: "${text.slice(0, 40)}${text.length > 40 ? '...' : ''}"`, { duration: 2000 });
+        }
+      }
     };
-    r.onerror = () => setVoiceListening(false);
-    r.onend = () => setVoiceListening(false);
+    r.onerror = () => { setVoiceListening(false); };
+    r.onend = () => { setVoiceListening(false); };
     recognitionRef.current = r;
   }, [activeVoiceField]);
 
   const toggleVoice = () => {
     if (!recognitionRef.current) { toast.error('Voice not supported. Use Chrome or Edge.'); return; }
-    if (voiceListening) { recognitionRef.current.stop(); setVoiceListening(false); }
-    else { recognitionRef.current.start(); setVoiceListening(true); }
+    if (voiceListening) {
+      recognitionRef.current.stop();
+      setVoiceListening(false);
+    } else {
+      try {
+        recognitionRef.current.start();
+        setVoiceListening(true);
+        toast('🎤 Listening — speak naturally, AI will route to correct field', { duration: 3000 });
+      } catch {}
+    }
   };
 
   const checkStock = useCallback(async (idx: number, medicineName: string) => {
@@ -785,22 +825,40 @@ export default function ConsultPage() {
       {tab === 'consult' && (
         <div className="space-y-4">
           <div className="bg-white rounded-xl border border-slate-100 p-5 space-y-4">
-            {/* Voice dictation */}
-            <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
-              <span className="text-xs text-slate-500 font-medium">Dictate into:</span>
-              <div className="flex gap-1.5 flex-wrap">
-                {(['symptoms', 'examination', 'diagnosis', 'advice'] as const).map(f => (
-                  <button key={f} onClick={() => setActiveVoiceField(f)}
-                    className={`text-xs px-2.5 py-1 rounded-full border transition-colors capitalize ${activeVoiceField === f ? 'bg-[#00475a] text-white border-[#00475a]' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}>
-                    {f}
-                  </button>
-                ))}
+            {/* Voice dictation — auto-routing */}
+            <div className="pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-3 mb-2">
+                <button onClick={toggleVoice}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${voiceListening ? 'bg-red-500 text-white shadow-lg shadow-red-200' : 'bg-[#00475a] text-white hover:bg-[#003d4d]'}`}>
+                  {voiceListening ? <><MicOff className="w-4 h-4" />Stop Recording</> : <><Mic className="w-4 h-4" />Speak</>}
+                </button>
+                {voiceListening ? (
+                  <span className="flex items-center gap-1.5 text-xs text-red-600">
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                    Listening — speak naturally, AI routes automatically
+                  </span>
+                ) : (
+                  <span className="text-xs text-slate-400">Just speak — AI routes to correct field automatically</span>
+                )}
+                <div className="ml-auto flex items-center gap-1.5">
+                  <span className="text-[10px] text-slate-400">Manual override:</span>
+                  {(['symptoms', 'examination', 'diagnosis', 'advice'] as const).map(f => (
+                    <button key={f} onClick={() => setActiveVoiceField(f)}
+                      className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors capitalize ${activeVoiceField === f ? 'bg-[#00475a] text-white border-[#00475a]' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}>
+                      {f}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <button onClick={toggleVoice}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ml-auto ${voiceListening ? 'bg-red-50 border border-red-200 text-red-600' : 'bg-teal-50 border border-teal-200 text-[#00475a]'}`}>
-                {voiceListening ? <><MicOff className="w-3.5 h-3.5" />Stop</> : <><Mic className="w-3.5 h-3.5" />Speak</>}
-              </button>
-              {voiceListening && <span className="flex items-center gap-1.5 text-xs text-red-600"><span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />Recording {fieldLabels[activeVoiceField]}...</span>}
+              {voiceListening && (
+                <div className="flex gap-2">
+                  {(['symptoms', 'examination', 'diagnosis', 'advice'] as const).map(f => (
+                    <div key={f} className={`flex-1 text-center text-[10px] py-1 rounded border transition-all ${activeVoiceField === f ? 'bg-teal-50 border-teal-300 text-[#00475a] font-bold' : 'border-slate-100 text-slate-400'}`}>
+                      {f === activeVoiceField ? '▶ ' : ''}{f}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-2">
