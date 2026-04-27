@@ -1483,9 +1483,9 @@ export default function DispensingPage() {
             </div>
 
             {/* Due amount */}
-            <div className={`flex justify-between font-bold text-sm ${dueAmount > 0 ? 'text-red-600' : 'text-green-600'}`}>
+            <div className={`flex justify-between font-bold text-sm ${typeof amountPaid === 'number' && amountPaid >= netTotal ? 'text-green-600' : 'text-red-600'}`}>
               <span>Due amount</span>
-              <span>{formatCurrency(dueAmount)}</span>
+              <span>{typeof amountPaid === 'number' ? formatCurrency(Math.max(0, netTotal - amountPaid)) : formatCurrency(netTotal)}</span>
             </div>
 
             {/* Payment mode */}
@@ -1593,11 +1593,10 @@ export default function DispensingPage() {
                   onChange={e => setAmountPaid(e.target.value === '' ? '' : Number(e.target.value))}
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold focus:outline-none focus:border-[#00475a]" />
               </div>
-              {dueAmount > 0 && (
-                <div className="flex justify-between font-bold text-sm text-red-600">
-                  <span>Due amount</span><span>{formatCurrency(dueAmount)}</span>
-                </div>
-              )}
+              <div className={`flex justify-between font-bold text-sm ${typeof amountPaid === 'number' && amountPaid >= netTotal ? 'text-green-600' : 'text-red-600'}`}>
+                <span>Due amount</span>
+                <span>{typeof amountPaid === 'number' ? formatCurrency(Math.max(0, netTotal - amountPaid)) : formatCurrency(netTotal)}</span>
+              </div>
               {/* Payment mode */}
               <div className="pt-1">
                 <p className="text-xs text-slate-400 mb-1.5">Payment mode</p>
