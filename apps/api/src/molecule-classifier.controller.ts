@@ -85,6 +85,11 @@ Return ONLY valid JSON array, no markdown.`;
         });
 
         const data = await response.json();
+        if (!response.ok) {
+          console.error('Anthropic API error:', response.status, JSON.stringify(data));
+          errors += batch.length;
+          continue;
+        }
         const text = data.content?.[0]?.text || '[]';
         const clean = text.replace(/```json|```/g, '').trim();
         const results = JSON.parse(clean);
@@ -129,6 +134,7 @@ Return ONLY valid JSON array, no markdown.`;
           errors += batch.length;
         }
       } catch (e: any) {
+        console.error('Batch error:', e.message, e.stack);
         errors += batch.length;
       }
 
