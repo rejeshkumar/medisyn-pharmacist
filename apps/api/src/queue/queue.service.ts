@@ -300,3 +300,4 @@ export class QueueService {
     `, [patientId, tenantId]);
     return result[0] || null;
   }
+}
