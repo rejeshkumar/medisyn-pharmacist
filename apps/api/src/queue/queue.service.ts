@@ -283,7 +283,6 @@ export class QueueService {
     if (!preCheck) throw new NotFoundException('Pre-check not found for this queue entry');
     return preCheck;
   }
-}
 
   // GET last vitals for a patient (for nurse precheck reference)
   async getLastVitals(patientId: string, tenantId: string) {
