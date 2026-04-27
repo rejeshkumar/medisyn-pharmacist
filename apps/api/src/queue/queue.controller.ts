@@ -18,6 +18,11 @@ export class QueueController {
     return this.queueService.register(dto, req.tenantId, user);
   }
 
+  @Get('patient/:patientId/last-vitals')
+  getLastVitals(@Param('patientId') patientId: string, @Req() req: any) {
+    return this.queueService.getLastVitals(patientId, req.tenantId);
+  }
+
   @Get('today')
   getTodayQueue(@Req() req: any, @Query('doctor_id') doctorId?: string) {
     return this.queueService.getTodayQueue(req.tenantId, doctorId);

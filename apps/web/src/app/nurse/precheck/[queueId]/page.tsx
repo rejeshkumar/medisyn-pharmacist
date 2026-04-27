@@ -20,6 +20,8 @@ export default function NursePrecheckPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [prevVitals, setPrevVitals] = useState<any>(null);
+  const [showExtra, setShowExtra] = useState(false);
 
   // Default procedure list with configurable fees
   const DEFAULT_PROCEDURES = [
@@ -101,6 +103,14 @@ export default function NursePrecheckPage() {
         } catch {
           setVitals(v => ({ ...v, chief_complaint: r.data.chief_complaint || '' }));
         }
+        // Fetch previous visit vitals for reference
+        try {
+          const patientId = r.data.patient?.id;
+          if (patientId) {
+            const pv = await axios.get(`${API}/queue/patient/${patientId}/last-vitals`, { headers: headers() }).catch(() => null);
+            if (pv?.data) setPrevVitals(pv.data);
+          }
+        } catch {}
       } catch {
         toast.error('Failed to load patient');
         router.push('/nurse');
@@ -173,6 +183,25 @@ export default function NursePrecheckPage() {
     ? (parseFloat(vitals.weight) / Math.pow(parseFloat(vitals.height) / 100, 2)).toFixed(1)
     : null;
 
+  // Abnormal vital flags
+  const vitalFlag = (field: string, val: string) => {
+    const n = parseFloat(val);
+    if (!val || isNaN(n)) return null;
+    const flags: Record<string, {low: number, high: number, unit: string}> = {
+      bp_systolic:  { low: 90,  high: 140, unit: 'mmHg' },
+      bp_diastolic: { low: 60,  high: 90,  unit: 'mmHg' },
+      pulse_rate:   { low: 60,  high: 100, unit: 'bpm'  },
+      temperature:  { low: 97,  high: 99.5,unit: '°F'   },
+      spo2:         { low: 95,  high: 100, unit: '%'    },
+      blood_sugar:  { low: 70,  high: 140, unit: 'mg/dL'},
+    };
+    const f = flags[field];
+    if (!f) return null;
+    if (n < f.low)  return { type: 'low',  color: 'text-blue-600',  bg: 'bg-blue-50 border-blue-200',  label: `Low (< ${f.low}${f.unit})` };
+    if (n > f.high) return { type: 'high', color: 'text-red-600',   bg: 'bg-red-50 border-red-200',    label: `High (> ${f.high}${f.unit})` };
+    return null;
+  };
+
   if (loading) return (
     <div className="flex items-center justify-center h-full text-slate-400">
       <Loader2 className="w-5 h-5 animate-spin mr-2" /><span className="text-sm">Loading...</span>
@@ -209,6 +238,21 @@ export default function NursePrecheckPage() {
         </div>
       </div>
 
+      {/* Previous vitals reference */}
+      {prevVitals && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
+          <p className="text-xs font-semibold text-amber-700 mb-2">📋 Last visit vitals ({new Date(prevVitals.created_at).toLocaleDateString('en-IN')})</p>
+          <div className="grid grid-cols-4 gap-2">
+            {prevVitals.bp_systolic && <div className="text-center"><p className="text-[10px] text-amber-600">BP</p><p className="text-xs font-bold text-amber-800">{prevVitals.bp_systolic}/{prevVitals.bp_diastolic}</p></div>}
+            {prevVitals.pulse_rate  && <div className="text-center"><p className="text-[10px] text-amber-600">Pulse</p><p className="text-xs font-bold text-amber-800">{prevVitals.pulse_rate}</p></div>}
+            {prevVitals.temperature && <div className="text-center"><p className="text-[10px] text-amber-600">Temp</p><p className="text-xs font-bold text-amber-800">{prevVitals.temperature}°F</p></div>}
+            {prevVitals.weight      && <div className="text-center"><p className="text-[10px] text-amber-600">Weight</p><p className="text-xs font-bold text-amber-800">{prevVitals.weight}kg</p></div>}
+            {prevVitals.spo2        && <div className="text-center"><p className="text-[10px] text-amber-600">SpO2</p><p className="text-xs font-bold text-amber-800">{prevVitals.spo2}%</p></div>}
+            {prevVitals.blood_sugar && <div className="text-center"><p className="text-[10px] text-amber-600">Sugar</p><p className="text-xs font-bold text-amber-800">{prevVitals.blood_sugar}</p></div>}
+          </div>
+        </div>
+      )}
+
       <div className="space-y-4">
         {/* Vitals */}
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
@@ -226,6 +270,13 @@ export default function NursePrecheckPage() {
                 <input type="number" value={vitals.bp_diastolic} onChange={e => set('bp_diastolic', e.target.value)}
                   placeholder="Diastolic" className="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-200 focus:border-pink-400" />
               </div>
+              {(vitalFlag('bp_systolic', vitals.bp_systolic) || vitalFlag('bp_diastolic', vitals.bp_diastolic)) && (
+                <div className={`mt-1 text-xs px-2 py-1 rounded border ${(vitalFlag('bp_systolic', vitals.bp_systolic) || vitalFlag('bp_diastolic', vitals.bp_diastolic))?.bg}`}>
+                  ⚠️ <span className={(vitalFlag('bp_systolic', vitals.bp_systolic) || vitalFlag('bp_diastolic', vitals.bp_diastolic))?.color}>
+                    BP {(vitalFlag('bp_systolic', vitals.bp_systolic) || vitalFlag('bp_diastolic', vitals.bp_diastolic))?.label}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Pulse */}
@@ -233,6 +284,9 @@ export default function NursePrecheckPage() {
               <label className="text-xs text-slate-500 mb-1 block flex items-center gap-1"><Activity className="w-3 h-3 text-pink-400" />Pulse Rate (bpm)</label>
               <input type="number" value={vitals.pulse_rate} onChange={e => set('pulse_rate', e.target.value)}
                 placeholder="e.g. 72" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-200 focus:border-pink-400" />
+              {vitalFlag('pulse_rate', vitals.pulse_rate) && (
+                <p className={`text-[10px] mt-0.5 ${vitalFlag('pulse_rate', vitals.pulse_rate)?.color}`}>⚠️ {vitalFlag('pulse_rate', vitals.pulse_rate)?.label}</p>
+              )}
             </div>
 
             {/* Temperature */}
@@ -240,47 +294,58 @@ export default function NursePrecheckPage() {
               <label className="text-xs text-slate-500 mb-1 block flex items-center gap-1"><Thermometer className="w-3 h-3 text-orange-400" />Temperature (°F)</label>
               <input type="number" step="0.1" value={vitals.temperature} onChange={e => set('temperature', e.target.value)}
                 placeholder="e.g. 98.6" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-200 focus:border-pink-400" />
+              {vitalFlag('temperature', vitals.temperature) && (
+                <p className={`text-[10px] mt-0.5 ${vitalFlag('temperature', vitals.temperature)?.color}`}>⚠️ {vitalFlag('temperature', vitals.temperature)?.label}</p>
+              )}
             </div>
 
-            {/* Weight */}
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block flex items-center gap-1"><Scale className="w-3 h-3 text-blue-400" />Weight (kg)</label>
-              <input type="number" step="0.1" value={vitals.weight} onChange={e => set('weight', e.target.value)}
-                placeholder="e.g. 70" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-200 focus:border-pink-400" />
-            </div>
-
-            {/* Height */}
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block flex items-center gap-1"><Scale className="w-3 h-3 text-blue-400" />Height (cm)</label>
-              <input type="number" value={vitals.height} onChange={e => set('height', e.target.value)}
-                placeholder="e.g. 170" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-200 focus:border-pink-400" />
-            </div>
-
-            {/* BMI auto-calculated */}
-            {bmi && (
-              <div className="col-span-2">
-                <div className="bg-slate-50 rounded-lg px-4 py-2 flex items-center gap-2">
-                  <span className="text-xs text-slate-500">BMI:</span>
-                  <span className={`text-sm font-bold ${parseFloat(bmi) < 18.5 ? 'text-blue-600' : parseFloat(bmi) < 25 ? 'text-green-600' : parseFloat(bmi) < 30 ? 'text-amber-600' : 'text-red-600'}`}>{bmi}</span>
-                  <span className="text-xs text-slate-400">
-                    {parseFloat(bmi) < 18.5 ? 'Underweight' : parseFloat(bmi) < 25 ? 'Normal' : parseFloat(bmi) < 30 ? 'Overweight' : 'Obese'}
-                  </span>
+            {/* Expandable: Weight / Height / SpO2 / Blood Sugar */}
+            <div className="col-span-2">
+              <button type="button" onClick={() => setShowExtra(e => !e)}
+                className="text-xs text-pink-600 font-medium flex items-center gap-1 mb-2 hover:text-pink-800 transition-colors">
+                {showExtra ? '▾ Hide' : '▸ Add'} Weight, Height, SpO2, Blood Sugar
+              </button>
+              {showExtra && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block flex items-center gap-1"><Scale className="w-3 h-3 text-blue-400" />Weight (kg)</label>
+                    <input type="number" step="0.1" value={vitals.weight} onChange={e => set('weight', e.target.value)}
+                      placeholder="e.g. 70" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-200 focus:border-pink-400" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block flex items-center gap-1"><Scale className="w-3 h-3 text-blue-400" />Height (cm)</label>
+                    <input type="number" value={vitals.height} onChange={e => set('height', e.target.value)}
+                      placeholder="e.g. 170" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-200 focus:border-pink-400" />
+                  </div>
+                  {bmi && (
+                    <div className="col-span-2">
+                      <div className="bg-slate-50 rounded-lg px-4 py-2 flex items-center gap-2">
+                        <span className="text-xs text-slate-500">BMI:</span>
+                        <span className={`text-sm font-bold ${parseFloat(bmi) < 18.5 ? 'text-blue-600' : parseFloat(bmi) < 25 ? 'text-green-600' : parseFloat(bmi) < 30 ? 'text-amber-600' : 'text-red-600'}`}>{bmi}</span>
+                        <span className="text-xs text-slate-400">
+                          {parseFloat(bmi) < 18.5 ? 'Underweight' : parseFloat(bmi) < 25 ? 'Normal' : parseFloat(bmi) < 30 ? 'Overweight' : 'Obese'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block flex items-center gap-1"><Wind className="w-3 h-3 text-teal-400" />SpO2 (%)</label>
+                    <input type="number" value={vitals.spo2} onChange={e => set('spo2', e.target.value)}
+                      placeholder="e.g. 98" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-200 focus:border-pink-400" />
+                    {vitalFlag('spo2', vitals.spo2) && (
+                      <p className={`text-[10px] mt-0.5 ${vitalFlag('spo2', vitals.spo2)?.color}`}>⚠️ {vitalFlag('spo2', vitals.spo2)?.label}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block flex items-center gap-1"><Droplets className="w-3 h-3 text-red-400" />Blood Sugar (mg/dL)</label>
+                    <input type="number" value={vitals.blood_sugar} onChange={e => set('blood_sugar', e.target.value)}
+                      placeholder="e.g. 110" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-200 focus:border-pink-400" />
+                    {vitalFlag('blood_sugar', vitals.blood_sugar) && (
+                      <p className={`text-[10px] mt-0.5 ${vitalFlag('blood_sugar', vitals.blood_sugar)?.color}`}>⚠️ {vitalFlag('blood_sugar', vitals.blood_sugar)?.label}</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
-
-            {/* SpO2 */}
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block flex items-center gap-1"><Wind className="w-3 h-3 text-teal-400" />SpO2 (%)</label>
-              <input type="number" value={vitals.spo2} onChange={e => set('spo2', e.target.value)}
-                placeholder="e.g. 98" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-200 focus:border-pink-400" />
-            </div>
-
-            {/* Blood Sugar */}
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block flex items-center gap-1"><Droplets className="w-3 h-3 text-red-400" />Blood Sugar (mg/dL)</label>
-              <input type="number" value={vitals.blood_sugar} onChange={e => set('blood_sugar', e.target.value)}
-                placeholder="e.g. 110" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-200 focus:border-pink-400" />
+              )}
             </div>
           </div>
         </div>

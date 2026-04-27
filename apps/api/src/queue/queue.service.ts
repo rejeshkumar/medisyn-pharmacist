@@ -284,3 +284,19 @@ export class QueueService {
     return preCheck;
   }
 }
+
+  // GET last vitals for a patient (for nurse precheck reference)
+  async getLastVitals(patientId: string, tenantId: string) {
+    const result = await this.dataSource.query(`
+      SELECT pc.bp_systolic, pc.bp_diastolic, pc.pulse_rate, pc.temperature,
+             pc.weight, pc.height, pc.spo2, pc.blood_sugar, pc.created_at
+      FROM pre_checks pc
+      JOIN queues q ON q.id = pc.queue_id
+      WHERE q.patient_id = $1
+        AND q.tenant_id = $2
+        AND pc.bp_systolic IS NOT NULL
+      ORDER BY pc.created_at DESC
+      LIMIT 1
+    `, [patientId, tenantId]);
+    return result[0] || null;
+  }
