@@ -516,7 +516,7 @@ export default function DispensingPage() {
         batch_number:      bestBatch.batch_number,
         expiry_date:       bestBatch.expiry_date,
         qty:               0,
-        rate:              Number(bestBatch.sale_rate),
+        rate:              Number(bestBatch.sale_rate) / (med.tabs_per_strip > 1 ? med.tabs_per_strip : 1),
         line_discount_pct: 0,
         gst_percent:       Number(med.gst_percent || 0),
         avl_qty:           Number(bestBatch.quantity || 0),
@@ -530,7 +530,7 @@ export default function DispensingPage() {
         create_care_plan:  isChronicDetected,
         all_batches:       med.all_batches || [],
         manufacturer:      med.manufacturer || '',
-        purchase_price:    bestBatch.purchase_price ? Number(bestBatch.purchase_price) : null,
+        purchase_price:    bestBatch.purchase_price ? Number(bestBatch.purchase_price) / (med.tabs_per_strip > 1 ? med.tabs_per_strip : 1) : null,
       };
 
       if (rowIdx < cart.length) {
@@ -605,7 +605,7 @@ export default function DispensingPage() {
           batch_id:     batch.id,
           batch_number: batch.batch_number,
           expiry_date:  batch.expiry_date,
-          rate:         Number(batch.sale_rate),
+          rate:         Number(batch.sale_rate) / (item.tabs_per_strip > 1 ? item.tabs_per_strip : 1),
           avl_qty:      available,
           qty:          useQty,
           all_batches:  item.all_batches,
@@ -954,7 +954,7 @@ export default function DispensingPage() {
               batch_number:      bestBatch.batch_number,
               expiry_date:       bestBatch.expiry_date,
               qty,
-              rate:              Number(bestBatch.sale_rate),
+              rate:              Number(bestBatch.sale_rate) / (med.tabs_per_strip > 1 ? med.tabs_per_strip : 1),
               line_discount_pct: 0,
               gst_percent:       Number(med.gst_percent || 0),
               avl_qty:           Number(bestBatch.quantity || 0),
