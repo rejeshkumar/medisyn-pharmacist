@@ -252,8 +252,8 @@ export default function BillDocument({ data, mode, onClose, onConfirm, isLoading
                   <span>Items: {data.items.length} &nbsp;&nbsp; Qty: {data.items.reduce((s, i) => s + i.qty, 0)}</span>
                 </div>
                 {data.taxAmount > 0 && (
-                  <div style={{display:'flex', justifyContent:'space-between', marginBottom:'2px'}}>
-                    <span>GST Amount:</span><span>{formatCurrency(data.taxAmount)}</span>
+                  <div style={{display:'flex', justifyContent:'space-between', marginBottom:'2px', color:'#555', fontSize:'10.5px'}}>
+                    <span>GST (included in MRP):</span><span>{formatCurrency(data.taxAmount)}</span>
                   </div>
                 )}
                 {data.discountAmount > 0 && (
