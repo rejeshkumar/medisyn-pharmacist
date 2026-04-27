@@ -44,6 +44,7 @@ import { ClearDataController } from './clear-data.controller';
 import { ImportStockController } from './import-stock.controller';
 import { ScheduleClassifierController } from './schedule-classifier.controller';
 import { MoleculeClassifierController } from './molecule-classifier.controller';
+import { SetReorderController } from './set-reorder.controller';
 
 @Module({
   imports: [
@@ -101,7 +102,7 @@ import { MoleculeClassifierController } from './molecule-classifier.controller';
     SuperAdminModule,
     DemandLogModule,
   ],
-  controllers: [ImportMedicinesController, ClearDataController, ImportStockController, ScheduleClassifierController, MoleculeClassifierController],
+  controllers: [ImportMedicinesController, ClearDataController, ImportStockController, ScheduleClassifierController, MoleculeClassifierController, SetReorderController],
   providers: [
     // Applied globally in order — JwtAuthGuard first, then TenantGuard
     { provide: APP_GUARD, useClass: JwtAuthGuard },
