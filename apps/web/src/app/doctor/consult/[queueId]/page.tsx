@@ -17,6 +17,139 @@ import DiagnosisSuggestions from '@/components/ai/DiagnosisSuggestions';
 import DrugInteractionChecker from '@/components/ai/DrugInteractionChecker';
 import PrescriptionScanner from '@/components/ai/PrescriptionScanner';
 
+
+// ── ICD-10 Common Indian Diagnoses ───────────────────────────────────────────
+const ICD_CODES = [
+  // Respiratory
+  { code: 'J06.9', label: 'Acute upper respiratory infection' },
+  { code: 'J00',   label: 'Acute nasopharyngitis (common cold)' },
+  { code: 'J02.9', label: 'Acute pharyngitis' },
+  { code: 'J03.9', label: 'Acute tonsillitis' },
+  { code: 'J06.0', label: 'Acute laryngopharyngitis' },
+  { code: 'J18.9', label: 'Pneumonia' },
+  { code: 'J45.9', label: 'Asthma' },
+  { code: 'J44.1', label: 'COPD with acute exacerbation' },
+  { code: 'J20.9', label: 'Acute bronchitis' },
+  { code: 'J11.1', label: 'Influenza with other respiratory manifestations' },
+  // Fever / Infections
+  { code: 'A90',   label: 'Dengue fever' },
+  { code: 'A91',   label: 'Dengue haemorrhagic fever' },
+  { code: 'B54',   label: 'Malaria' },
+  { code: 'A01.0', label: 'Typhoid fever' },
+  { code: 'B34.9', label: 'Viral infection' },
+  { code: 'A09',   label: 'Gastroenteritis / diarrhoea' },
+  { code: 'A08.4', label: 'Viral intestinal infection' },
+  // GI
+  { code: 'K21.0', label: 'GERD with oesophagitis' },
+  { code: 'K21.9', label: 'GERD without oesophagitis' },
+  { code: 'K29.7', label: 'Gastritis' },
+  { code: 'K57.3', label: 'Irritable bowel syndrome' },
+  { code: 'K80.2', label: 'Gallstones with acute cholecystitis' },
+  { code: 'K35.8', label: 'Acute appendicitis' },
+  // Diabetes
+  { code: 'E11.9', label: 'Type 2 diabetes mellitus' },
+  { code: 'E11.0', label: 'Type 2 diabetes with hyperosmolarity' },
+  { code: 'E10.9', label: 'Type 1 diabetes mellitus' },
+  { code: 'E16.0', label: 'Hypoglycaemia' },
+  // Hypertension / Cardiac
+  { code: 'I10',   label: 'Essential hypertension' },
+  { code: 'I25.1', label: 'Coronary artery disease' },
+  { code: 'I21.9', label: 'Acute myocardial infarction' },
+  { code: 'I50.9', label: 'Heart failure' },
+  { code: 'I48',   label: 'Atrial fibrillation' },
+  // Musculoskeletal
+  { code: 'M54.5', label: 'Low back pain' },
+  { code: 'M54.2', label: 'Cervicalgia (neck pain)' },
+  { code: 'M79.3', label: 'Fibromyalgia' },
+  { code: 'M06.9', label: 'Rheumatoid arthritis' },
+  { code: 'M19.9', label: 'Osteoarthritis' },
+  { code: 'M10.9', label: 'Gout' },
+  // Neurology
+  { code: 'G43.9', label: 'Migraine' },
+  { code: 'R51',   label: 'Headache' },
+  { code: 'G40.9', label: 'Epilepsy' },
+  { code: 'R42',   label: 'Dizziness and giddiness' },
+  // Skin
+  { code: 'L20.9', label: 'Atopic dermatitis (eczema)' },
+  { code: 'L40.0', label: 'Psoriasis vulgaris' },
+  { code: 'L50.9', label: 'Urticaria' },
+  { code: 'B35.1', label: 'Tinea pedis (fungal infection)' },
+  { code: 'L03.9', label: 'Cellulitis' },
+  // Urological
+  { code: 'N39.0', label: 'Urinary tract infection' },
+  { code: 'N20.0', label: 'Kidney stone' },
+  { code: 'N41.0', label: 'Acute prostatitis' },
+  // Gynaecology
+  { code: 'N94.6', label: 'Dysmenorrhoea' },
+  { code: 'N92.0', label: 'Menorrhagia' },
+  { code: 'N83.2', label: 'Ovarian cyst' },
+  // ENT
+  { code: 'H66.9', label: 'Otitis media' },
+  { code: 'J32.9', label: 'Chronic sinusitis' },
+  { code: 'H10.9', label: 'Conjunctivitis' },
+  // Mental Health
+  { code: 'F32.9', label: 'Depressive episode' },
+  { code: 'F41.1', label: 'Generalised anxiety disorder' },
+  { code: 'F51.0', label: 'Insomnia' },
+  // Others
+  { code: 'R50.9', label: 'Fever of unknown origin' },
+  { code: 'R05',   label: 'Cough' },
+  { code: 'R06.0', label: 'Dyspnoea (breathlessness)' },
+  { code: 'R10.4', label: 'Abdominal pain' },
+  { code: 'R11',   label: 'Nausea and vomiting' },
+  { code: 'Z00.0', label: 'General health checkup' },
+  { code: 'Z76.0', label: 'Follow-up consultation' },
+];
+
+// ── ICD Autocomplete Component ────────────────────────────────────────────────
+function IcdAutocomplete({ value, onChange }: { value: string; onChange: (code: string, label: string) => void }) {
+  const [query, setQuery] = useState(value);
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const filtered = query.length >= 2
+    ? ICD_CODES.filter(c =>
+        c.code.toLowerCase().includes(query.toLowerCase()) ||
+        c.label.toLowerCase().includes(query.toLowerCase())
+      ).slice(0, 8)
+    : [];
+
+  useEffect(() => { setQuery(value); }, [value]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <input
+        type="text"
+        value={query}
+        placeholder="e.g. J06.9 or type fever..."
+        className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#00475a]/20 focus:border-[#00475a]"
+        onChange={e => { setQuery(e.target.value); setOpen(true); onChange(e.target.value, ''); }}
+        onFocus={() => setOpen(true)}
+      />
+      {open && filtered.length > 0 && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+          {filtered.map(c => (
+            <button key={c.code} type="button"
+              className="w-full text-left px-3 py-2 hover:bg-teal-50 flex items-center gap-3 border-b border-slate-50 last:border-0"
+              onMouseDown={() => { onChange(c.code, c.label); setQuery(`${c.code} — ${c.label}`); setOpen(false); }}>
+              <span className="text-xs font-bold text-[#00475a] bg-teal-50 px-2 py-0.5 rounded font-mono">{c.code}</span>
+              <span className="text-xs text-slate-700">{c.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Types ────────────────────────────────────────────────────────────────────
 interface PrescriptionItem {
   medicine_name: string;
@@ -694,8 +827,17 @@ export default function ConsultPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">ICD Code</label>
-                <input type="text" value={form.diagnosis_code} onChange={e => setForm({ ...form, diagnosis_code: e.target.value })}
-                  placeholder="e.g. J06.9" className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#00475a]/20 focus:border-[#00475a]" />
+                <IcdAutocomplete
+                  value={form.diagnosis_code}
+                  onChange={(code, label) => {
+                    setForm(f => ({
+                      ...f,
+                      diagnosis_code: code,
+                      // Auto-fill diagnosis if empty
+                      diagnosis: f.diagnosis || label,
+                    }));
+                  }}
+                />
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Follow-up Date</label>
