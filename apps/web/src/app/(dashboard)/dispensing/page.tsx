@@ -533,30 +533,6 @@ export default function DispensingPage() {
         purchase_price:    bestBatch.purchase_price ? Number(bestBatch.purchase_price) / (med.tabs_per_strip > 1 ? med.tabs_per_strip : 1) : null,
       };
 
-      // Check if same medicine+batch already in cart — merge instead of duplicate
-      const existingIdx = cart.findIndex(
-        i => i.medicine_id === newItem.medicine_id && i.batch_id === newItem.batch_id
-      );
-
-      if (existingIdx >= 0 && existingIdx !== rowIdx) {
-        // Merge — increment qty on existing line, remove current row
-        const updated = [...cart];
-        updated[existingIdx] = {
-          ...updated[existingIdx],
-          qty: updated[existingIdx].qty + 1,
-        };
-        // Remove the current row if it's empty/duplicate
-        if (rowIdx < cart.length && cart[rowIdx].qty === 0) {
-          updated.splice(rowIdx, 1);
-          const newSV = [...searchValues];
-          newSV.splice(rowIdx, 1);
-          setSearchValues(newSV);
-        }
-        setCart(updated);
-        toast('Qty updated on existing line', { icon: '✅' });
-        return;
-      }
-
       if (rowIdx < cart.length) {
         // Replace existing empty row
         const updated = [...cart];
@@ -1330,7 +1306,11 @@ export default function DispensingPage() {
                       <button onClick={() => {
                         const newCart = cart.filter((_,i) => i !== idx);
                         setCart(newCart);
-                        setSearchValues(v => v.filter((_,i) => i !== idx));
+                        setSearchValues(v => {
+                          const updated = v.filter((_,i) => i !== idx);
+                          // Always keep at least one empty search row
+                          return updated.length === 0 ? [''] : updated;
+                        });
                         if (newCart.length === 0) {
                           setPaymentMode('');
                           setHybridCash(0);
