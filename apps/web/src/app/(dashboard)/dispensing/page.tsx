@@ -619,6 +619,17 @@ export default function DispensingPage() {
       const newCart = [...prev];
       newCart.splice(idx, 1, ...splitRows);
 
+      // Update searchValues to match new cart length — ensure empty row at end
+      setSearchValues(sv => {
+        const updated = [...sv];
+        // Add empty slots for extra split rows
+        const extraRows = splitRows.length - 1;
+        for (let i = 0; i < extraRows; i++) updated.splice(idx + 1, 0, '');
+        // Ensure at least one empty search row at the end
+        if (updated.length <= newCart.length) updated.push('');
+        return updated;
+      });
+
       // Show toast if split happened
       if (splitRows.length > 1) {
         setTimeout(() => {
