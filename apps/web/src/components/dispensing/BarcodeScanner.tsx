@@ -1,217 +1,305 @@
 'use client';
+/**
+ * MediSyn — BarcodeScanner Component (GS1-enabled)
+ * ===================================================
+ * Supports:
+ *   - GS1 DataMatrix: extracts GTIN + Batch + Expiry → auto-selects correct batch
+ *   - EAN-13: extracts GTIN → finds medicine, uses FEFO batch
+ *   - Manual barcode entry (USB scanner or keyboard)
+ *
+ * Place at: apps/web/src/components/dispensing/BarcodeScanner.tsx
+ */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { parseBarcode, hasBatchInfo, barcodeToString, GS1ParseResult } from '@/lib/gs1-parser';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
-import { Scan, X, Loader2, AlertTriangle, Hash, Camera, RefreshCw } from 'lucide-react';
+import { X, Scan, CheckCircle, AlertTriangle, Loader2, Package, Hash, Calendar } from 'lucide-react';
+
+interface ScanResult {
+  medicine: any;
+  batch: any | null;
+  parsed: GS1ParseResult;
+  confidence: 'exact_batch' | 'fefo_batch' | 'not_found';
+}
 
 interface Props {
-  onFound: (medicine: any, batch: any) => void;
+  onFound: (medicine: any, batch: any | null) => void;
   onClose: () => void;
 }
 
-// ── Camera Scanner ────────────────────────────────────────────────────────────
-function CameraView({ onDetected }: { onDetected: (code: string) => void }) {
-  const videoRef  = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const rafRef    = useRef<number>(0);
-  const [status, setStatus]   = useState<'starting'|'scanning'|'error'>('starting');
-  const [errMsg, setErrMsg]   = useState('');
+export default function BarcodeScanner({ onFound, onClose }: Props) {
+  const [input, setInput]           = useState('');
+  const [scanning, setScanning]     = useState(false);
+  const [result, setResult]         = useState<ScanResult | null>(null);
+  const [error, setError]           = useState('');
+  const [parsed, setParsed]         = useState<GS1ParseResult | null>(null);
+  const inputRef                    = useRef<HTMLInputElement>(null);
 
-  const stop = () => {
-    cancelAnimationFrame(rafRef.current);
-    streamRef.current?.getTracks().forEach(t => t.stop());
-    streamRef.current = null;
-  };
-
-  const startLoop = (detector: any) => {
-    const loop = async () => {
-      if (!videoRef.current || videoRef.current.readyState < 2) {
-        rafRef.current = requestAnimationFrame(loop); return;
-      }
-      try {
-        const results = await detector.detect(videoRef.current);
-        if (results?.length) { stop(); onDetected(results[0].rawValue); return; }
-      } catch {}
-      rafRef.current = requestAnimationFrame(loop);
-    };
-    rafRef.current = requestAnimationFrame(loop);
-  };
-
-  const start = useCallback(async () => {
-    setStatus('starting'); setErrMsg('');
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
-      });
-      streamRef.current = stream;
-      if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play(); }
-      setStatus('scanning');
-      if ('BarcodeDetector' in window) {
-        const detector = new (window as any).BarcodeDetector({
-          formats: ['ean_13','ean_8','code_128','code_39','upc_a','upc_e','qr_code'],
-        });
-        startLoop(detector);
-      }
-      // else: manual capture only
-    } catch (e: any) {
-      setErrMsg(
-        e.name === 'NotAllowedError' ? 'Camera permission denied. Tap the lock icon in address bar and allow camera.' :
-        e.name === 'NotFoundError'   ? 'No camera found on this device.' :
-        'Camera error: ' + (e.message || e.name)
-      );
-      setStatus('error');
-    }
+  // Auto-focus on mount
+  useEffect(() => {
+    setTimeout(() => inputRef.current?.focus(), 100);
   }, []);
 
-  const capture = async () => {
-    if (!videoRef.current) return;
-    const canvas = document.createElement('canvas');
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
-    canvas.getContext('2d')?.drawImage(videoRef.current, 0, 0);
-    if ('BarcodeDetector' in window) {
-      try {
-        const detector = new (window as any).BarcodeDetector({
-          formats: ['ean_13','ean_8','code_128','code_39','upc_a','upc_e','qr_code'],
-        });
-        const results = await detector.detect(canvas);
-        if (results?.length) { stop(); onDetected(results[0].rawValue); }
-        else toast.error('No barcode detected — hold steady and try again');
-      } catch { toast.error('Could not read — try manual entry'); }
+  // Real-time parse as user types/scans
+  useEffect(() => {
+    if (input.length >= 8) {
+      setParsed(parseBarcode(input));
     } else {
-      toast.error('Camera scanning not supported on this browser. Use manual entry.');
+      setParsed(null);
     }
+  }, [input]);
+
+  // Handle scan submission
+  const handleScan = useCallback(async () => {
+    if (!input.trim()) return;
+    setScanning(true);
+    setError('');
+    setResult(null);
+
+    try {
+      const parsed = parseBarcode(input.trim());
+
+      if (parsed.type === 'UNKNOWN') {
+        setError('Unrecognised barcode format. Try scanning again or type the barcode manually.');
+        setScanning(false);
+        return;
+      }
+
+      // Call API with parsed barcode data
+      const response = await api.post('/medicines/scan-barcode', {
+        gtin:         parsed.gtin || parsed.gtin13,
+        gtin13:       parsed.gtin13,
+        batch_number: parsed.batch_number,
+        expiry_date:  parsed.expiry_date,
+        raw:          input.trim(),
+        barcode_type: parsed.type,
+      });
+
+      const { medicine, batch, confidence } = response.data;
+
+      if (!medicine) {
+        setError(`Medicine not found for this barcode.\nGTIN: ${parsed.gtin13 || parsed.gtin || 'unknown'}\n${parsed.batch_number ? `Batch: ${parsed.batch_number}` : ''}`);
+        setScanning(false);
+        return;
+      }
+
+      // Check expiry
+      if (parsed.is_expired) {
+        toast.error(`⚠️ Expired medicine! Expiry: ${parsed.expiry_display}`);
+      }
+
+      setResult({ medicine, batch, parsed, confidence });
+
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Scan failed. Please try again.');
+    } finally {
+      setScanning(false);
+    }
+  }, [input]);
+
+  // Auto-submit when barcode scanner fires (ends with Enter or after pause)
+  useEffect(() => {
+    if (input.length >= 8) {
+      const timer = setTimeout(() => {
+        // Auto-submit if input looks complete (typical scanner fires quickly)
+        if (input.length >= 13) handleScan();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [input, handleScan]);
+
+  const handleAdd = () => {
+    if (!result) return;
+    onFound(result.medicine, result.batch);
+    // Reset for next scan
+    setInput('');
+    setResult(null);
+    setParsed(null);
+    setError('');
+    inputRef.current?.focus();
+    toast.success(`Added: ${result.medicine.brand_name}${result.batch ? ` (Batch: ${result.batch.batch_number})` : ''}`);
   };
 
-  useEffect(() => { start(); return () => { cancelAnimationFrame(rafRef.current); stop(); }; }, []);
+  const confidenceColor = {
+    exact_batch: 'bg-green-50 border-green-200',
+    fefo_batch:  'bg-amber-50 border-amber-200',
+    not_found:   'bg-red-50 border-red-200',
+  };
 
-  if (status === 'starting') return (
-    <div className="flex flex-col items-center py-10 gap-3">
-      <Loader2 className="w-8 h-8 animate-spin text-[#00475a]" />
-      <p className="text-sm text-slate-500">Starting camera...</p>
-    </div>
-  );
-
-  if (status === 'error') return (
-    <div className="space-y-3">
-      <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex gap-3">
-        <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-        <div>
-          <p className="text-sm font-semibold text-red-800">Camera Error</p>
-          <p className="text-xs text-red-600 mt-1">{errMsg}</p>
-        </div>
-      </div>
-      <button onClick={start} className="w-full py-2.5 border border-[#00475a] text-[#00475a] rounded-xl text-sm font-semibold flex items-center justify-center gap-2">
-        <RefreshCw className="w-4 h-4" /> Try Again
-      </button>
-    </div>
-  );
+  const confidenceLabel = {
+    exact_batch: '✅ Exact batch matched from barcode',
+    fefo_batch:  '⚡ FEFO batch assigned (barcode has no batch info)',
+    not_found:   '❌ Medicine not found',
+  };
 
   return (
-    <div className="space-y-3">
-      <style>{`@keyframes scanline{0%{top:10%}50%{top:85%}100%{top:10%}}`}</style>
-      <div className="relative rounded-xl overflow-hidden bg-black aspect-video">
-        <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="relative w-52 h-28">
-            <span className="absolute top-0 left-0 w-5 h-5 border-t-2 border-l-2 border-[#00d4aa] rounded-tl-sm" />
-            <span className="absolute top-0 right-0 w-5 h-5 border-t-2 border-r-2 border-[#00d4aa] rounded-tr-sm" />
-            <span className="absolute bottom-0 left-0 w-5 h-5 border-b-2 border-l-2 border-[#00d4aa] rounded-bl-sm" />
-            <span className="absolute bottom-0 right-0 w-5 h-5 border-b-2 border-r-2 border-[#00d4aa] rounded-br-sm" />
-            <span className="absolute left-2 right-2 h-0.5 bg-[#00d4aa]/80" style={{animation:'scanline 2s ease-in-out infinite'}} />
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+
+        {/* Header */}
+        <div className="flex items-center justify-between p-5 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#00475a] flex items-center justify-center">
+              <Scan className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-slate-900">Barcode Scanner</h3>
+              <p className="text-xs text-slate-400">GS1 DataMatrix · EAN-13 · Manual entry</p>
+            </div>
           </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+            <X className="w-5 h-5" />
+          </button>
         </div>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <button onClick={capture} className="py-2.5 bg-[#00475a] text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2">
-          <Camera className="w-4 h-4" /> Capture
-        </button>
-        <button onClick={() => { stop(); start(); }} className="py-2.5 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold flex items-center justify-center gap-2">
-          <RefreshCw className="w-4 h-4" /> Restart
-        </button>
-      </div>
-      <p className="text-xs text-slate-400 text-center">
-        {'BarcodeDetector' in window ? 'Auto-scanning active — point at barcode' : 'Point camera at barcode then tap Capture'}
-      </p>
-    </div>
-  );
-}
 
-// ── Main Modal ────────────────────────────────────────────────────────────────
-export default function BarcodeScanner({ onFound, onClose }: Props) {
-  const [mode, setMode]         = useState<'camera'|'manual'>('camera');
-  const [barcode, setBarcode]   = useState('');
-  const [loading, setLoading]   = useState(false);
-  const [notFound, setNotFound] = useState(false);
-  const [unknown, setUnknown]   = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
+        <div className="p-5 space-y-4">
 
-  useEffect(() => { if (mode === 'manual') setTimeout(() => inputRef.current?.focus(), 100); }, [mode]);
-
-  const lookup = useCallback(async (code: string) => {
-    if (!code.trim()) return;
-    setLoading(true); setNotFound(false);
-    try {
-      const res = await api.get(`/medicines/barcode/${encodeURIComponent(code.trim())}`);
-      if (res.data?.medicine) {
-        toast.success(`Found: ${res.data.medicine.brand_name}`);
-        onFound(res.data.medicine, res.data.batch);
-        onClose();
-      } else { setNotFound(true); setUnknown(code.trim()); }
-    } catch { setNotFound(true); setUnknown(code.trim()); }
-    finally { setLoading(false); }
-  }, [onFound, onClose]);
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-          <div className="flex items-center gap-2">
-            <Scan className="w-5 h-5 text-[#00475a]" />
-            <h2 className="font-semibold text-slate-900">Scan Barcode</h2>
-          </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
-        </div>
-        <div className="p-5">
-          <div className="flex gap-1 bg-slate-100 p-1 rounded-lg mb-4">
-            {[{key:'camera',label:'Camera',Icon:Camera},{key:'manual',label:'Manual / USB',Icon:Hash}].map(({key,label,Icon}) => (
-              <button key={key} onClick={() => setMode(key as any)}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-medium transition-all ${mode===key?'bg-white text-slate-900 shadow-sm':'text-slate-500'}`}>
-                <Icon className="w-3.5 h-3.5" />{label}
+          {/* Scanner input */}
+          <div>
+            <label className="text-xs font-medium text-slate-600 mb-1.5 block">
+              Scan barcode or type manually
+            </label>
+            <div className="flex gap-2">
+              <input
+                ref={inputRef}
+                type="text"
+                value={input}
+                onChange={e => { setInput(e.target.value); setError(''); setResult(null); }}
+                onKeyDown={e => e.key === 'Enter' && handleScan()}
+                placeholder="Point scanner at medicine box or type barcode..."
+                className="flex-1 px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00475a]/20 focus:border-[#00475a] font-mono"
+                autoComplete="off"
+              />
+              <button
+                onClick={handleScan}
+                disabled={scanning || input.length < 8}
+                className="px-4 py-2.5 bg-[#00475a] text-white rounded-xl text-sm font-medium hover:bg-[#003d4d] disabled:opacity-40 flex items-center gap-2"
+              >
+                {scanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Scan className="w-4 h-4" />}
+                {scanning ? 'Scanning...' : 'Find'}
               </button>
-            ))}
+            </div>
           </div>
 
-          {mode === 'camera' && <CameraView onDetected={code => lookup(code)} />}
-
-          {mode === 'manual' && (
-            <div className="space-y-3">
-              <p className="text-xs text-slate-500">Type a barcode or use a USB scanner — presses Enter automatically.</p>
-              <div className="flex gap-2">
-                <input ref={inputRef} type="text" value={barcode}
-                  onChange={e => { setBarcode(e.target.value); setNotFound(false); }}
-                  onKeyDown={e => e.key === 'Enter' && lookup(barcode)}
-                  placeholder="Scan or type barcode..."
-                  className="flex-1 text-sm border border-slate-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#00475a]/20 focus:border-[#00475a] font-mono"
-                  autoComplete="off" />
-                <button onClick={() => lookup(barcode)} disabled={loading || !barcode.trim()}
-                  className="px-4 py-2.5 bg-[#00475a] text-white rounded-xl text-sm font-semibold disabled:opacity-50">
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Find'}
-                </button>
+          {/* Live parse preview */}
+          {parsed && !result && !error && (
+            <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+              <p className="text-[10px] font-semibold text-slate-400 uppercase mb-2">Barcode detected</p>
+              <div className="flex flex-wrap gap-2">
+                <span className={`text-xs px-2 py-1 rounded-lg font-medium ${
+                  parsed.type === 'GS1_DATAMATRIX' ? 'bg-green-100 text-green-700' :
+                  parsed.type === 'EAN13' ? 'bg-blue-100 text-blue-700' :
+                  'bg-slate-100 text-slate-600'
+                }`}>
+                  {parsed.type === 'GS1_DATAMATRIX' ? '⬛ GS1 DataMatrix' :
+                   parsed.type === 'EAN13' ? '▌▌ EAN-13' : parsed.type}
+                </span>
+                {parsed.gtin13 && (
+                  <span className="text-xs px-2 py-1 rounded-lg bg-slate-100 text-slate-600 font-mono">
+                    GTIN: {parsed.gtin13}
+                  </span>
+                )}
+                {parsed.batch_number && (
+                  <span className="text-xs px-2 py-1 rounded-lg bg-teal-100 text-teal-700 font-mono flex items-center gap-1">
+                    <Hash className="w-3 h-3" /> {parsed.batch_number}
+                  </span>
+                )}
+                {parsed.expiry_display && (
+                  <span className={`text-xs px-2 py-1 rounded-lg font-medium flex items-center gap-1 ${
+                    parsed.is_expired ? 'bg-red-100 text-red-700' :
+                    (parsed.days_to_expiry || 0) < 90 ? 'bg-amber-100 text-amber-700' :
+                    'bg-green-100 text-green-700'
+                  }`}>
+                    <Calendar className="w-3 h-3" />
+                    Exp: {parsed.expiry_display}
+                    {parsed.is_expired && ' ⚠️ EXPIRED'}
+                  </span>
+                )}
               </div>
             </div>
           )}
 
-          {notFound && unknown && (
-            <div className="mt-4 bg-amber-50 border border-amber-100 rounded-xl p-4">
-              <div className="flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-amber-800">Barcode not found</p>
-                  <p className="text-xs text-amber-600 mt-0.5 font-mono">{unknown}</p>
-                  <p className="text-xs text-amber-700 mt-1">This barcode is not mapped to any medicine yet.</p>
+          {/* Error */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-red-700">Not found</p>
+                <p className="text-xs text-red-500 mt-1 whitespace-pre-line">{error}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Result */}
+          {result && (
+            <div className={`border rounded-xl p-4 ${confidenceColor[result.confidence]}`}>
+              <p className="text-[10px] font-semibold text-slate-500 uppercase mb-3">
+                {confidenceLabel[result.confidence]}
+              </p>
+
+              {/* Medicine info */}
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-lg bg-[#00475a] flex items-center justify-center flex-shrink-0">
+                  <Package className="w-5 h-5 text-white" />
                 </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-slate-900">{result.medicine.brand_name}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {result.medicine.molecule} · {result.medicine.strength} · {result.medicine.manufacturer}
+                  </p>
+
+                  {/* Batch info */}
+                  {result.batch && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <span className="text-xs bg-white px-2 py-1 rounded-lg border border-slate-200 font-mono flex items-center gap-1">
+                        <Hash className="w-3 h-3 text-slate-400" />
+                        {result.batch.batch_number}
+                      </span>
+                      <span className="text-xs bg-white px-2 py-1 rounded-lg border border-slate-200 flex items-center gap-1">
+                        <Calendar className="w-3 h-3 text-slate-400" />
+                        Exp: {new Date(result.batch.expiry_date).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
+                      </span>
+                      <span className="text-xs bg-white px-2 py-1 rounded-lg border border-slate-200">
+                        {result.batch.quantity} in stock
+                      </span>
+                      <span className="text-xs bg-white px-2 py-1 rounded-lg border border-slate-200 font-medium">
+                        ₹{Number(result.batch.sale_rate || result.medicine.sale_rate).toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Batch mismatch warning */}
+                  {result.parsed.batch_number && result.batch &&
+                   result.batch.batch_number !== result.parsed.batch_number && (
+                    <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                      <p className="text-xs text-amber-700 font-medium">
+                        ⚠️ Batch mismatch — scanned {result.parsed.batch_number} but dispensing from {result.batch.batch_number} (FEFO)
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Add button */}
+              <button
+                onClick={handleAdd}
+                className="mt-4 w-full bg-[#00475a] text-white py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-[#003d4d]"
+              >
+                <CheckCircle className="w-4 h-4" />
+                Add to Bill
+              </button>
+            </div>
+          )}
+
+          {/* Tips */}
+          {!result && !error && !parsed && (
+            <div className="bg-slate-50 rounded-xl p-4">
+              <p className="text-xs font-semibold text-slate-500 mb-2">Tips</p>
+              <div className="space-y-1.5 text-xs text-slate-500">
+                <p>⬛ Point scanner at the <strong>square dotted pattern</strong> on the box (GS1 DataMatrix) — gives batch + expiry</p>
+                <p>▌▌ Or scan the <strong>standard barcode stripes</strong> (EAN-13) — identifies medicine only</p>
+                <p>⌨️ Or type the barcode number manually and press Enter</p>
               </div>
             </div>
           )}
