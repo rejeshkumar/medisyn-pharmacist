@@ -528,13 +528,15 @@ export default function ConsultPage() {
     return (best[1] > 0 ? best[0] : activeVoiceField) as any;
   };
 
+  const [voiceLang, setVoiceLang] = useState<'en-IN' | 'ml-IN'>('en-IN');
+
   useEffect(() => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) return;
     const r = new SR();
     r.continuous = true;  // Keep listening until doctor stops
     r.interimResults = false;
-    r.lang = 'en-IN';
+    r.lang = voiceLang;
     r.onresult = (e: any) => {
       for (let i = e.resultIndex; i < e.results.length; i++) {
         if (e.results[i].isFinal) {
@@ -550,7 +552,7 @@ export default function ConsultPage() {
     r.onerror = () => { setVoiceListening(false); };
     r.onend = () => { setVoiceListening(false); };
     recognitionRef.current = r;
-  }, [activeVoiceField]);
+  }, [activeVoiceField, voiceLang]);
 
   const toggleVoice = () => {
     if (!recognitionRef.current) { toast.error('Voice not supported. Use Chrome or Edge.'); return; }
@@ -832,10 +834,21 @@ export default function ConsultPage() {
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${voiceListening ? 'bg-red-500 text-white shadow-lg shadow-red-200' : 'bg-[#00475a] text-white hover:bg-[#003d4d]'}`}>
                   {voiceListening ? <><MicOff className="w-4 h-4" />Stop Recording</> : <><Mic className="w-4 h-4" />Speak</>}
                 </button>
+                {/* Language toggle */}
+                <div className="flex rounded-lg border border-slate-200 overflow-hidden text-xs font-medium">
+                  <button onClick={() => { setVoiceLang('en-IN'); if (voiceListening) { recognitionRef.current?.stop(); setTimeout(() => recognitionRef.current?.start(), 100); }}}
+                    className={`px-2.5 py-1.5 transition-colors ${voiceLang === 'en-IN' ? 'bg-[#00475a] text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
+                    EN
+                  </button>
+                  <button onClick={() => { setVoiceLang('ml-IN'); if (voiceListening) { recognitionRef.current?.stop(); setTimeout(() => recognitionRef.current?.start(), 100); }}}
+                    className={`px-2.5 py-1.5 transition-colors ${voiceLang === 'ml-IN' ? 'bg-[#00475a] text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
+                    മ
+                  </button>
+                </div>
                 {voiceListening ? (
                   <span className="flex items-center gap-1.5 text-xs text-red-600">
                     <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                    Listening — speak naturally, AI routes automatically
+                    Listening ({voiceLang === 'ml-IN' ? 'മലയാളം' : 'English'}) — speak naturally
                   </span>
                 ) : (
                   <span className="text-xs text-slate-400">Just speak — AI routes to correct field automatically</span>
