@@ -5,7 +5,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { getScheduleClassColor } from '@/lib/utils';
 import toast from 'react-hot-toast';
-import { Search, Plus, X, Loader2, Pencil, PackageX, Filter, Zap, Tag } from 'lucide-react';
+import { Search, Plus, X, Loader2, Pencil, PackageX, Filter, Zap, Tag, FlaskConical } from 'lucide-react';
+import dynamic from 'next/dynamic';
+const MoleculeSuggestionsPanel = dynamic(() => import('@/components/medicines/MoleculeSuggestionsPanel'), { ssr: false });
 
 const DOSAGE_FORMS = ['Tablet','Capsule','Injection','Vial','Suspension','Drops','Powder','Syrup','Gel','Liquid','Lotion','Cream','Eye Drops','Ointment','Soap','Inhaler','Pill','Patch','Other'];
 const RX_UNITS = ['units','tsp','ml','drps','puff','mg','μg','g'];
@@ -58,6 +60,7 @@ export default function MedicinesPage() {
   const [filterFast, setFilterFast]   = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [showForm, setShowForm]       = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [editMed, setEditMed]         = useState<any>(null);
   const [form, setForm]               = useState<any>({ ...EMPTY_FORM });
   const qc = useQueryClient();
@@ -138,9 +141,15 @@ export default function MedicinesPage() {
           <h1 className="text-xl font-bold text-gray-900">Medicine Master</h1>
           <p className="text-sm text-gray-500">{filtered?.length || 0} medicines</p>
         </div>
-        <button onClick={openAdd} className="btn-primary flex items-center gap-2">
-          <Plus className="w-4 h-4" /> Add Medicine
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => setShowSuggestions(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-amber-300 bg-amber-50 text-amber-700 text-sm font-medium hover:bg-amber-100 transition-colors">
+            <FlaskConical className="w-4 h-4" /> AI Suggestions
+          </button>
+          <button onClick={openAdd} className="btn-primary flex items-center gap-2">
+            <Plus className="w-4 h-4" /> Add Medicine
+          </button>
+        </div>
       </div>
 
       {/* Search + Filter bar */}
@@ -467,6 +476,10 @@ export default function MedicinesPage() {
             </div>
           </div>
         </div>
+      )}
+      {/* Molecule Suggestions Panel */}
+      {showSuggestions && (
+        <MoleculeSuggestionsPanel onClose={() => setShowSuggestions(false)} />
       )}
     </div>
   );
