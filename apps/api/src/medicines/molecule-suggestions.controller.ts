@@ -9,7 +9,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { DataSource } from 'typeorm';
 import { InjectDataSource } from '@nestjs/typeorm';
 
-@Controller('medicines/suggestions')
+@Controller('medicine-suggestions')
 @UseGuards(JwtAuthGuard)
 export class MoleculeSuggestionsController {
   constructor(@InjectDataSource() private ds: DataSource) {}

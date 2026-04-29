@@ -45,7 +45,7 @@ export default function MoleculeSuggestionsPanel({ onClose }: Props) {
   });
 
   const approveMutation = useMutation({
-    mutationFn: ({ id, data }: any) => api.patch(`/medicines/suggestions/${id}/approve`, data),
+    mutationFn: ({ id, data }: any) => api.patch(`/medicine-suggestions/${id}/approve`, data),
     onSuccess: () => {
       toast.success('✅ Approved and applied to medicine!');
       qc.invalidateQueries({ queryKey: ['suggestions'] });
@@ -56,7 +56,7 @@ export default function MoleculeSuggestionsPanel({ onClose }: Props) {
   });
 
   const rejectMutation = useMutation({
-    mutationFn: ({ id, notes }: any) => api.patch(`/medicines/suggestions/${id}/reject`, { notes }),
+    mutationFn: ({ id, notes }: any) => api.patch(`/medicine-suggestions/${id}/reject`, { notes }),
     onSuccess: () => {
       toast.success('Rejected');
       qc.invalidateQueries({ queryKey: ['suggestions'] });
@@ -64,7 +64,7 @@ export default function MoleculeSuggestionsPanel({ onClose }: Props) {
   });
 
   const bulkApproveMutation = useMutation({
-    mutationFn: (minScore: number) => api.patch('/medicines/suggestions/bulk-approve', { min_score: minScore }),
+    mutationFn: (minScore: number) => api.patch('/medicine-suggestions/bulk-approve', { min_score: minScore }),
     onSuccess: (res) => {
       toast.success(`✅ Bulk approved ${res.data.applied} medicines!`);
       qc.invalidateQueries({ queryKey: ['suggestions'] });
