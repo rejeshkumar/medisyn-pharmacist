@@ -66,38 +66,146 @@ export class ProcurementController {
               m.brand_name, m.molecule, m.strength, m.dosage_form,
               m.gst_percent, m.hsn_code, m.manufacturer, m.rack_location,
               m.reorder_qty AS medicine_reorder_qty,
-              s.name AS supplier_name, s.phone AS supplier_phone
+              sup.name AS supplier_name, sup.phone AS supplier_phone,
+              COALESCE(sales.sold_30d, 0)::int         AS sold_30d,
+              ROUND(COALESCE(sales.sold_30d, 0) / 30.0, 1) AS daily_rate,
+              CASE
+                WHEN COALESCE(sales.sold_30d, 0) = 0 THEN 999
+                ELSE ROUND(rf.current_stock / (COALESCE(sales.sold_30d, 0) / 30.0))::int
+              END                                      AS days_left,
+              CASE
+                WHEN rf.current_stock = 0               THEN 'OUT OF STOCK'
+                WHEN COALESCE(sales.sold_30d, 0) = 0   THEN 'NO SALES'
+                WHEN ROUND(rf.current_stock / (COALESCE(sales.sold_30d,0)/30.0)) < 3  THEN 'CRITICAL'
+                WHEN ROUND(rf.current_stock / (COALESCE(sales.sold_30d,0)/30.0)) < 7  THEN 'WARNING'
+                ELSE 'WATCH'
+              END                                      AS urgency
        FROM reorder_flags rf
        JOIN medicines m ON m.id = rf.medicine_id
-       LEFT JOIN suppliers s ON s.id = rf.preferred_supplier_id
+       LEFT JOIN suppliers sup ON sup.id = rf.preferred_supplier_id
+       LEFT JOIN (
+         SELECT si.medicine_id, SUM(si.qty)::int AS sold_30d
+         FROM sale_items si
+         JOIN sales s ON s.id = si.sale_id
+         WHERE s.tenant_id = $1 AND s.is_voided = false
+           AND s.created_at > NOW() - INTERVAL '30 days'
+         GROUP BY si.medicine_id
+       ) sales ON sales.medicine_id = rf.medicine_id
        WHERE rf.tenant_id = $1 AND rf.status = $2
-       ORDER BY rf.current_stock ASC, rf.flagged_at DESC`,
+       ORDER BY
+         CASE WHEN rf.current_stock = 0 THEN 0 ELSE 1 END,
+         COALESCE(sales.sold_30d, 0) DESC,
+         rf.current_stock ASC`,
       [req.user.tenant_id, s],
     );
   }
 
   @Post('reorder-flags/refresh')
   async refreshReorderFlags(@Req() req: any) {
-    // Manually trigger reorder check for all medicines
     if (!ALLOWED.includes(req.user.role)) throw new ForbiddenException();
-    const medicines = await this.ds.query(
-      `SELECT id FROM medicines WHERE tenant_id = $1 AND reorder_qty > 0 AND is_active = true`,
-      [req.user.tenant_id],
+    const tid = req.user.tenant_id;
+
+    // Velocity-based reorder: use 30-day sales rate to calculate days of stock left.
+    // Falls back to stock <= 10 for medicines with no sales history.
+    await this.ds.query(
+      `INSERT INTO reorder_flags (
+         tenant_id, medicine_id, current_stock, reorder_qty,
+         suggested_qty, status
+       )
+       SELECT
+         m.tenant_id,
+         m.id                                                        AS medicine_id,
+         COALESCE(stock.total_qty, 0)::int                          AS current_stock,
+         CASE
+           WHEN COALESCE(sales.sold_30d, 0) > 0
+           THEN CEIL(sales.sold_30d / 30.0 * 7)::int   -- 7-day reorder point
+           ELSE 10
+         END                                                         AS reorder_qty,
+         CASE
+           WHEN COALESCE(sales.sold_30d, 0) > 0
+           THEN CEIL(sales.sold_30d / 30.0 * 30)::int  -- 30-day suggested qty
+           ELSE 20
+         END                                                         AS suggested_qty,
+         'pending'                                                   AS status
+       FROM medicines m
+       -- Current live stock
+       LEFT JOIN (
+         SELECT medicine_id, SUM(quantity)::int AS total_qty
+         FROM stock_batches
+         WHERE tenant_id = $1 AND is_active = true
+           AND quantity > 0 AND expiry_date > CURRENT_DATE
+         GROUP BY medicine_id
+       ) stock ON stock.medicine_id = m.id
+       -- 30-day sales velocity
+       LEFT JOIN (
+         SELECT si.medicine_id, SUM(si.qty)::int AS sold_30d
+         FROM sale_items si
+         JOIN sales s ON s.id = si.sale_id
+         WHERE s.tenant_id = $1
+           AND s.is_voided = false
+           AND s.created_at > NOW() - INTERVAL '30 days'
+         GROUP BY si.medicine_id
+       ) sales ON sales.medicine_id = m.id
+       WHERE m.tenant_id = $1
+         AND m.is_active = true
+         -- Only flag if: out of stock, OR stock covers < 14 days at current rate
+         AND (
+           COALESCE(stock.total_qty, 0) = 0
+           OR (
+             COALESCE(sales.sold_30d, 0) > 0
+             AND COALESCE(stock.total_qty, 0) < (sales.sold_30d / 30.0 * 14)
+           )
+           OR (
+             COALESCE(sales.sold_30d, 0) = 0
+             AND COALESCE(stock.total_qty, 0) <= 10
+           )
+         )
+       ON CONFLICT (tenant_id, medicine_id, status) DO UPDATE SET
+         current_stock = EXCLUDED.current_stock,
+         reorder_qty   = EXCLUDED.reorder_qty,
+         suggested_qty = EXCLUDED.suggested_qty,
+         updated_at    = NOW()`,
+      [tid],
     );
-    let flagged = 0;
-    for (const m of medicines) {
-      await this.ds.query(
-        `SELECT check_reorder_after_sale($1, $2)`,
-        [req.user.tenant_id, m.id],
-      );
-      flagged++;
-    }
-    // Return fresh list
+
+    // Remove flags for medicines that are now healthy
+    await this.ds.query(
+      `DELETE FROM reorder_flags
+       WHERE tenant_id = $1 AND status = 'pending'
+         AND medicine_id NOT IN (
+           SELECT m.id FROM medicines m
+           LEFT JOIN (
+             SELECT medicine_id, SUM(quantity)::int AS total_qty
+             FROM stock_batches
+             WHERE tenant_id = $1 AND is_active = true
+               AND quantity > 0 AND expiry_date > CURRENT_DATE
+             GROUP BY medicine_id
+           ) stock ON stock.medicine_id = m.id
+           LEFT JOIN (
+             SELECT si.medicine_id, SUM(si.qty)::int AS sold_30d
+             FROM sale_items si
+             JOIN sales s ON s.id = si.sale_id
+             WHERE s.tenant_id = $1 AND s.is_voided = false
+               AND s.created_at > NOW() - INTERVAL '30 days'
+             GROUP BY si.medicine_id
+           ) sales ON sales.medicine_id = m.id
+           WHERE m.tenant_id = $1 AND m.is_active = true
+             AND (
+               COALESCE(stock.total_qty, 0) = 0
+               OR (COALESCE(sales.sold_30d, 0) > 0
+                   AND COALESCE(stock.total_qty, 0) < (sales.sold_30d / 30.0 * 14))
+               OR (COALESCE(sales.sold_30d, 0) = 0
+                   AND COALESCE(stock.total_qty, 0) <= 10)
+             )
+         )`,
+      [tid],
+    );
+
     const flags = await this.ds.query(
-      `SELECT COUNT(*) FROM reorder_flags WHERE tenant_id=$1 AND status='pending'`,
-      [req.user.tenant_id],
+      `SELECT COUNT(*)::int AS count FROM reorder_flags WHERE tenant_id=$1 AND status='pending'`,
+      [tid],
     );
-    return { checked: flagged, pending_flags: Number(flags[0].count) };
+    return { pending_flags: flags[0].count };
   }
 
   @Patch('reorder-flags/:id/dismiss')
