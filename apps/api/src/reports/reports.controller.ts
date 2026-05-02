@@ -266,21 +266,19 @@ export class ReportsController {
     const rows = await this.ds.query(`
       SELECT
         COALESCE(s.customer_name, 'Walk-in')             AS patient_name,
-        COALESCE(s.customer_mobile, '—')                 AS mobile,
         COUNT(DISTINCT s.id)::int                        AS visit_count,
         MAX(s.created_at + INTERVAL '5 hours 30 minutes')::date AS last_visit,
         ROUND(SUM(s.total_amount)::numeric, 2)           AS total_spent,
         ROUND(AVG(s.total_amount)::numeric, 2)           AS avg_bill,
-        COALESCE(s.referring_doctor, s.doctor_name, '—') AS doctor_name
+        COALESCE(s.doctor_name, '—')                     AS doctor_name
       FROM sales s
       WHERE s.tenant_id = $1
         AND s.is_voided = false
         AND s.created_at BETWEEN $2 AND $3
-        ${q.doctor ? `AND (s.referring_doctor ILIKE '%${q.doctor}%' OR s.doctor_name ILIKE '%${q.doctor}%')` : ''}
+        ${q.doctor ? `AND s.doctor_name ILIKE '%${q.doctor}%'` : ''}
       GROUP BY
         s.customer_name,
-        s.customer_mobile,
-        COALESCE(s.referring_doctor, s.doctor_name)
+        s.doctor_name
       ORDER BY total_spent DESC
       LIMIT 500`,
       [tid, start, end],
