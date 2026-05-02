@@ -80,21 +80,19 @@ function ReceiptContent({ data }: { data: BillData }) {
     <div style={{
       fontFamily: "'Courier New', Courier, monospace",
       fontSize: '11px',
-      lineHeight: '1.35',
+      lineHeight: '1.4',
       color: '#000',
       width: '100%',
-      maxWidth: '302px', // 80mm at 96dpi
+      maxWidth: '540px', // A5 at 96dpi ≈ 148mm
       margin: '0 auto',
       padding: '0',
       background: '#fff',
     }}>
-      {/* ── HEADER ── */}
+      {/* ── HEADER — exactly 3 lines ── */}
       <div style={{ textAlign: 'center', borderBottom: '1px dashed #000', paddingBottom: '6px', marginBottom: '6px' }}>
-        <div style={{ fontWeight: 'bold', fontSize: '13px', letterSpacing: '0.5px' }}>{clinicName}</div>
-        <div style={{ fontSize: '9px', marginTop: '2px' }}>{clinicAddr}</div>
-        <div style={{ fontSize: '9px' }}>Ph: {clinicPhone}  GST: {clinicGST}</div>
-        <div style={{ fontSize: '9px' }}>PAN: {clinicPAN}</div>
-        <div style={{ fontSize: '9px' }}>DL: {clinicDL}</div>
+        <div style={{ fontWeight: 'bold', fontSize: '14px', letterSpacing: '0.5px' }}>MEDISYN SPECIALITY CLINIC</div>
+        <div style={{ fontSize: '10px', marginTop: '2px' }}>Chirvakku, Taliparamba, Kannur - 670141</div>
+        <div style={{ fontSize: '10px' }}>Ph: {clinicPhone} &nbsp;|&nbsp; GST: {clinicGST}</div>
       </div>
 
       {/* ── BILL META ── */}
@@ -223,7 +221,7 @@ export default function BillDocument({ data, mode, onClose, onConfirm, isLoading
     `;
 
     const printContent = printRef.current?.innerHTML || '';
-    const win = window.open('', '_blank', 'width=400,height=600');
+    const win = window.open('', '_blank', 'width=600,height=800');
     if (!win) return;
     win.document.write(`
       <!DOCTYPE html>
@@ -234,7 +232,7 @@ export default function BillDocument({ data, mode, onClose, onConfirm, isLoading
         <style>
           * { box-sizing: border-box; margin: 0; padding: 0; }
           body { background: #fff; }
-          @page { size: 80mm auto; margin: 3mm; }
+          @page { size: A5; margin: 8mm; }
         </style>
       </head>
       <body>
@@ -272,10 +270,10 @@ export default function BillDocument({ data, mode, onClose, onConfirm, isLoading
             ref={printRef}
             style={{
               background: '#fff',
-              padding: '12px',
+              padding: '16px',
               borderRadius: '4px',
               boxShadow: '0 1px 8px rgba(0,0,0,0.12)',
-              width: '302px',
+              width: '540px',
               flexShrink: 0,
             }}
           >
