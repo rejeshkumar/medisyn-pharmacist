@@ -273,7 +273,7 @@ function POCreateModal({ flags, suppliers, onClose, onCreated, initialMedicineNa
   })));
 
   // Manual add
-  const [manualSearch, setManualSearch] = useState(initialMedicineName || '');
+  const [manualSearch, setManualSearch] = useState('');
   const [manualResults, setManualResults] = useState<any[]>([]);
 
   useEffect(() => {
@@ -282,6 +282,30 @@ function POCreateModal({ flags, suppliers, onClose, onCreated, initialMedicineNa
       .then(r => setManualResults(r.data?.data || r.data || []))
       .catch(() => {});
   }, [manualSearch]);
+
+  // Auto-add demand medicine as line item when modal opens from Raise PO
+  useEffect(() => {
+    if (!initialMedicineName) return;
+    api.get(`/medicines?search=${encodeURIComponent(initialMedicineName)}&limit=1`)
+      .then(r => {
+        const med = (r.data?.data || r.data || [])[0];
+        if (med) {
+          setItems(prev => {
+            if (prev.some(i => i.medicine_id === med.id)) return prev;
+            return [...prev, {
+              flag_id: null, medicine_id: med.id,
+              medicine_name: med.brand_name, molecule: med.molecule || '',
+              strength: med.strength || '', hsn_code: med.hsn_code || null,
+              gst_percent: Number(med.gst_percent || 0),
+              ordered_qty: 1, unit_price: '', is_manual: true,
+            }];
+          });
+        } else {
+          setManualSearch(initialMedicineName);
+        }
+      })
+      .catch(() => setManualSearch(initialMedicineName || ''));
+  }, [initialMedicineName]);
 
   const addManualItem = (med: any) => {
     setItems(prev => [...prev, {
