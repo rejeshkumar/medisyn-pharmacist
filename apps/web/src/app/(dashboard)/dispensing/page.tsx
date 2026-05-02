@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import BillDocument, { type BillData } from '@/components/billing/BillDocument';
 import { cn } from '@/lib/utils';
+import { searchMedicinesOffline, queueBill } from '@/lib/offline-store';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface CartItem {
@@ -82,11 +83,17 @@ function MedSearchDropdown({
 
   const { data: results } = useQuery({
     queryKey: ['med-search', value],
-    queryFn: () => value.length >= 2
-      ? api.get(`/medicines/search-enriched?search=${value}&limit=12`)
-          .then(r => r.data)
-          .catch(() => api.get(`/medicines?search=${value}&limit=12`).then(r => r.data))
-      : Promise.resolve([]),
+    queryFn: async () => {
+      if (value.length < 2) return [];
+      // If offline, search from local IndexedDB cache
+      if (!navigator.onLine) {
+        return searchMedicinesOffline(value);
+      }
+      return api.get(`/medicines/search-enriched?search=${value}&limit=12`)
+        .then(r => r.data)
+        .catch(() => api.get(`/medicines?search=${value}&limit=12`).then(r => r.data))
+        .catch(() => searchMedicinesOffline(value)); // final fallback to cache
+    },
     enabled: value.length >= 2,
   });
 
@@ -291,39 +298,72 @@ function PatientSearch({ value, onSelect, onChange }: {
 // ── LogDemandDialog ────────────────────────────────────────────────────
 function LogDemandDialog({ query, onClose }: { query: string; onClose: () => void }) {
   const [name, setName] = useState(query);
+  const [qty, setQty] = useState('');
+  const [hasRx, setHasRx] = useState(false);
+  const [mobile, setMobile] = useState('');
   const [loading, setLoading] = useState(false);
+  const [validation, setValidation] = useState<any>(null);
+  const [validating, setValidating] = useState(false);
   const [done, setDone] = useState(false);
-  const [result, setResult] = useState<any>(null);
 
-  const handleSubmit = async () => {
-    if (name.trim().length < 2) return;
-    setLoading(true);
+  const API = process.env.NEXT_PUBLIC_API_URL;
+
+  const validate = async (n: string) => {
+    if (n.length < 3) return;
+    setValidating(true);
     try {
-      const r = await api.post('/demand', { medicine_name: name.trim() });
-      setResult(r.data);
-      setDone(true);
-      if (r.data?.is_high_demand) {
-        toast.success(`🔥 High demand: ${name} flagged for procurement!`);
-      } else {
-        toast.success(`Demand noted (${r.data?.total_requests || 1} request${r.data?.total_requests !== 1 ? 's' : ''})`);
-      }
-    } catch {
-      toast.error('Failed to log demand');
-    } finally {
-      setLoading(false);
-    }
+      const token = localStorage.getItem('auth_token');
+      const res = await fetch(`${API}/demand-log`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ medicine_name_raw: n, qty_requested: qty, has_prescription: hasRx, patient_mobile: mobile }),
+      });
+      const data = await res.json();
+      setValidation(data.validation);
+      if (res.ok) setDone(true);
+    } catch { setValidation(null); }
+    finally { setValidating(false); }
   };
 
-  if (done) {
+  const handleSubmit = async () => {
+    setLoading(true);
+    await validate(name);
+    setLoading(false);
+  };
+
+  const statusColor = {
+    validated:      'text-green-700 bg-green-50 border-green-200',
+    misspelling:    'text-amber-700 bg-amber-50 border-amber-200',
+    not_a_medicine: 'text-red-700 bg-red-50 border-red-200',
+    pending:        'text-gray-600 bg-gray-50 border-gray-200',
+  };
+
+  const statusLabel = {
+    validated:      'Validated medicine',
+    misspelling:    'Possible misspelling — check suggested name',
+    not_a_medicine: 'Not recognised as a medicine',
+    pending:        'Pending review',
+  };
+
+  if (done && validation) {
     return (
       <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4 text-center">
-          <div className="text-4xl">{result?.is_high_demand ? '🔥' : '✓'}</div>
-          <p className="font-semibold text-gray-900">Demand logged</p>
-          <p className="text-sm text-gray-500">
-            "{name}" recorded — {result?.total_requests || 1} request{result?.total_requests !== 1 ? 's' : ''} total
-            {result?.is_high_demand && <span className="block mt-1 text-amber-600 font-medium">High demand — visible in Procurement → In Demand</span>}
-          </p>
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+          <div className="text-center">
+            <div className="text-3xl mb-2">{validation.status === 'validated' ? '✓' : validation.status === 'not_a_medicine' ? '⚠' : '~'}</div>
+            <p className="font-medium text-gray-900">Demand logged</p>
+            <p className="text-sm text-gray-500 mt-1">"{name}" has been recorded</p>
+          </div>
+          {validation.status !== 'pending' && (
+            <div className={`text-xs p-3 rounded-lg border ${statusColor[validation.status as keyof typeof statusColor]}`}>
+              <p className="font-medium">{statusLabel[validation.status as keyof typeof statusLabel]}</p>
+              {validation.inn_name && <p className="mt-1">INN: {validation.inn_name}</p>}
+              {validation.suggested_name && <p className="mt-1">Did you mean: <strong>{validation.suggested_name}</strong>?</p>}
+              {validation.schedule_class && <p className="mt-1">Schedule {validation.schedule_class}</p>}
+              {validation.is_nti && <p className="mt-1 font-medium">⚠ Narrow Therapeutic Index</p>}
+              {validation.notes && <p className="mt-1 text-gray-500">{validation.notes}</p>}
+            </div>
+          )}
           <button onClick={onClose} className="w-full py-2 bg-[#00475a] text-white rounded-lg text-sm font-medium">Done</button>
         </div>
       </div>
@@ -336,28 +376,41 @@ function LogDemandDialog({ query, onClose }: { query: string; onClose: () => voi
         <div className="p-5 border-b flex items-center justify-between">
           <div>
             <p className="font-medium text-gray-900">Log missed demand</p>
-            <p className="text-xs text-gray-400 mt-0.5">Appears in Procurement → In Demand tab</p>
+            <p className="text-xs text-gray-400 mt-0.5">We will validate and track this</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
         </div>
-        <div className="p-5">
-          <label className="text-xs text-gray-500 block mb-1">Medicine name *</label>
-          <input
-            className="input w-full"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            placeholder="e.g. Pantop 40, Shelcal 500..."
-            autoFocus
-          />
+        <div className="p-5 space-y-3">
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">Medicine name (as patient said/wrote) *</label>
+            <input
+              className="input w-full"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="e.g. Pantop 40, Shelcal 500..."
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">Quantity patient wanted</label>
+            <input className="input w-full" value={qty} onChange={e => setQty(e.target.value)} placeholder="e.g. 1 strip, 2 boxes" />
+          </div>
+          <div className="flex items-center gap-2">
+            <input type="checkbox" id="hasRx" checked={hasRx} onChange={e => setHasRx(e.target.checked)} className="rounded" />
+            <label htmlFor="hasRx" className="text-sm text-gray-600 cursor-pointer">Patient had a prescription</label>
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">Patient mobile (optional — for callback when stocked)</label>
+            <input className="input w-full" value={mobile} onChange={e => setMobile(e.target.value)} placeholder="9876543210" />
+          </div>
         </div>
         <div className="p-5 pt-0 flex gap-2">
           <button onClick={onClose} className="flex-1 py-2 border border-gray-200 rounded-lg text-sm text-gray-600">Cancel</button>
           <button
             onClick={handleSubmit}
-            disabled={!name || loading}
-            className="flex-1 py-2 bg-[#00475a] text-white rounded-lg text-sm font-medium disabled:opacity-40"
+            disabled={!name || loading || validating}
+            className="flex-2 flex-1 py-2 bg-[#00475a] text-white rounded-lg text-sm font-medium disabled:opacity-40"
           >
-            {loading ? 'Saving...' : 'Log demand'}
+            {loading || validating ? 'Validating...' : 'Log demand'}
           </button>
         </div>
       </div>
@@ -638,7 +691,6 @@ export default function DispensingPage() {
       setCart([]); setSearchValues(['']);
       setCompliance({ patient_name:'', patient_id:'', patient_age:'', patient_gender:'', doctor_name:'', doctor_reg_no:'', referring_doctor:'' });
       setOverallDiscount(0); setOverallDiscountReason(''); setAmountPaid('');
-      setPaymentMode(''); setHybridCash(0); setHybridUpi(0);
       setActiveDraftId('current');
       toast.success('Bill held — start a new one');
       await loadDrafts();
@@ -682,14 +734,30 @@ export default function DispensingPage() {
 
   // ── Billing ───────────────────────────────────────────────────────────
   const createSaleMutation = useMutation({
-    mutationFn: (payload: any) => api.post('/sales', payload).then(r => r.data),
+    mutationFn: async (payload: any) => {
+      // If offline — queue locally and return a fake success response
+      if (!navigator.onLine) {
+        const offlineId = await queueBill(payload);
+        toast('📥 Offline — bill saved locally. Will sync when internet returns.', {
+          duration: 5000, icon: '📶',
+        });
+        // Return a minimal response so onSuccess can clear the cart
+        return {
+          offline: true,
+          bill_number: `OFFLINE-${Date.now()}`,
+          id: offlineId,
+          created_at: new Date().toISOString(),
+          total_amount: payload.total_amount,
+        };
+      }
+      return api.post('/sales', payload).then(r => r.data);
+    },
     onSuccess: async (data) => {
       setShowPreview(false);
       setCompletedSale(data);
       setCart([]); setSearchValues(['']);
       setCompliance({ patient_name:'', patient_id:'', patient_age:'', patient_gender:'', doctor_name:'', doctor_reg_no:'', referring_doctor:'' });
       setOverallDiscount(0); setOverallDiscountReason(''); setAmountPaid('');
-      setPaymentMode(''); setHybridCash(0); setHybridUpi(0);
       setAiResult(null); setAiPrescriptionId(null);
       if (activeDraftId !== 'current') {
         await api.patch(`/draft-bills/${activeDraftId}/confirm`, {}).catch(() => {});
