@@ -455,23 +455,35 @@ function POCreateModal({ flags, suppliers, onClose, onCreated, initialMedicineNa
 
               {/* Manual medicine add */}
               <div className="border-t border-slate-100 px-3 py-2 bg-slate-50/50 relative">
-                <div className="flex items-center gap-2">
-                  <Plus className="w-3.5 h-3.5 text-slate-400" />
-                  <input type="text" value={manualSearch} onChange={e => setManualSearch(e.target.value)}
-                    placeholder="Add another medicine manually..."
-                    className="flex-1 text-sm bg-transparent border-none outline-none text-slate-600 placeholder-slate-400" />
-                </div>
                 {manualResults.length > 0 && (
-                  <div className="absolute left-0 right-0 top-full bg-white border border-slate-200 rounded-xl shadow-xl z-20 max-h-48 overflow-y-auto mt-1">
+                  <div className="absolute left-0 right-0 bottom-full bg-white border border-slate-200 rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto mb-1">
                     {manualResults.map((m: any) => (
-                      <button key={m.id} onClick={() => addManualItem(m)}
+                      <button key={m.id} onMouseDown={() => addManualItem(m)}
                         className="w-full px-3 py-2 text-left text-sm hover:bg-teal-50 border-b border-slate-50 last:border-0">
-                        <span className="font-medium text-slate-800">{m.brand_name}</span>
-                        <span className="text-slate-400 text-xs ml-2">{m.molecule} · {m.strength}</span>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <span className="font-medium text-slate-800">{m.brand_name}</span>
+                            <span className="text-slate-400 text-xs ml-2">{m.molecule} · {m.strength}</span>
+                          </div>
+                          <span className="text-xs text-[#00475a] font-semibold ml-3 flex-shrink-0">+ Add</span>
+                        </div>
                       </button>
                     ))}
                   </div>
                 )}
+                <div className="flex items-center gap-2">
+                  <Plus className="w-3.5 h-3.5 text-slate-400" />
+                  <input type="text" value={manualSearch} onChange={e => setManualSearch(e.target.value)}
+                    placeholder="Search medicine to add..."
+                    autoComplete="off"
+                    className="flex-1 text-sm bg-transparent border-none outline-none text-slate-600 placeholder-slate-400" />
+                  {manualSearch && (
+                    <button onClick={() => { setManualSearch(''); setManualResults([]); }}
+                      className="text-slate-300 hover:text-slate-500">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
