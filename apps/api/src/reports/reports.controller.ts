@@ -263,29 +263,30 @@ export class ReportsController {
     const { start, end } = this.dateRange(q.range||'30d', q.from, q.to);
     const tid = req.user.tenant_id;
 
-    return this.ds.query(`
+    const rows = await this.ds.query(`
       SELECT
-        COALESCE(p.first_name || ' ' || COALESCE(p.last_name,''), s.customer_name) AS patient_name,
-        COALESCE(p.mobile, '')                           AS mobile,
-        COALESCE(p.gender, '')                           AS gender,
-        CASE WHEN p.date_of_birth IS NOT NULL
-             THEN EXTRACT(YEAR FROM AGE(p.date_of_birth))::int
-             ELSE NULL END                               AS age,
+        COALESCE(s.customer_name, 'Walk-in')             AS patient_name,
+        COALESCE(s.customer_mobile, '—')                 AS mobile,
         COUNT(DISTINCT s.id)::int                        AS visit_count,
-        MAX(s.created_at)::date                          AS last_visit,
+        MAX(s.created_at + INTERVAL '5 hours 30 minutes')::date AS last_visit,
         ROUND(SUM(s.total_amount)::numeric, 2)           AS total_spent,
-        ROUND(AVG(s.total_amount)::numeric, 2)           AS avg_bill
+        ROUND(AVG(s.total_amount)::numeric, 2)           AS avg_bill,
+        COALESCE(s.referring_doctor, s.doctor_name, '—') AS doctor_name
       FROM sales s
-      LEFT JOIN patients p ON p.mobile = s.customer_phone OR p.first_name || ' ' || COALESCE(p.last_name,'') = s.customer_name
       WHERE s.tenant_id = $1
+        AND s.is_voided = false
         AND s.created_at BETWEEN $2 AND $3
+        ${q.doctor ? `AND (s.referring_doctor ILIKE '%${q.doctor}%' OR s.doctor_name ILIKE '%${q.doctor}%')` : ''}
       GROUP BY
-        COALESCE(p.first_name || ' ' || COALESCE(p.last_name,''), s.customer_name),
-        p.mobile, p.gender, p.date_of_birth
+        s.customer_name,
+        s.customer_mobile,
+        COALESCE(s.referring_doctor, s.doctor_name)
       ORDER BY total_spent DESC
-      LIMIT 200`,
+      LIMIT 500`,
       [tid, start, end],
     );
+
+    return { rows };
   }
 
   // ── Stock valuation ────────────────────────────────────────
