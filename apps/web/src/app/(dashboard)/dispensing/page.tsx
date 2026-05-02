@@ -111,7 +111,7 @@ function MedSearchDropdown({
         className="w-full px-2 py-1 text-sm border-0 bg-transparent focus:outline-none focus:ring-1 focus:ring-[#00475a] rounded"
       />
       {open && results?.length === 0 && (value?.length ?? 0) >= 3 && (
-        <div className="absolute top-full left-0 z-50 w-[420px] bg-white border border-gray-200 rounded-xl shadow-2xl p-4">
+        <div className="absolute top-full left-0 z-50 w-[min(420px,90vw)] bg-white border border-gray-200 rounded-xl shadow-2xl p-4">
           <p className="text-sm font-medium text-gray-700 mb-1">No medicines found for "{value}"</p>
           <p className="text-xs text-gray-400 mb-3">Not in your stock. You can log this as missed demand.</p>
           <div className="flex gap-2">
@@ -125,7 +125,7 @@ function MedSearchDropdown({
         </div>
       )}
       {open && results?.length > 0 && (
-        <div className="absolute top-full left-0 z-50 w-[420px] bg-white border border-gray-200 rounded-xl shadow-2xl max-h-80 overflow-y-auto">
+        <div className="absolute top-full left-0 z-50 w-[min(420px,90vw)] bg-white border border-gray-200 rounded-xl shadow-2xl max-h-80 overflow-y-auto">
           {results.map((med: any) => {
             const stock  = Number(med.total_stock ?? med.available_stock ?? 0);
             const hasStockData = med.total_stock !== undefined && med.total_stock !== null;
@@ -270,7 +270,7 @@ function PatientSearch({ value, onSelect, onChange }: {
         placeholder="Search patient name / mobile..."
         className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[#00475a]" />
       {open && data?.length > 0 && (
-        <div className="absolute top-full left-0 z-50 w-72 bg-white border border-gray-200 rounded-xl shadow-xl mt-1 max-h-48 overflow-y-auto">
+        <div className="absolute top-full left-0 z-50 w-[min(288px,85vw)] bg-white border border-gray-200 rounded-xl shadow-xl mt-1 max-h-48 overflow-y-auto">
           {data.map((p: any) => (
             <button key={p.id} onClick={() => { onSelect(p); setOpen(false); }}
               className="w-full px-3 py-2 text-left border-b border-gray-50 last:border-0 hover:bg-teal-50 text-sm">
@@ -1073,67 +1073,68 @@ export default function DispensingPage() {
       )}
 
       {/* ── Patient / bill header ── */}
-      <div className="flex-shrink-0 bg-white border-b border-slate-200 px-4 py-2">
-        <div className="flex items-center gap-4 flex-wrap">
-          {/* Patient search */}
-          <div className="flex items-center gap-2 flex-1 min-w-48">
-            <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">
-              Patient:
-              {!hasScheduledDrugs && cart.length > 0 && (
-                <span className="ml-1 text-[10px] font-normal text-green-600 bg-green-50 px-1.5 py-0.5 rounded">OTC — optional</span>
-              )}
+      <div className="flex-shrink-0 bg-white border-b border-slate-200 px-3 py-2">
+        {/* Row 1: Patient search + Upload Rx */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-slate-500 whitespace-nowrap flex-shrink-0">
+            Patient:
+            {!hasScheduledDrugs && cart.length > 0 && (
+              <span className="ml-1 text-[10px] font-normal text-green-600 bg-green-50 px-1.5 py-0.5 rounded">OTC</span>
+            )}
+          </span>
+          <div className="flex-1 min-w-0 relative">
+            <PatientSearch
+              value={patientSearch}
+              onChange={setPatientSearch}
+              onSelect={p => {
+                const name = `${p.first_name} ${p.last_name ?? ''}`.trim();
+                setPatientSearch(name);
+                setCompliance(prev => ({
+                  ...prev,
+                  patient_name: name,
+                  patient_id: p.id,
+                  patient_age: p.date_of_birth
+                    ? String(new Date().getFullYear() - new Date(p.date_of_birth).getFullYear())
+                    : '',
+                  patient_gender: p.gender || '',
+                }));
+              }}
+            />
+          </div>
+          {/* Gender + Age + Patient ID — shown inline when present */}
+          {compliance.patient_gender && (
+            <span className="hidden sm:inline text-xs text-slate-500 whitespace-nowrap flex-shrink-0">
+              {compliance.patient_gender}{compliance.patient_age ? ` · ${compliance.patient_age}y` : ''}
             </span>
-            <div className="flex-1 relative">
-              <PatientSearch
-                value={patientSearch}
-                onChange={setPatientSearch}
-                onSelect={p => {
-                  const name = `${p.first_name} ${p.last_name ?? ''}`.trim();
-                  setPatientSearch(name);
-                  setCompliance(prev => ({
-                    ...prev,
-                    patient_name: name,
-                    patient_id: p.id,
-                    patient_age: p.date_of_birth
-                      ? String(new Date().getFullYear() - new Date(p.date_of_birth).getFullYear())
-                      : '',
-                    patient_gender: p.gender || '',
-                  }));
-                }}
-              />
-            </div>
-          </div>
-          {/* Gender + Age + Patient ID */}
-          <div className="flex items-center gap-2 flex-wrap">
-            {compliance.patient_gender && (
-              <span className="text-xs text-slate-500">
-                {compliance.patient_gender} · {compliance.patient_age ? `${compliance.patient_age}y` : ''}
-              </span>
-            )}
-            {compliance.patient_id && (
-              <span className="text-xs bg-teal-50 text-[#00475a] px-2 py-0.5 rounded font-mono font-medium border border-teal-100">
-                ID: {String(compliance.patient_id).slice(0, 8).toUpperCase()}
-              </span>
-            )}
-          </div>
-          {/* Referring doctor */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">Ref. Dr:</span>
-            <input type="text" value={compliance.referring_doctor}
-              onChange={e => setCompliance(p => ({ ...p, referring_doctor: e.target.value }))}
-              placeholder="Referring doctor"
-              className="px-2 py-1 text-sm border border-slate-200 rounded-lg w-40 focus:outline-none focus:border-[#00475a]" />
-          </div>
-          {/* Date */}
-          <span className="text-xs text-slate-400 ml-auto whitespace-nowrap">Date: {today}</span>
+          )}
+          {compliance.patient_id && (
+            <span className="hidden sm:inline text-xs bg-teal-50 text-[#00475a] px-2 py-0.5 rounded font-mono font-medium border border-teal-100 flex-shrink-0">
+              ID: {String(compliance.patient_id).slice(0, 8).toUpperCase()}
+            </span>
+          )}
           {/* Upload Rx */}
           <button onClick={() => fileRef.current?.click()}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200">
+            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200">
             {aiExtracting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
-            Upload Rx
+            <span className="hidden sm:inline">Upload</span> Rx
           </button>
           <input ref={fileRef} type="file" accept=".jpg,.jpeg,.png,.pdf" className="hidden"
             onChange={e => e.target.files?.[0] && handleFileUpload(e.target.files[0])} />
+        </div>
+        {/* Row 2: Ref. Dr + Date (always visible, stacked on mobile) */}
+        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+          <span className="text-xs font-semibold text-slate-500 whitespace-nowrap flex-shrink-0">Ref. Dr:</span>
+          <input type="text" value={compliance.referring_doctor}
+            onChange={e => setCompliance(p => ({ ...p, referring_doctor: e.target.value }))}
+            placeholder="Referring doctor"
+            className="flex-1 min-w-0 sm:w-40 sm:flex-none px-2 py-1 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-[#00475a]" />
+          {/* Patient gender/age on mobile (moved here) */}
+          {compliance.patient_gender && (
+            <span className="sm:hidden text-xs text-slate-500 whitespace-nowrap">
+              {compliance.patient_gender}{compliance.patient_age ? ` · ${compliance.patient_age}y` : ''}
+            </span>
+          )}
+          <span className="text-xs text-slate-400 ml-auto whitespace-nowrap">Date: {today}</span>
         </div>
       </div>
 
@@ -1164,9 +1165,27 @@ export default function DispensingPage() {
       )}
 
       <div className="flex flex-1 overflow-hidden">
-        {/* ── Prescription Bridge sidebar ── */}
+        {/* ── Prescription Bridge — mobile: full-screen drawer overlay ── */}
         {showRxPanel && (
-          <div className="w-64 flex-shrink-0 border-r border-slate-200 bg-white flex flex-col">
+          <div className="lg:hidden fixed inset-0 z-30 flex">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setShowRxPanel(false)} />
+            <div className="relative w-80 max-w-[85vw] bg-white flex flex-col shadow-2xl">
+              <PrescriptionBridge
+                onLoadPrescription={handleLoadPrescription}
+                onPendingCountChange={setPendingRxCount}
+              />
+              <button
+                onClick={() => setShowRxPanel(false)}
+                className="flex-shrink-0 flex items-center justify-center py-3 border-t border-slate-100 text-xs text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                <X className="w-3.5 h-3.5 mr-1" /> Hide panel
+              </button>
+            </div>
+          </div>
+        )}
+        {/* ── Prescription Bridge — desktop: inline sidebar ── */}
+        {showRxPanel && (
+          <div className="hidden lg:flex w-64 flex-shrink-0 border-r border-slate-200 bg-white flex-col">
             <PrescriptionBridge
               onLoadPrescription={handleLoadPrescription}
               onPendingCountChange={setPendingRxCount}
@@ -1181,15 +1200,15 @@ export default function DispensingPage() {
         )}
 
         {/* ── Cart table ── */}
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto pb-20 lg:pb-0">
           <table className="w-full border-collapse">
             <thead className="bg-slate-100 sticky top-0 z-10">
               <tr>
                 <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 uppercase w-8">No</th>
                 <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 uppercase">Medicine / Batch</th>
-                <th className="px-3 py-2 text-center text-[10px] font-bold text-slate-500 uppercase w-20">Avl.Qty</th>
+                <th className="hidden sm:table-cell px-3 py-2 text-center text-[10px] font-bold text-slate-500 uppercase w-20">Avl.Qty</th>
                 <th className="px-3 py-2 text-center text-[10px] font-bold text-slate-500 uppercase w-20">Qty</th>
-                <th className="px-3 py-2 text-right text-[10px] font-bold text-slate-500 uppercase w-24">Rate</th>
+                <th className="hidden sm:table-cell px-3 py-2 text-right text-[10px] font-bold text-slate-500 uppercase w-24">Rate</th>
                 <th className="px-3 py-2 text-right text-[10px] font-bold text-slate-500 uppercase w-28">Amount</th>
                 <th className="px-3 py-2 w-8"></th>
               </tr>
@@ -1242,7 +1261,7 @@ export default function DispensingPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-3 py-2 text-center">
+                    <td className="hidden sm:table-cell px-3 py-2 text-center">
                       <span className={`text-sm font-bold ${
                         item.avl_qty <= 0 ? 'text-red-500'
                         : item.avl_qty <= 10 ? 'text-amber-600'
@@ -1289,7 +1308,7 @@ export default function DispensingPage() {
                         );
                       })()}
                     </td>
-                    <td className="px-3 py-2 text-right text-sm font-medium text-slate-700">
+                    <td className="hidden sm:table-cell px-3 py-2 text-right text-sm font-medium text-slate-700">
                       ₹{Number(item.rate).toFixed(2)}
                     </td>
 
@@ -1671,16 +1690,34 @@ export default function DispensingPage() {
 
       {/* ── Mobile bottom bar ── */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 px-4 py-3 bg-white border-t border-slate-200 shadow-lg" style={{paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))"}}>
-        <button onClick={() => setShowBillPanel(true)}
-          className="w-full py-3 bg-[#00475a] text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2">
-          <ShoppingCart className="w-4 h-4" />
-          Bill Summary · {formatCurrency(netTotal)}
-          {cart.length > 0 && (
-            <span className="bg-white text-[#00475a] rounded-full w-5 h-5 text-xs font-bold flex items-center justify-center">
-              {cart.length}
-            </span>
+        <div className="flex items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-slate-400 truncate">
+              {cart.length > 0 ? `${cart.length} item${cart.length !== 1 ? 's' : ''}` : 'No items yet'}
+              {paymentMode && <span className="ml-2 font-semibold text-[#00475a] uppercase">{paymentMode === 'hybrid' ? 'Cash+UPI' : paymentMode}</span>}
+            </p>
+            <p className="text-base font-bold text-slate-900">{formatCurrency(netTotal)}</p>
+          </div>
+          {/* Rx panel button on mobile */}
+          {rxQueue.length > 0 && (
+            <button onClick={() => setShowRxPanel(true)}
+              className="flex items-center gap-1.5 px-3 py-2.5 bg-teal-600 text-white rounded-xl text-xs font-bold flex-shrink-0">
+              <ClipboardList className="w-4 h-4" />
+              <span className="bg-white text-teal-700 rounded-full w-4 h-4 text-[10px] font-bold flex items-center justify-center">{rxQueue.length}</span>
+            </button>
           )}
-        </button>
+          <button onClick={() => setShowBillPanel(true)}
+            disabled={cart.length === 0}
+            className="flex items-center gap-2 px-4 py-2.5 bg-[#00475a] text-white rounded-xl font-bold text-sm disabled:opacity-40 flex-shrink-0">
+            <ShoppingCart className="w-4 h-4" />
+            Bill Summary
+            {cart.length > 0 && (
+              <span className="bg-white text-[#00475a] rounded-full w-5 h-5 text-xs font-bold flex items-center justify-center">
+                {cart.length}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* ── Modals ── */}
