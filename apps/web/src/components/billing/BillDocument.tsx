@@ -78,9 +78,9 @@ function ReceiptContent({ data }: { data: BillData }) {
 
   return (
     <div style={{
-      fontFamily: "'Courier New', Courier, monospace",
-      fontSize: '11px',
-      lineHeight: '1.4',
+      fontFamily: "'Arial Narrow', 'Arial', sans-serif",
+      fontSize: '12px',
+      lineHeight: '1.45',
       color: '#000',
       width: '100%',
       maxWidth: '540px', // A5 at 96dpi ≈ 148mm
@@ -90,13 +90,13 @@ function ReceiptContent({ data }: { data: BillData }) {
     }}>
       {/* ── HEADER — exactly 3 lines ── */}
       <div style={{ textAlign: 'center', borderBottom: '1px dashed #000', paddingBottom: '6px', marginBottom: '6px' }}>
-        <div style={{ fontWeight: 'bold', fontSize: '14px', letterSpacing: '0.5px' }}>MEDISYN SPECIALITY CLINIC</div>
-        <div style={{ fontSize: '10px', marginTop: '2px' }}>Chirvakku, Taliparamba, Kannur - 670141</div>
-        <div style={{ fontSize: '10px' }}>Ph: {clinicPhone} &nbsp;|&nbsp; GST: {clinicGST}</div>
+        <div style={{ fontWeight: '900', fontSize: '15px', letterSpacing: '0.5px' }}>MEDISYN SPECIALITY CLINIC</div>
+        <div style={{ fontSize: '11px', marginTop: '2px' }}>Chirvakku, Taliparamba, Kannur - 670141</div>
+        <div style={{ fontSize: '11px' }}>Ph: {clinicPhone} &nbsp;|&nbsp; GST: {clinicGST}</div>
       </div>
 
       {/* ── BILL META ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '10px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px', fontSize: '12px' }}>
         <div>
           {data.patientName && <div><b>Patient:</b> {data.patientName}</div>}
           {data.doctorName  && <div><b>Doctor:</b> Dr.{data.doctorName.replace(/^Dr\.?\s*/i,'')}</div>}
@@ -104,7 +104,7 @@ function ReceiptContent({ data }: { data: BillData }) {
         <div style={{ textAlign: 'right' }}>
           <div><b>Bill No:</b> {data.billNumber || '—'}</div>
           <div><b>Date:</b> {fmtDate(data.date)}</div>
-          <div style={{ fontSize: '9px' }}>{fmtTime(data.date)}</div>
+          <div style={{ fontSize: '11px' }}>{fmtTime(data.date)}</div>
         </div>
       </div>
 
@@ -112,30 +112,30 @@ function ReceiptContent({ data }: { data: BillData }) {
       <table style={{ width: '100%', borderCollapse: 'collapse', borderTop: '1px solid #000', marginTop: '4px' }}>
         <thead>
           <tr style={{ borderBottom: '1px dashed #000' }}>
-            <th style={{ textAlign: 'left',  fontSize: '9px', fontWeight: 'bold', padding: '2px 1px', width: '16px' }}>SNo</th>
-            <th style={{ textAlign: 'left',  fontSize: '9px', fontWeight: 'bold', padding: '2px 1px' }}>Particulars</th>
-            <th style={{ textAlign: 'left',  fontSize: '9px', fontWeight: 'bold', padding: '2px 1px', width: '36px' }}>Mfg</th>
-            <th style={{ textAlign: 'left',  fontSize: '9px', fontWeight: 'bold', padding: '2px 1px', width: '48px' }}>Batch</th>
-            <th style={{ textAlign: 'center',fontSize: '9px', fontWeight: 'bold', padding: '2px 1px', width: '28px' }}>Exp</th>
-            <th style={{ textAlign: 'right', fontSize: '9px', fontWeight: 'bold', padding: '2px 1px', width: '20px' }}>Qty</th>
-            <th style={{ textAlign: 'right', fontSize: '9px', fontWeight: 'bold', padding: '2px 1px', width: '44px' }}>Amt(₹)</th>
+            <th style={{ textAlign: 'left',  fontSize: '11px', fontWeight: 'bold', padding: '3px 2px', width: '18px' }}>SNo</th>
+            <th style={{ textAlign: 'left',  fontSize: '11px', fontWeight: 'bold', padding: '3px 2px' }}>Particulars</th>
+            <th style={{ textAlign: 'left',  fontSize: '11px', fontWeight: 'bold', padding: '3px 2px', width: '42px' }}>Mfg</th>
+            <th style={{ textAlign: 'left',  fontSize: '11px', fontWeight: 'bold', padding: '3px 2px', width: '54px' }}>Batch</th>
+            <th style={{ textAlign: 'center',fontSize: '11px', fontWeight: 'bold', padding: '3px 2px', width: '32px' }}>Exp</th>
+            <th style={{ textAlign: 'right', fontSize: '11px', fontWeight: 'bold', padding: '3px 2px', width: '24px' }}>Qty</th>
+            <th style={{ textAlign: 'right', fontSize: '11px', fontWeight: 'bold', padding: '3px 2px', width: '50px' }}>Amt(₹)</th>
           </tr>
         </thead>
         <tbody>
           {data.items.map((item, i) => (
-            <tr key={i} style={{ borderBottom: '1px dotted #ccc' }}>
-              <td style={{ padding: '2px 1px', verticalAlign: 'top', fontSize: '10px' }}>{i + 1}</td>
-              <td style={{ padding: '2px 1px', verticalAlign: 'top', fontSize: '10px', wordBreak: 'break-word', maxWidth: '80px' }}>
+            <tr key={i} style={{ borderBottom: '1px dotted #999' }}>
+              <td style={{ padding: '3px 2px', verticalAlign: 'top', fontSize: '12px' }}>{i + 1}</td>
+              <td style={{ padding: '3px 2px', verticalAlign: 'top', fontSize: '12px', fontWeight: '600', wordBreak: 'break-word', maxWidth: '90px' }}>
                 {item.medicineName}
-                {item.isSubstituted && <span style={{ fontSize: '8px', color: '#555' }}> *sub</span>}
+                {item.isSubstituted && <span style={{ fontSize: '9px', fontWeight: 'normal', color: '#555' }}> *sub</span>}
               </td>
-              <td style={{ padding: '2px 1px', verticalAlign: 'top', fontSize: '9px', overflow: 'hidden', maxWidth: '36px' }}>
-                {(item.manufacturer || '').substring(0, 7)}
+              <td style={{ padding: '3px 2px', verticalAlign: 'top', fontSize: '11px', overflow: 'hidden', maxWidth: '42px' }}>
+                {(item.manufacturer || '').substring(0, 8)}
               </td>
-              <td style={{ padding: '2px 1px', verticalAlign: 'top', fontSize: '9px' }}>{item.batchNumber || ''}</td>
-              <td style={{ padding: '2px 1px', verticalAlign: 'top', fontSize: '9px', textAlign: 'center' }}>{fmtExp(item.expiryDate)}</td>
-              <td style={{ padding: '2px 1px', verticalAlign: 'top', fontSize: '10px', textAlign: 'right' }}>{item.qty}</td>
-              <td style={{ padding: '2px 1px', verticalAlign: 'top', fontSize: '10px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+              <td style={{ padding: '3px 2px', verticalAlign: 'top', fontSize: '11px' }}>{item.batchNumber || ''}</td>
+              <td style={{ padding: '3px 2px', verticalAlign: 'top', fontSize: '11px', textAlign: 'center' }}>{fmtExp(item.expiryDate)}</td>
+              <td style={{ padding: '3px 2px', verticalAlign: 'top', fontSize: '12px', fontWeight: '600', textAlign: 'right' }}>{item.qty}</td>
+              <td style={{ padding: '3px 2px', verticalAlign: 'top', fontSize: '12px', fontWeight: '600', textAlign: 'right', whiteSpace: 'nowrap' }}>
                 {n(item.itemTotal).toFixed(2)}
               </td>
             </tr>
@@ -144,7 +144,7 @@ function ReceiptContent({ data }: { data: BillData }) {
       </table>
 
       {/* ── SUMMARY LINE ── */}
-      <div style={{ borderTop: '1px dashed #000', marginTop: '2px', paddingTop: '3px', fontSize: '9px', color: '#333' }}>
+      <div style={{ borderTop: '1px dashed #000', marginTop: '3px', paddingTop: '3px', fontSize: '11px', color: '#333' }}>
         Items: {data.items.length} &nbsp; Qty: {data.items.reduce((s,i)=>s+i.qty,0)} &nbsp;
         {data.hasScheduledDrugs && <span>Schedule H/X included. &nbsp;</span>}
         GST incl. in MRP.
@@ -153,44 +153,44 @@ function ReceiptContent({ data }: { data: BillData }) {
       {/* ── TOTALS ── */}
       <div style={{ borderTop: '1px solid #000', marginTop: '4px', paddingTop: '4px' }}>
         {n(data.subtotal) !== n(data.totalAmount) && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
             <span>Subtotal:</span><span>₹{n(data.subtotal).toFixed(2)}</span>
           </div>
         )}
         {n(data.taxAmount) > 0 && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
             <span>GST:</span><span>₹{n(data.taxAmount).toFixed(2)}</span>
           </div>
         )}
         {n(data.discountAmount) > 0 && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
             <span>Discount:</span><span>-₹{n(data.discountAmount).toFixed(2)}</span>
           </div>
         )}
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
           <span>Total Amt:</span><span>₹{n(data.totalAmount).toFixed(2)}</span>
         </div>
         {Math.abs(roundOff) >= 0.01 && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
             <span>Roundoff:</span><span>{roundOff > 0 ? '+' : ''}₹{roundOff.toFixed(2)}</span>
           </div>
         )}
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '11px', borderTop: '1px solid #000', marginTop: '3px', paddingTop: '3px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px', borderTop: '1px solid #000', marginTop: '3px', paddingTop: '3px' }}>
           <span>Amount Paid:</span><span>₹{amtPaid.toFixed(2)}</span>
         </div>
         {due > 0 && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
             <span>Due:</span><span>₹{due.toFixed(2)}</span>
           </div>
         )}
-        <div style={{ fontSize: '9px', marginTop: '2px' }}>Payment: {payMode}</div>
+        <div style={{ fontSize: '11px', marginTop: '3px' }}>Payment: {payMode}</div>
       </div>
 
       {/* ── FOOTER ── */}
-      <div style={{ borderTop: '1px dashed #000', marginTop: '6px', paddingTop: '4px', fontSize: '9px', textAlign: 'center', color: '#333' }}>
+      <div style={{ borderTop: '1px dashed #000', marginTop: '6px', paddingTop: '4px', fontSize: '11px', textAlign: 'center', color: '#333' }}>
         Medicines once dispensed cannot be returned. Verify before leaving.
       </div>
-      <div style={{ fontSize: '8px', textAlign: 'center', marginTop: '3px', color: '#555' }}>
+      <div style={{ fontSize: '10px', textAlign: 'center', marginTop: '3px', color: '#555' }}>
         Thank you — MediSyn Speciality Clinic
       </div>
     </div>
