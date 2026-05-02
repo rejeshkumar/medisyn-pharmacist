@@ -684,6 +684,7 @@ export default function DispensingPage() {
       setCart([]); setSearchValues(['']);
       setCompliance({ patient_name:'', patient_id:'', patient_age:'', patient_gender:'', doctor_name:'', doctor_reg_no:'', referring_doctor:'' });
       setOverallDiscount(0); setOverallDiscountReason(''); setAmountPaid('');
+      setPaymentMode(''); setHybridCash(0); setHybridUpi(0);
       setActiveDraftId('current');
       toast.success('Bill held — start a new one');
       await loadDrafts();
@@ -734,6 +735,7 @@ export default function DispensingPage() {
       setCart([]); setSearchValues(['']);
       setCompliance({ patient_name:'', patient_id:'', patient_age:'', patient_gender:'', doctor_name:'', doctor_reg_no:'', referring_doctor:'' });
       setOverallDiscount(0); setOverallDiscountReason(''); setAmountPaid('');
+      setPaymentMode(''); setHybridCash(0); setHybridUpi(0);
       setAiResult(null); setAiPrescriptionId(null);
       if (activeDraftId !== 'current') {
         await api.patch(`/draft-bills/${activeDraftId}/confirm`, {}).catch(() => {});
@@ -1244,6 +1246,22 @@ export default function DispensingPage() {
                               <span className="text-blue-600 font-medium">📍 {item.rack_location}</span>
                             )}
                             {item.is_substituted && <span className="text-blue-500">Substituted</span>}
+                            {/* Line discount — always visible, important on mobile */}
+                            <span className="flex items-center gap-1">
+                              <span className="text-slate-400">Disc</span>
+                              <input
+                                type="number" min={0} max={100}
+                                value={item.line_discount_pct || ''}
+                                onChange={e => updateItem(idx, 'line_discount_pct', Math.max(0, Math.min(100, Number(e.target.value))))}
+                                onFocus={e => e.target.select()}
+                                placeholder="0"
+                                className="w-10 text-center text-[10px] font-bold border border-slate-200 rounded px-1 py-0.5 focus:outline-none focus:border-[#00475a] bg-white"
+                              />
+                              <span className="text-slate-400">%</span>
+                              {item.line_discount_pct > 0 && (
+                                <span className="text-amber-600 font-semibold">−₹{(item.qty * item.rate * item.line_discount_pct / 100).toFixed(0)}</span>
+                              )}
+                            </span>
                             {item.is_chronic && (
                               <button
                                 onClick={() => updateItem(idx, 'create_care_plan', !item.create_care_plan)}
