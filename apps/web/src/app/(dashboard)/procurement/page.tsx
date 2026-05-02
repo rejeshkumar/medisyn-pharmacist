@@ -825,7 +825,7 @@ function SuppliersTab() {
 
 
 // ── In Demand Tab ─────────────────────────────────────────────────────────
-function DemandTab() {
+function DemandTab({ onRaisePO }: { onRaisePO: (name: string) => void }) {
   const [items, setItems]         = useState<any[]>([]);
   const [loading, setLoading]     = useState(true);
   const [threshold, setThreshold] = useState(3);
@@ -927,11 +927,7 @@ function DemandTab() {
                       </div>
                     </div>
                     <div className="flex-shrink-0 flex gap-2">
-                      <button onClick={() => {
-                        const tab = document.querySelector('[data-tab="orders"]') as HTMLButtonElement;
-                        tab?.click();
-                        toast.success(`Add "${item.medicine_name}" to a new PO`);
-                      }}
+                      <button onClick={() => onRaisePO(item.medicine_name)}
                         className="flex items-center gap-1.5 px-3 py-2 bg-amber-500 text-white rounded-lg text-xs font-semibold hover:bg-amber-600">
                         <ReceiptText className="w-3.5 h-3.5" /> Raise PO
                       </button>
@@ -972,7 +968,7 @@ function DemandTab() {
                       </p>
                     </div>
                     <div className="flex-shrink-0 flex gap-2">
-                      <button onClick={() => toast.success(`Go to Purchase Orders tab to add "${item.medicine_name}"`)}
+                      <button onClick={() => onRaisePO(item.medicine_name)}
                         className="text-xs text-amber-600 hover:text-amber-700 px-2 py-1 rounded-lg hover:bg-amber-50 border border-amber-200">
                         Raise PO
                       </button>
@@ -1033,7 +1029,10 @@ export default function ProcurementPage() {
         {tab === 'reorder'   && <ReorderTab />}
         {tab === 'orders'    && <POTab />}
         {tab === 'suppliers' && <SuppliersTab />}
-        {tab === 'demand'    && <DemandTab />}
+        {tab === 'demand'    && <DemandTab onRaisePO={(name) => {
+          setTab('orders');
+          setTimeout(() => toast.success(`Create a PO and add "${name}"`), 300);
+        }} />}
       </div>
     </div>
   );
