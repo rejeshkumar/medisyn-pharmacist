@@ -81,7 +81,9 @@ export class SalesService {
         const rate = item.rate || batch.sale_rate;
         const itemSubtotal = rate * item.qty;
         const gstPercent = item.gst_percent ?? medicine.gst_percent ?? 0;
-        const itemTax = (itemSubtotal * gstPercent) / 100;
+        // MRP is GST-inclusive — taxAmount is back-calculated for informational display only,
+        // never added on top of the sale total.
+        const itemTax = itemSubtotal - itemSubtotal / (1 + gstPercent / 100);
 
         subtotal += itemSubtotal;
         taxAmount += itemTax;
@@ -103,7 +105,7 @@ export class SalesService {
           qty: item.qty,
           rate,
           gst_percent: gstPercent,
-          item_total: itemSubtotal + itemTax,
+          item_total: itemSubtotal, // MRP-inclusive, GST not added on top
           is_substituted: item.is_substituted || false,
           original_medicine_id: item.original_medicine_id,
           substitution_reason: item.substitution_reason,
@@ -116,7 +118,8 @@ export class SalesService {
 
       const discountAmount =
         dto.discount_amount || (subtotal * (dto.discount_percent || 0)) / 100;
-      const totalAmount = subtotal + taxAmount - discountAmount;
+      // MRP is GST-inclusive — total = subtotal minus discount only, taxAmount is informational
+      const totalAmount = Math.round(subtotal - discountAmount);
       const billNumber = await this.generateBillNumber(tenantId);
 
       const sale = queryRunner.manager.create(Sale, {
