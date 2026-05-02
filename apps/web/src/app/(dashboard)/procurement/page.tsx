@@ -244,9 +244,10 @@ function ReorderTab() {
 }
 
 // ── PO Creation Modal ──────────────────────────────────────────────────────
-function POCreateModal({ flags, suppliers, onClose, onCreated }: {
+function POCreateModal({ flags, suppliers, onClose, onCreated, initialMedicineName }: {
   flags: ReorderFlag[]; suppliers: any[];
   onClose: () => void; onCreated: () => void;
+  initialMedicineName?: string;
 }) {
   const [supplierId, setSupplierId]   = useState('');
   const [supplierName, setSupplierName] = useState('');
@@ -272,7 +273,7 @@ function POCreateModal({ flags, suppliers, onClose, onCreated }: {
   })));
 
   // Manual add
-  const [manualSearch, setManualSearch] = useState('');
+  const [manualSearch, setManualSearch] = useState(initialMedicineName || '');
   const [manualResults, setManualResults] = useState<any[]>([]);
 
   useEffect(() => {
@@ -479,7 +480,7 @@ function POCreateModal({ flags, suppliers, onClose, onCreated }: {
 }
 
 // ── Purchase Orders Tab ────────────────────────────────────────────────────
-function POTab() {
+function POTab({ initialMedicine }: { initialMedicine?: string }) {
   const [pos, setPOs]             = useState<PO[]>([]);
   const [loading, setLoading]     = useState(true);
   const [statusFilter, setStatus] = useState('all');
@@ -487,6 +488,12 @@ function POTab() {
   const [poDetail, setPODetail]   = useState<any>(null);
   const [receiving, setReceiving] = useState(false);
   const [receiveItems, setReceiveItems] = useState<any[]>([]);
+  const [showCreateModal, setShowCreateModal] = useState(!!initialMedicine);
+  const [suppliers, setSuppliers] = useState<any[]>([]);
+
+  useEffect(() => {
+    api.get('/suppliers').then(r => setSuppliers(r.data || [])).catch(() => {});
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -554,15 +561,21 @@ function POTab() {
     <div className="flex gap-4 h-full">
       {/* PO List */}
       <div className={`${selectedPO ? 'w-1/2' : 'w-full'} flex flex-col`}>
-        <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
-          {['all','draft','sent','partially_received','received'].map(s => (
-            <button key={s} onClick={() => setStatus(s)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold border whitespace-nowrap flex-shrink-0 transition-all ${
-                statusFilter === s ? 'bg-[#00475a] text-white border-[#00475a]' : 'border-slate-200 text-slate-500'
-              }`}>
-              {s === 'all' ? 'All' : STATUS_CONFIG[s]?.label ?? s}
-            </button>
-          ))}
+        <div className="flex items-center gap-2 mb-4">
+          <div className="flex gap-2 overflow-x-auto pb-1 flex-1">
+            {['all','draft','sent','partially_received','received'].map(s => (
+              <button key={s} onClick={() => setStatus(s)}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold border whitespace-nowrap flex-shrink-0 transition-all ${
+                  statusFilter === s ? 'bg-[#00475a] text-white border-[#00475a]' : 'border-slate-200 text-slate-500'
+                }`}>
+                {s === 'all' ? 'All' : STATUS_CONFIG[s]?.label ?? s}
+              </button>
+            ))}
+          </div>
+          <button onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#00475a] text-white text-xs font-bold rounded-xl hover:bg-[#003d4d] flex-shrink-0">
+            <Plus className="w-3.5 h-3.5" /> New PO
+          </button>
         </div>
 
         {loading ? (
@@ -604,6 +617,17 @@ function POTab() {
           </div>
         )}
       </div>
+
+      {/* Create PO Modal */}
+      {showCreateModal && (
+        <POCreateModal
+          flags={[]}
+          suppliers={suppliers}
+          initialMedicineName={initialMedicine}
+          onClose={() => setShowCreateModal(false)}
+          onCreated={() => { setShowCreateModal(false); load(); }}
+        />
+      )}
 
       {/* PO Detail */}
       {selectedPO && poDetail && (
@@ -991,6 +1015,7 @@ function DemandTab({ onRaisePO }: { onRaisePO: (name: string) => void }) {
 // ── Main page ──────────────────────────────────────────────────────────────
 export default function ProcurementPage() {
   const [tab, setTab] = useState<'reorder' | 'orders' | 'suppliers' | 'demand'>('reorder');
+  const [demandMedicine, setDemandMedicine] = useState<string | undefined>();
 
   const TABS = [
     { key: 'reorder',   label: 'Reorder list',     icon: AlertTriangle },
@@ -1027,11 +1052,11 @@ export default function ProcurementPage() {
       {/* Content */}
       <div className="flex-1 overflow-auto p-6">
         {tab === 'reorder'   && <ReorderTab />}
-        {tab === 'orders'    && <POTab />}
+        {tab === 'orders'    && <POTab initialMedicine={demandMedicine} key={demandMedicine} />}
         {tab === 'suppliers' && <SuppliersTab />}
         {tab === 'demand'    && <DemandTab onRaisePO={(name) => {
+          setDemandMedicine(name);
           setTab('orders');
-          setTimeout(() => toast.success(`Create a PO and add "${name}"`), 300);
         }} />}
       </div>
     </div>
