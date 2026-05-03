@@ -229,8 +229,10 @@ export default function BillDocument({ data, mode, onClose, onConfirm, isLoading
         <title>Bill – ${data.billNumber || ''}</title>
         <style>
           * { box-sizing: border-box; margin: 0; padding: 0; }
-          body { background: #fff; width: 80mm; }
-          @page { size: 80mm auto; margin: 3mm 2mm; }
+          html, body { background: #fff; margin: 0; padding: 0; }
+          body { display: flex; justify-content: center; padding: 4mm 0; }
+          body > div { width: 76mm; max-width: 76mm; }
+          @page { size: 80mm auto; margin: 2mm; }
           table { width: 100%; border-collapse: collapse; }
         </style>
       </head>
