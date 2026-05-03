@@ -78,21 +78,21 @@ function ReceiptContent({ data }: { data: BillData }) {
 
   return (
     <div style={{
-      fontFamily: "'Arial Narrow', 'Arial', sans-serif",
-      fontSize: '12px',
-      lineHeight: '1.45',
+      fontFamily: "'Courier New', 'Courier', monospace",
+      fontSize: '11px',
+      lineHeight: '1.4',
       color: '#000',
       width: '100%',
-      maxWidth: '540px', // A5 at 96dpi ≈ 148mm
+      maxWidth: '302px',
       margin: '0 auto',
       padding: '0',
       background: '#fff',
     }}>
       {/* ── HEADER — exactly 3 lines ── */}
       <div style={{ textAlign: 'center', borderBottom: '1px dashed #000', paddingBottom: '6px', marginBottom: '6px' }}>
-        <div style={{ fontWeight: '900', fontSize: '15px', letterSpacing: '0.5px' }}>MEDISYN SPECIALITY CLINIC</div>
-        <div style={{ fontSize: '11px', marginTop: '2px' }}>Chirvakku, Taliparamba, Kannur - 670141</div>
-        <div style={{ fontSize: '11px' }}>Ph: {clinicPhone} &nbsp;|&nbsp; GST: {clinicGST}</div>
+        <div style={{ fontWeight: '900', fontSize: '13px', letterSpacing: '0.5px' }}>MEDISYN SPECIALITY CLINIC</div>
+        <div style={{ fontSize: '10px', marginTop: '2px' }}>Chirvakku, Taliparamba, Kannur - 670141</div>
+        <div style={{ fontSize: '10px' }}>Ph: {clinicPhone} | GST: {clinicGST}</div>
       </div>
 
       {/* ── BILL META ── */}
@@ -112,30 +112,28 @@ function ReceiptContent({ data }: { data: BillData }) {
       <table style={{ width: '100%', borderCollapse: 'collapse', borderTop: '1px solid #000', marginTop: '4px' }}>
         <thead>
           <tr style={{ borderBottom: '1px dashed #000' }}>
-            <th style={{ textAlign: 'left',  fontSize: '11px', fontWeight: 'bold', padding: '3px 2px', width: '18px' }}>SNo</th>
-            <th style={{ textAlign: 'left',  fontSize: '11px', fontWeight: 'bold', padding: '3px 2px' }}>Particulars</th>
-            <th style={{ textAlign: 'left',  fontSize: '11px', fontWeight: 'bold', padding: '3px 2px', width: '42px' }}>Mfg</th>
-            <th style={{ textAlign: 'left',  fontSize: '11px', fontWeight: 'bold', padding: '3px 2px', width: '54px' }}>Batch</th>
-            <th style={{ textAlign: 'center',fontSize: '11px', fontWeight: 'bold', padding: '3px 2px', width: '32px' }}>Exp</th>
-            <th style={{ textAlign: 'right', fontSize: '11px', fontWeight: 'bold', padding: '3px 2px', width: '24px' }}>Qty</th>
-            <th style={{ textAlign: 'right', fontSize: '11px', fontWeight: 'bold', padding: '3px 2px', width: '50px' }}>Amt(₹)</th>
+            <th style={{ textAlign: 'left',  fontSize: '10px', fontWeight: 'bold', padding: '2px 1px', width: '14px' }}>No</th>
+            <th style={{ textAlign: 'left',  fontSize: '10px', fontWeight: 'bold', padding: '2px 1px' }}>Particulars</th>
+            <th style={{ textAlign: 'left',  fontSize: '10px', fontWeight: 'bold', padding: '2px 1px', width: '36px' }}>Mfg</th>
+            <th style={{ textAlign: 'left',  fontSize: '10px', fontWeight: 'bold', padding: '2px 1px', width: '44px' }}>Batch</th>
+            <th style={{ textAlign: 'right', fontSize: '10px', fontWeight: 'bold', padding: '2px 1px', width: '20px' }}>Qty</th>
+            <th style={{ textAlign: 'right', fontSize: '10px', fontWeight: 'bold', padding: '2px 1px', width: '44px' }}>Amt(₹)</th>
           </tr>
         </thead>
         <tbody>
           {data.items.map((item, i) => (
-            <tr key={i} style={{ borderBottom: '1px dotted #999' }}>
-              <td style={{ padding: '3px 2px', verticalAlign: 'top', fontSize: '12px' }}>{i + 1}</td>
-              <td style={{ padding: '3px 2px', verticalAlign: 'top', fontSize: '12px', fontWeight: '600', wordBreak: 'break-word', maxWidth: '90px' }}>
+            <tr key={i} style={{ borderBottom: '1px dotted #ccc' }}>
+              <td style={{ padding: '2px 1px', verticalAlign: 'top', fontSize: '10px' }}>{i + 1}</td>
+              <td style={{ padding: '2px 1px', verticalAlign: 'top', fontSize: '10px', fontWeight: '600', wordBreak: 'break-word' }}>
                 {item.medicineName}
                 {item.isSubstituted && <span style={{ fontSize: '9px', fontWeight: 'normal', color: '#555' }}> *sub</span>}
               </td>
-              <td style={{ padding: '3px 2px', verticalAlign: 'top', fontSize: '11px', overflow: 'hidden', maxWidth: '42px' }}>
-                {(item.manufacturer || '').substring(0, 8)}
+              <td style={{ padding: '2px 1px', verticalAlign: 'top', fontSize: '9px', overflow: 'hidden' }}>
+                {(item.manufacturer || '').substring(0, 6)}
               </td>
-              <td style={{ padding: '3px 2px', verticalAlign: 'top', fontSize: '11px' }}>{item.batchNumber || ''}</td>
-              <td style={{ padding: '3px 2px', verticalAlign: 'top', fontSize: '11px', textAlign: 'center' }}>{fmtExp(item.expiryDate)}</td>
-              <td style={{ padding: '3px 2px', verticalAlign: 'top', fontSize: '12px', fontWeight: '600', textAlign: 'right' }}>{item.qty}</td>
-              <td style={{ padding: '3px 2px', verticalAlign: 'top', fontSize: '12px', fontWeight: '600', textAlign: 'right', whiteSpace: 'nowrap' }}>
+              <td style={{ padding: '2px 1px', verticalAlign: 'top', fontSize: '9px' }}>{item.batchNumber || ''}</td>
+              <td style={{ padding: '2px 1px', verticalAlign: 'top', fontSize: '10px', fontWeight: '600', textAlign: 'right' }}>{item.qty}</td>
+              <td style={{ padding: '2px 1px', verticalAlign: 'top', fontSize: '10px', fontWeight: '600', textAlign: 'right', whiteSpace: 'nowrap' }}>
                 {n(item.itemTotal).toFixed(2)}
               </td>
             </tr>
@@ -231,8 +229,9 @@ export default function BillDocument({ data, mode, onClose, onConfirm, isLoading
         <title>Bill – ${data.billNumber || ''}</title>
         <style>
           * { box-sizing: border-box; margin: 0; padding: 0; }
-          body { background: #fff; }
-          @page { size: A5; margin: 8mm; }
+          body { background: #fff; width: 80mm; }
+          @page { size: 80mm auto; margin: 3mm 2mm; }
+          table { width: 100%; border-collapse: collapse; }
         </style>
       </head>
       <body>
@@ -270,10 +269,10 @@ export default function BillDocument({ data, mode, onClose, onConfirm, isLoading
             ref={printRef}
             style={{
               background: '#fff',
-              padding: '16px',
+              padding: '12px',
               borderRadius: '4px',
               boxShadow: '0 1px 8px rgba(0,0,0,0.12)',
-              width: '540px',
+              width: '302px',
               flexShrink: 0,
             }}
           >
