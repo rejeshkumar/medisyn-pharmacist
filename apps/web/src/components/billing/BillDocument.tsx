@@ -210,16 +210,11 @@ export default function BillDocument({ data, mode, onClose, onConfirm, isLoading
   const printRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = () => {
-    const style = document.createElement('style');
-    style.innerHTML = `
-      @media print {
-        @page { size: 80mm auto; margin: 3mm; }
-        body > *:not(#medisyn-print-frame) { display: none !important; }
-      }
-    `;
+    // Get receipt HTML from the inner ReceiptContent div, not the wrapper
+    const receiptEl = printRef.current?.querySelector('div') || printRef.current;
+    const printContent = receiptEl?.outerHTML || printRef.current?.innerHTML || '';
 
-    const printContent = printRef.current?.innerHTML || '';
-    const win = window.open('', '_blank', 'width=600,height=800');
+    const win = window.open('', '_blank', 'width=400,height=700');
     if (!win) return;
     win.document.write(`
       <!DOCTYPE html>
@@ -229,11 +224,19 @@ export default function BillDocument({ data, mode, onClose, onConfirm, isLoading
         <title>Bill – ${data.billNumber || ''}</title>
         <style>
           * { box-sizing: border-box; margin: 0; padding: 0; }
-          html, body { background: #fff; margin: 0; padding: 0; }
-          body { display: flex; justify-content: center; padding: 4mm 0; }
-          body > div { width: 76mm; max-width: 76mm; }
-          @page { size: 80mm auto; margin: 2mm; }
-          table { width: 100%; border-collapse: collapse; }
+          html { background: #fff; }
+          body {
+            background: #fff;
+            margin: 6mm auto;
+            padding: 0 2mm;
+            width: 76mm;
+            max-width: 76mm;
+            font-family: 'Courier New', monospace;
+          }
+          @page { size: 80mm auto; margin: 4mm 2mm; }
+          table { width: 100% !important; border-collapse: collapse; }
+          /* override any inline max-width from React */
+          body > div { width: 100% !important; max-width: 100% !important; }
         </style>
       </head>
       <body>
