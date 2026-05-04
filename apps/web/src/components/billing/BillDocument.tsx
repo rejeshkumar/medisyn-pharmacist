@@ -210,43 +210,48 @@ export default function BillDocument({ data, mode, onClose, onConfirm, isLoading
   const printRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = () => {
-    // Get receipt HTML from the inner ReceiptContent div, not the wrapper
-    const receiptEl = printRef.current?.querySelector('div') || printRef.current;
-    const printContent = receiptEl?.outerHTML || printRef.current?.innerHTML || '';
+  const win = window.open('', '_blank', 'width=400,height=700');
+  if (!win) return;
 
-    const win = window.open('', '_blank', 'width=400,height=700');
-    if (!win) return;
-    win.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Bill – ${data.billNumber || ''}</title>
-        <style>
-          * { box-sizing: border-box; margin: 0; padding: 0; }
-          html { background: #fff; }
-          body {
-            background: #fff;
-            margin: 6mm auto;
-            padding: 0 2mm;
-            width: 76mm;
-            max-width: 76mm;
-            font-family: 'Courier New', monospace;
-          }
-          @page { size: 80mm auto; margin: 4mm 2mm; }
-          table { width: 100% !important; border-collapse: collapse; }
-          /* override any inline max-width from React */
-          body > div { width: 100% !important; max-width: 100% !important; }
-        </style>
-      </head>
-      <body>
-        ${printContent}
-        <script>window.onload = () => { window.print(); setTimeout(() => window.close(), 500); }<\/script>
-      </body>
-      </html>
-    `);
-    win.document.close();
-  };
+  const receiptEl = printRef.current?.querySelector('div') || printRef.current;
+  const printContent = receiptEl?.outerHTML || '';
+
+  win.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Bill – ${data.billNumber || ''}</title>
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { background: #fff; }
+        body {
+          width: 80mm;
+          margin: 0;
+          padding: 4mm 2mm;
+          font-family: 'Courier New', monospace;
+        }
+        @page {
+          size: 80mm auto;
+          margin: 0;
+        }
+        body > div {
+          width: 100% !important;
+          max-width: 100% !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        table { width: 100% !important; border-collapse: collapse; }
+      </style>
+    </head>
+    <body>
+      ${printContent}
+      <script>window.onload = () => { window.print(); setTimeout(() => window.close(), 500); }<\/script>
+    </body>
+    </html>
+  `);
+  win.document.close();
+};
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">

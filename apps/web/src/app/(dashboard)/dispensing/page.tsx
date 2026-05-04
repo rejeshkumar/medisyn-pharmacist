@@ -81,7 +81,9 @@ function MedSearchDropdown({
   onTabSelect?: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [highlightedIdx, setHighlightedIdx] = useState(-1);
   const ref = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const { data: results } = useQuery({
     queryKey: ['med-search', value],
@@ -107,7 +109,23 @@ function MedSearchDropdown({
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  useEffect(() => { if (results?.length) setOpen(true); }, [results]);
+  useEffect(() => {
+    if (results?.length) { setOpen(true); setHighlightedIdx(-1); }
+  }, [results]);
+
+  // Scroll highlighted item into view
+  useEffect(() => {
+    if (highlightedIdx >= 0 && listRef.current) {
+      const item = listRef.current.children[highlightedIdx] as HTMLElement;
+      item?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [highlightedIdx]);
+
+  const availableResults = results?.filter((m: any) => {
+    const stock = Number(m.total_stock ?? m.available_stock ?? 0);
+    const hasStockData = m.total_stock !== undefined && m.total_stock !== null;
+    return !hasStockData || stock > 0;
+  }) ?? [];
 
   return (
     <div ref={ref} className="relative w-full">
@@ -119,17 +137,24 @@ function MedSearchDropdown({
         onChange={e => { onChange(e.target.value); }}
         onFocus={() => { if (results?.length) setOpen(true); }}
         onKeyDown={e => {
-          if ((e.key === 'Tab' || e.key === 'Enter') && open && results?.length > 0) {
-            // Select first result on Tab/Enter when dropdown open
+          if (!open || !results?.length) return;
+          if (e.key === 'ArrowDown') {
             e.preventDefault();
-            const firstAvailable = results.find((m: any) => {
-              const stock = Number(m.total_stock ?? m.available_stock ?? 0);
-              const hasStockData = m.total_stock !== undefined && m.total_stock !== null;
-              return !hasStockData || stock > 0;
-            });
-            if (firstAvailable) { onSelect(firstAvailable); setOpen(false); onChange(''); }
+            setHighlightedIdx(i => Math.min(i + 1, results.length - 1));
+          } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setHighlightedIdx(i => Math.max(i - 1, -1));
+          } else if (e.key === 'Enter' || e.key === 'Tab') {
+            e.preventDefault();
+            const selected = highlightedIdx >= 0 ? results[highlightedIdx] : availableResults[0];
+            if (selected) {
+              const stock = Number(selected.total_stock ?? selected.available_stock ?? 0);
+              const hasStockData = selected.total_stock !== undefined && selected.total_stock !== null;
+              const isOOS = hasStockData && stock <= 0;
+              if (!isOOS) { onSelect(selected); setOpen(false); onChange(''); setHighlightedIdx(-1); }
+            }
           } else if (e.key === 'Escape') {
-            setOpen(false);
+            setOpen(false); setHighlightedIdx(-1);
           }
         }}
         placeholder="Type medicine name..."
@@ -150,8 +175,8 @@ function MedSearchDropdown({
         </div>
       )}
       {open && results?.length > 0 && (
-        <div className="absolute top-full left-0 z-50 w-[min(420px,90vw)] bg-white border border-gray-200 rounded-xl shadow-2xl max-h-80 overflow-y-auto">
-          {results.map((med: any) => {
+        <div ref={listRef} className="absolute top-full left-0 z-50 w-[min(420px,90vw)] bg-white border border-gray-200 rounded-xl shadow-2xl max-h-80 overflow-y-auto">
+          {results.map((med: any, i: number) => {
             const stock  = Number(med.total_stock ?? med.available_stock ?? 0);
             const hasStockData = med.total_stock !== undefined && med.total_stock !== null;
             const isOOS  = hasStockData && stock <= 0;
@@ -161,8 +186,10 @@ function MedSearchDropdown({
             const cfg    = SCHEDULE_CONFIG[med.schedule_class] ?? SCHEDULE_CONFIG.OTC;
             return (
               <button key={med.id}
-                onClick={() => { if (!isOOS) { onSelect(med); setOpen(false); onChange(''); } }}
+                onClick={() => { if (!isOOS) { onSelect(med); setOpen(false); onChange(''); setHighlightedIdx(-1); } }}
+                onMouseEnter={() => setHighlightedIdx(i)}
                 className={`w-full px-3 py-2.5 text-left border-b border-gray-50 last:border-0 transition-colors
+                  ${highlightedIdx === i ? 'bg-teal-100 outline outline-2 outline-[#00475a]' : ''}
                   ${isOOS  ? 'bg-red-50 cursor-not-allowed border-l-[3px] border-l-red-400'
                   : isLow  ? 'bg-amber-50 cursor-pointer border-l-[3px] border-l-amber-400 hover:bg-amber-100'
                   : 'hover:bg-teal-50/40 cursor-pointer'}`}>
