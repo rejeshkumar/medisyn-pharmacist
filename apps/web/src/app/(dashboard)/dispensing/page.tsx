@@ -536,6 +536,9 @@ export default function DispensingPage() {
   const refDrRef = useRef<HTMLInputElement>(null);
   const medSearchRefs = useRef<(HTMLInputElement | null)[]>([]);
   const qtyRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const amountPaidRef = useRef<HTMLInputElement>(null);
+  const paymentModeBtnRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const generateBillRef = useRef<HTMLButtonElement>(null);
 
   const { data: rxQueue = [] } = useQuery({
     queryKey: ['rx-queue-dispensing'],
@@ -1380,11 +1383,13 @@ export default function DispensingPage() {
                         onKeyDown={e => {
                           if (e.key === 'Tab' || e.key === 'Enter') {
                             e.preventDefault();
-                            // Move to next medicine search row
                             const nextIdx = idx + 1;
                             const nextSearch = medSearchRefs.current[nextIdx] ?? medSearchRefs.current[cart.length];
                             if (nextSearch) {
                               nextSearch.focus();
+                            } else if (idx === cart.length - 1) {
+                              // Last row — Tab to amount paid
+                              amountPaidRef.current?.focus();
                             } else {
                               const newSearchVals = [...searchValues];
                               if (newSearchVals.length <= nextIdx) newSearchVals.push('');
@@ -1609,8 +1614,15 @@ export default function DispensingPage() {
             <div className="flex justify-between items-center text-slate-600">
               <span>Amount paid</span>
               <input type="number" min={0} placeholder={String(netTotal)}
+                ref={amountPaidRef}
                 value={amountPaid}
                 onChange={e => setAmountPaid(e.target.value === '' ? '' : Number(e.target.value))}
+                onKeyDown={e => {
+                  if (e.key === 'Tab') {
+                    e.preventDefault();
+                    paymentModeBtnRefs.current[0]?.focus();
+                  }
+                }}
                 className="w-24 text-right border border-slate-200 rounded px-2 py-0.5 text-sm font-bold focus:outline-none focus:border-[#00475a]" />
             </div>
 
@@ -1624,8 +1636,27 @@ export default function DispensingPage() {
             <div className="pt-1">
               <p className="text-xs text-slate-400 mb-1.5">Payment mode</p>
               <div className="grid grid-cols-3 gap-1">
-                {['cash','upi','card','online','hybrid'].map(m => (
-                  <button key={m} onClick={() => setPaymentMode(m)}
+                {['cash','upi','card','online','hybrid'].map((m, mi) => (
+                  <button key={m}
+                    ref={el => { paymentModeBtnRefs.current[mi] = el; }}
+                    onClick={() => setPaymentMode(m)}
+                    onKeyDown={e => {
+                      if (e.key === 'ArrowRight' || (e.key === 'Tab' && !e.shiftKey)) {
+                        e.preventDefault();
+                        const next = paymentModeBtnRefs.current[mi + 1];
+                        if (next) next.focus();
+                        else generateBillRef.current?.focus();
+                      } else if (e.key === 'ArrowLeft' || (e.key === 'Tab' && e.shiftKey)) {
+                        e.preventDefault();
+                        const prev = paymentModeBtnRefs.current[mi - 1];
+                        if (prev) prev.focus();
+                        else amountPaidRef.current?.focus();
+                      } else if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setPaymentMode(m);
+                        generateBillRef.current?.focus();
+                      }
+                    }}
                     className={`py-1.5 rounded-lg text-xs font-semibold border transition-all ${
                       paymentMode === m
                         ? 'bg-[#00475a] text-white border-[#00475a]'
@@ -1680,7 +1711,7 @@ export default function DispensingPage() {
 
           {/* Actions */}
           <div className="p-3 border-t border-slate-100 space-y-2">
-            <button onClick={handleBill} disabled={cart.length === 0 || createSaleMutation.isPending}
+            <button ref={generateBillRef} onClick={handleBill} disabled={cart.length === 0 || createSaleMutation.isPending}
               className="w-full py-3 bg-[#00475a] text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#003d4d] disabled:opacity-40 transition-colors">
               {createSaleMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
               Generate Bill
