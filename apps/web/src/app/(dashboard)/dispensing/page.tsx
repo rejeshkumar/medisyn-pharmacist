@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef, useEffect, useCallback, useId } from 'react';
+import { useState, useRef, useEffect, useCallback, useId, forwardRef } from 'react';
 import ReturnMedicinesDialog from '@/components/bills/ReturnMedicinesDialog';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
@@ -73,10 +73,12 @@ const SCHEDULE_CONFIG: Record<string, any> = {
 
 // ── Medicine search dropdown ───────────────────────────────────────────────
 function MedSearchDropdown({
-  value, onChange, onSelect, autoFocus,
+  value, onChange, onSelect, autoFocus, inputRef, onTabSelect,
 }: {
   value: string; onChange: (v: string) => void;
   onSelect: (med: any) => void; onDemand?: (query: string) => void; autoFocus?: boolean;
+  inputRef?: (el: HTMLInputElement | null) => void;
+  onTabSelect?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -110,10 +112,26 @@ function MedSearchDropdown({
   return (
     <div ref={ref} className="relative w-full">
       <input
-        type="text" value={value}
+        ref={inputRef}
+        type="text"
+        value={value}
         autoFocus={autoFocus}
         onChange={e => { onChange(e.target.value); }}
         onFocus={() => { if (results?.length) setOpen(true); }}
+        onKeyDown={e => {
+          if ((e.key === 'Tab' || e.key === 'Enter') && open && results?.length > 0) {
+            // Select first result on Tab/Enter when dropdown open
+            e.preventDefault();
+            const firstAvailable = results.find((m: any) => {
+              const stock = Number(m.total_stock ?? m.available_stock ?? 0);
+              const hasStockData = m.total_stock !== undefined && m.total_stock !== null;
+              return !hasStockData || stock > 0;
+            });
+            if (firstAvailable) { onSelect(firstAvailable); setOpen(false); onChange(''); }
+          } else if (e.key === 'Escape') {
+            setOpen(false);
+          }
+        }}
         placeholder="Type medicine name..."
         className="w-full px-2 py-1 text-sm border-0 bg-transparent focus:outline-none focus:ring-1 focus:ring-[#00475a] rounded"
       />
@@ -245,8 +263,9 @@ function MedSearchDropdown({
 }
 
 // ── Patient search ─────────────────────────────────────────────────────────
-function PatientSearch({ value, onSelect, onChange }: {
+function PatientSearch({ value, onSelect, onChange, onEnterTab }: {
   value: string; onSelect: (p: any) => void; onChange: (v: string) => void;
+  onEnterTab?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -274,6 +293,18 @@ function PatientSearch({ value, onSelect, onChange }: {
       <input type="text" value={value}
         onChange={e => { onChange(e.target.value); }}
         onFocus={() => { if (data?.length) setOpen(true); }}
+        onKeyDown={e => {
+          if (e.key === 'Enter' || (e.key === 'Tab' && !open)) {
+            if (e.key === 'Tab') return; // let natural Tab flow if dropdown closed
+            e.preventDefault();
+            if (open && data?.length > 0) {
+              onSelect(data[0]); setOpen(false);
+            } else {
+              onEnterTab?.();
+            }
+          }
+          if (e.key === 'Escape') setOpen(false);
+        }}
         placeholder="Search patient name / mobile..."
         className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[#00475a]" />
       {open && data?.length > 0 && (
@@ -475,7 +506,9 @@ export default function DispensingPage() {
   const [pendingRxCount, setPendingRxCount] = useState(0);
 
   const fileRef = useRef<HTMLInputElement>(null);
-  const qc = useQueryClient();
+  const refDrRef = useRef<HTMLInputElement>(null);
+  const medSearchRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const qtyRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const { data: rxQueue = [] } = useQuery({
     queryKey: ['rx-queue-dispensing'],
@@ -557,8 +590,8 @@ export default function DispensingPage() {
 
       // Focus next qty field
       setTimeout(() => {
-        const qtyInput = document.getElementById(`qty-${rowIdx}`);
-        qtyInput?.focus();
+        qtyRefs.current[rowIdx]?.focus();
+        qtyRefs.current[rowIdx]?.select();
       }, 50);
 
       if (['H', 'H1', 'X'].includes(med.schedule_class)) {
@@ -1110,6 +1143,7 @@ export default function DispensingPage() {
             <PatientSearch
               value={patientSearch}
               onChange={setPatientSearch}
+              onEnterTab={() => refDrRef.current?.focus()}
               onSelect={p => {
                 const name = `${p.first_name} ${p.last_name ?? ''}`.trim();
                 setPatientSearch(name);
@@ -1148,8 +1182,15 @@ export default function DispensingPage() {
         {/* Row 2: Ref. Dr + Date (always visible, stacked on mobile) */}
         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
           <span className="text-xs font-semibold text-slate-500 whitespace-nowrap flex-shrink-0">Ref. Dr:</span>
-          <input type="text" value={compliance.referring_doctor}
+          <input ref={refDrRef} type="text" value={compliance.referring_doctor}
             onChange={e => setCompliance(p => ({ ...p, referring_doctor: e.target.value }))}
+            onKeyDown={e => {
+              if (e.key === 'Tab' || e.key === 'Enter') {
+                e.preventDefault();
+                // Focus first medicine search row
+                setTimeout(() => medSearchRefs.current[cart.length]?.focus(), 30);
+              }
+            }}
             placeholder="Referring doctor"
             className="flex-1 min-w-0 sm:w-40 sm:flex-none px-2 py-1 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-[#00475a]" />
           {/* Patient gender/age on mobile (moved here) */}
@@ -1303,20 +1344,25 @@ export default function DispensingPage() {
                       </span>
                     </td>
                     <td className="px-3 py-2 text-center">
-                      <input id={`qty-${idx}`} type="number" min={1} value={item.qty || ''}
+                      <input
+                        ref={el => { qtyRefs.current[idx] = el; }}
+                        id={`qty-${idx}`} type="number" min={1} value={item.qty || ''}
                         onChange={e => updateItem(idx, 'qty', Number(e.target.value) || 0)}
                         onBlur={e => { if (!item.qty || item.qty < 1) updateItem(idx, 'qty', 1); }}
                         onFocus={e => e.target.select()}
                         onKeyDown={e => {
-                          if (e.key === 'Tab') {
+                          if (e.key === 'Tab' || e.key === 'Enter') {
                             e.preventDefault();
-                            const nextSearch = document.getElementById(`search-${idx + 1}`);
-                            if (nextSearch) nextSearch.focus();
-                            else {
+                            // Move to next medicine search row
+                            const nextIdx = idx + 1;
+                            const nextSearch = medSearchRefs.current[nextIdx] ?? medSearchRefs.current[cart.length];
+                            if (nextSearch) {
+                              nextSearch.focus();
+                            } else {
                               const newSearchVals = [...searchValues];
-                              if (newSearchVals.length <= idx + 1) newSearchVals.push('');
+                              if (newSearchVals.length <= nextIdx) newSearchVals.push('');
                               setSearchValues(newSearchVals);
-                              setTimeout(() => document.getElementById(`search-${idx + 1}`)?.focus(), 50);
+                              setTimeout(() => medSearchRefs.current[nextIdx]?.focus(), 50);
                             }
                           }
                         }}
@@ -1396,6 +1442,7 @@ export default function DispensingPage() {
                           }}
                           onSelect={med => handleSelectMedicine(med, idx)}
                           autoFocus={idx === 0 && cart.length === 0}
+                          inputRef={el => { medSearchRefs.current[idx] = el; }}
                         />
                         </div>
                         <button onClick={() => setShowScanner(true)}
