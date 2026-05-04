@@ -83,8 +83,8 @@ function ReceiptContent({ data }: { data: BillData }) {
       lineHeight: '1.4',
       color: '#000',
       width: '100%',
-      maxWidth: '302px',
-      margin: '0 auto',
+      maxWidth: '100%',
+      margin: '0',
       padding: '0',
       background: '#fff',
     }}>
@@ -210,48 +210,48 @@ export default function BillDocument({ data, mode, onClose, onConfirm, isLoading
   const printRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = () => {
-  const win = window.open('', '_blank', 'width=400,height=700');
-  if (!win) return;
+    const receiptEl = printRef.current?.querySelector('div') || printRef.current;
+    const printContent = receiptEl?.outerHTML || printRef.current?.innerHTML || '';
 
-  const receiptEl = printRef.current?.querySelector('div') || printRef.current;
-  const printContent = receiptEl?.outerHTML || '';
-
-  win.document.write(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <title>Bill – ${data.billNumber || ''}</title>
-      <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        html, body { background: #fff; }
-        body {
-          width: 80mm;
-          margin: 0;
-          padding: 4mm 2mm;
-          font-family: 'Courier New', monospace;
-        }
-        @page {
-          size: 80mm auto;
-          margin: 0;
-        }
-        body > div {
-          width: 100% !important;
-          max-width: 100% !important;
-          margin: 0 !important;
-          padding: 0 !important;
-        }
-        table { width: 100% !important; border-collapse: collapse; }
-      </style>
-    </head>
-    <body>
-      ${printContent}
-      <script>window.onload = () => { window.print(); setTimeout(() => window.close(), 500); }<\/script>
-    </body>
-    </html>
-  `);
-  win.document.close();
-};
+    const win = window.open('', '_blank', 'width=800,height=900');
+    if (!win) return;
+    win.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Bill – ${data.billNumber || ''}</title>
+        <style>
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          html, body { background: #fff; }
+          body {
+            width: 100%;
+            margin: 0;
+            padding: 6px 8px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 11px;
+          }
+          @page {
+            size: A4 portrait;
+            margin: 8mm 6mm;
+          }
+          body > div {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          table { width: 100% !important; border-collapse: collapse; }
+        </style>
+      </head>
+      <body>
+        ${printContent}
+        <script>window.onload = () => { window.print(); setTimeout(() => window.close(), 500); }<\/script>
+      </body>
+      </html>
+    `);
+    win.document.close();
+  };
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -282,7 +282,8 @@ export default function BillDocument({ data, mode, onClose, onConfirm, isLoading
               padding: '12px',
               borderRadius: '4px',
               boxShadow: '0 1px 8px rgba(0,0,0,0.12)',
-              width: '302px',
+              width: '100%',
+              maxWidth: '560px',
               flexShrink: 0,
             }}
           >
