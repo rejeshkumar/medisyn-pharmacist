@@ -733,8 +733,12 @@ export default function DispensingPage() {
   const afterLineDisc = subtotal - lineDiscTotal;
   const overallDiscAmt= afterLineDisc * (overallDiscount / 100);
   const netBeforeRound= afterLineDisc - overallDiscAmt;
-  const roundOff      = Math.round(netBeforeRound) - netBeforeRound;
-  const netTotal      = Math.round(netBeforeRound);
+  const roundOff      = overallDiscountReason === 'Round off'
+    ? Math.round(netBeforeRound) - netBeforeRound
+    : 0;
+  const netTotal      = overallDiscountReason === 'Round off'
+    ? Math.round(netBeforeRound)
+    : parseFloat(netBeforeRound.toFixed(2));
   const dueAmount     = typeof amountPaid === 'number' ? Math.max(0, netTotal - amountPaid) : 0;
 
   const hasScheduledDrugs = cart.some(i => ['H', 'H1', 'X'].includes(i.schedule_class));
