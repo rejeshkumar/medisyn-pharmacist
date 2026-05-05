@@ -16,6 +16,7 @@ import toast from 'react-hot-toast';
 import DiagnosisSuggestions from '@/components/ai/DiagnosisSuggestions';
 import DrugInteractionChecker from '@/components/ai/DrugInteractionChecker';
 import PrescriptionScanner from '@/components/ai/PrescriptionScanner';
+import PatientHealthCard from '@/components/patient-health/PatientHealthCard';
 
 
 // ── ICD-10 Common Indian Diagnoses ───────────────────────────────────────────
@@ -795,6 +796,16 @@ export default function ConsultPage() {
             ))}
           </div>
         </div>
+      )}
+
+
+      {/* Patient Health Intelligence Card */}
+      {queueEntry?.patient_id && (
+        <PatientHealthCard
+          patientId={queueEntry.patient_id}
+          patientName={patientName}
+          token={typeof window !== 'undefined' ? localStorage.getItem('token') || '' : ''}
+        />
       )}
 
       {/* Tabs */}
