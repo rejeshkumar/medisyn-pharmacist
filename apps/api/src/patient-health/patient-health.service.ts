@@ -65,74 +65,232 @@ export class PatientHealthService {
     return rows.reverse();
   }
 
+  // --------------------------------------------------------------------------
+  // GET /patient-health/:patientId/brief
+  // Full clinical context sent to Claude — LLM as clinical reasoner
+  // --------------------------------------------------------------------------
   async getAiBrief(patientId: string, tenantId: string) {
     const summary = await this.getSummary(patientId, tenantId);
-    const timeline = await this.getTimeline(patientId, tenantId);
 
+    // Return cached brief if generated within last 6 hours
     if (
       summary?.ai_brief &&
       summary?.ai_brief_generated_at &&
-      new Date().getTime() - new Date(summary.ai_brief_generated_at).getTime() < 86400_000
+      new Date().getTime() - new Date(summary.ai_brief_generated_at).getTime() < 21600_000
     ) {
       return { brief: summary.ai_brief, from_cache: true };
     }
 
-    const recentConsultations = timeline
-      .filter((e: any) => e.event_type === 'consultation')
-      .slice(0, 5)
-      .map(
-        (e: any) =>
-          `${e.visit_date}: Diagnosis: ${e.diagnosis || 'N/A'}. ` +
-          `Complaint: ${e.chief_complaint || 'N/A'}. ` +
-          `BP: ${e.bp_systolic ? `${e.bp_systolic}/${e.bp_diastolic}` : 'N/A'}. ` +
-          `Weight: ${e.weight ? `${e.weight}kg` : 'N/A'}. ` +
-          `Sugar: ${e.blood_sugar ? `${e.blood_sugar} mg/dL` : 'N/A'}. ` +
-          `Follow-up: ${e.follow_up_date || 'None'}.`,
+    // ── 1. Full vitals history (all readings, chronological) ─────────────────
+    const allVitals = await this.ds
+      .query(
+        `SELECT
+           recorded_at::DATE AS date,
+           bp_systolic, bp_diastolic, pulse_rate,
+           weight, bmi, spo2, blood_sugar, temperature,
+           chief_complaint, allergies, current_medicines
+         FROM pre_checks
+         WHERE patient_id = $1 AND tenant_id = $2 AND is_active = TRUE
+         ORDER BY recorded_at ASC`,
+        [patientId, tenantId],
       )
-      .join('\n');
+      .catch(() => []);
 
-    const flags: string[] = [];
-    if (summary?.flag_missed_refill)
-      flags.push(`⚠️ No visit in ${summary.days_since_refill} days`);
-    if (summary?.flag_bp_elevated)
-      flags.push(`🔴 BP elevated: ${summary.latest_bp_systolic}/${summary.latest_bp_diastolic} mmHg`);
-    if (summary?.flag_sugar_elevated)
-      flags.push(`🔴 Blood sugar elevated: ${summary.latest_blood_sugar} mg/dL`);
-    if (summary?.flag_overdue_followup)
-      flags.push('⚠️ Follow-up appointment overdue');
+    // ── 2. Full consultation history ─────────────────────────────────────────
+    const allConsultations = await this.ds
+      .query(
+        `SELECT
+           c.created_at::DATE AS date,
+           c.diagnosis, c.symptoms, c.examination,
+           c.advice, c.follow_up_date, c.referral,
+           c.is_follow_up, c.diagnosis_code,
+           u.full_name AS doctor_name,
+           q.chief_complaint, q.visit_type
+         FROM consultations c
+         JOIN queues q ON q.id = c.queue_id
+         LEFT JOIN users u ON u.id = c.doctor_id
+         WHERE c.patient_id = $1 AND c.tenant_id = $2
+           AND c.is_active = TRUE
+         ORDER BY c.created_at ASC`,
+        [patientId, tenantId],
+      )
+      .catch(() => []);
 
-    const prompt = `You are a clinical assistant at MediSyn Speciality Clinic, Kerala.
-Prepare a concise pre-consultation brief for the doctor in 3-4 bullet points.
-Be specific, clinical, and actionable. No fluff.
+    // ── 3. Patient demographics ───────────────────────────────────────────────
+    const [patient] = await this.ds
+      .query(
+        `SELECT first_name, last_name, mobile,
+                date_of_birth, gender, allergies, chronic_conditions
+         FROM patients
+         WHERE id = $1 AND tenant_id = $2`,
+        [patientId, tenantId],
+      )
+      .catch(() => [{}]);
 
-Patient Summary:
-- Total visits: ${summary?.total_visits || 0}
-- Last visit: ${summary?.last_visit_date || 'N/A'}
-- Days since last visit: ${summary?.days_since_refill ?? 'N/A'}
+    const p = patient || {};
+    const age = p.date_of_birth
+      ? Math.floor((new Date().getTime() - new Date(p.date_of_birth).getTime()) / (365.25 * 86400_000))
+      : null;
 
-Recent Consultations (newest first):
-${recentConsultations || 'None on record'}
+    // ── 4. Build structured clinical context ─────────────────────────────────
 
-Risk Flags:
-${flags.length ? flags.join('\n') : 'No active risk flags'}
+    // Vitals timeline — compact format
+    const vitalsHistory = allVitals.length > 0
+      ? allVitals.map((v: any) =>
+          `  ${v.date}: BP ${v.bp_systolic ? `${v.bp_systolic}/${v.bp_diastolic}mmHg` : '—'} | ` +
+          `Pulse ${v.pulse_rate || '—'}bpm | ` +
+          `Wt ${v.weight ? `${v.weight}kg` : '—'} | ` +
+          `Sugar ${v.blood_sugar ? `${v.blood_sugar}mg/dL` : '—'} | ` +
+          `SpO2 ${v.spo2 ? `${v.spo2}%` : '—'} | ` +
+          `Temp ${v.temperature ? `${v.temperature}°F` : '—'}` +
+          (v.chief_complaint ? ` | Complaint: ${v.chief_complaint}` : '') +
+          (v.current_medicines ? ` | Self-reported meds: ${v.current_medicines}` : '')
+        ).join('\n')
+      : '  No vitals on record';
 
-Write exactly 3-4 bullet points the doctor should know BEFORE the consultation.
-Focus on: vitals trends, adherence, unresolved issues, what to check today.
-Keep each bullet under 20 words. Start each with •`;
+    // Compute vitals trends explicitly for Claude
+    const vitalsAnalysis = (() => {
+      if (allVitals.length < 2) return 'Insufficient data for trend analysis.';
+      const lines: string[] = [];
 
+      // BP trend
+      const bpReadings = allVitals.filter((v: any) => v.bp_systolic).map((v: any) => v.bp_systolic);
+      if (bpReadings.length >= 2) {
+        const first = bpReadings[0], last = bpReadings[bpReadings.length - 1];
+        const diff = last - first;
+        const max = Math.max(...bpReadings);
+        lines.push(`BP systolic: ${first} → ${last} mmHg (${diff > 0 ? '+' : ''}${diff} over ${bpReadings.length} readings, peak ${max})`);
+      }
+
+      // Weight trend
+      const wtReadings = allVitals.filter((v: any) => v.weight).map((v: any) => parseFloat(v.weight));
+      if (wtReadings.length >= 2) {
+        const diff = (wtReadings[wtReadings.length - 1] - wtReadings[0]).toFixed(1);
+        lines.push(`Weight: ${wtReadings[0]}kg → ${wtReadings[wtReadings.length - 1]}kg (${parseFloat(diff) > 0 ? '+' : ''}${diff}kg)`);
+      }
+
+      // Sugar trend
+      const sugarReadings = allVitals.filter((v: any) => v.blood_sugar).map((v: any) => parseFloat(v.blood_sugar));
+      if (sugarReadings.length >= 2) {
+        const diff = (sugarReadings[sugarReadings.length - 1] - sugarReadings[0]).toFixed(0);
+        lines.push(`Blood sugar: ${sugarReadings[0]} → ${sugarReadings[sugarReadings.length - 1]} mg/dL (${parseFloat(diff) > 0 ? '+' : ''}${diff})`);
+      }
+
+      return lines.length > 0 ? lines.join('\n') : 'No significant trend data.';
+    })();
+
+    // Consultation history — full detail
+    const consultHistory = allConsultations.length > 0
+      ? allConsultations.map((c: any, i: number) =>
+          `  Visit ${i + 1} (${c.date})${c.is_follow_up ? ' [Follow-up]' : ''}:\n` +
+          `    Chief complaint: ${c.chief_complaint || 'N/A'}\n` +
+          `    Diagnosis: ${c.diagnosis || 'N/A'}${c.diagnosis_code ? ` (${c.diagnosis_code})` : ''}\n` +
+          (c.symptoms ? `    Symptoms: ${c.symptoms}\n` : '') +
+          (c.examination ? `    Examination: ${c.examination}\n` : '') +
+          (c.advice ? `    Advice: ${c.advice}\n` : '') +
+          (c.follow_up_date ? `    Follow-up requested: ${c.follow_up_date}\n` : '') +
+          (c.referral ? `    Referral: ${c.referral}\n` : '')
+        ).join('\n')
+      : '  No consultations on record';
+
+    // Recurring diagnoses — pattern detection
+    const diagnosisCounts: Record<string, number> = {};
+    allConsultations.forEach((c: any) => {
+      if (c.diagnosis) {
+        const d = c.diagnosis.trim();
+        diagnosisCounts[d] = (diagnosisCounts[d] || 0) + 1;
+      }
+    });
+    const recurringDiagnoses = Object.entries(diagnosisCounts)
+      .filter(([, count]) => count > 1)
+      .sort(([, a], [, b]) => b - a)
+      .map(([d, count]) => `${d} (×${count})`)
+      .join(', ');
+
+    // Visit gap analysis
+    const visitDates = allConsultations.map((c: any) => new Date(c.date).getTime()).sort();
+    const gaps = visitDates.slice(1).map((d, i) =>
+      Math.round((d - visitDates[i]) / 86400_000)
+    );
+    const avgGap = gaps.length > 0
+      ? Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length)
+      : null;
+    const daysSinceLastVisit = visitDates.length > 0
+      ? Math.round((new Date().getTime() - visitDates[visitDates.length - 1]) / 86400_000)
+      : null;
+
+    // ── 5. Build the deep clinical prompt ────────────────────────────────────
+    const prompt = `You are an experienced clinical assistant at MediSyn Speciality Clinic, Taliparamba, Kerala, India.
+
+A patient is about to enter the doctor's consultation room. Your job is to analyse their complete medical history and give the doctor a precise, actionable pre-consultation brief — like a senior nurse handing over the case.
+
+Think like a clinician: look for patterns, trends, red flags, unresolved issues, and what needs attention TODAY. Do not just summarise — reason across the data.
+
+══════════════════════════════════════════════
+PATIENT PROFILE
+══════════════════════════════════════════════
+${age ? `Age: ${age} years` : 'Age: Unknown'}
+${p.gender ? `Gender: ${p.gender}` : ''}
+${p.allergies ? `Known allergies: ${p.allergies}` : 'Allergies: None recorded'}
+${p.chronic_conditions ? `Chronic conditions: ${p.chronic_conditions}` : ''}
+Total visits: ${summary?.total_visits || allConsultations.length}
+Days since last visit: ${daysSinceLastVisit ?? 'Unknown'}
+Average gap between visits: ${avgGap ? `${avgGap} days` : 'N/A'}
+
+══════════════════════════════════════════════
+VITALS HISTORY (chronological)
+══════════════════════════════════════════════
+${vitalsHistory}
+
+COMPUTED TRENDS:
+${vitalsAnalysis}
+
+══════════════════════════════════════════════
+CONSULTATION HISTORY (chronological)
+══════════════════════════════════════════════
+${consultHistory}
+
+${recurringDiagnoses ? `RECURRING DIAGNOSES: ${recurringDiagnoses}` : ''}
+
+══════════════════════════════════════════════
+YOUR TASK
+══════════════════════════════════════════════
+Write a pre-consultation brief with these FOUR sections:
+
+🔴 RED FLAGS (if any)
+Immediate concerns the doctor must not miss — abnormal vitals trends, dangerous patterns, overdue critical follow-ups. Skip this section if none.
+
+📊 HEALTH TRAJECTORY
+In 2-3 sentences: how is this patient's health trending overall? Are things improving, stable, or deteriorating? Reference specific numbers.
+
+🩺 WHAT TO CHECK TODAY
+3-4 specific things the doctor should examine or ask about this visit, based on the history. Be specific — not generic advice.
+
+💡 CLINICAL INSIGHT
+One observation the doctor might not see from a quick glance — a pattern across visits, a correlation, an emerging risk, or a missed follow-up that needs attention.
+
+Be direct, clinical, and specific. Use actual numbers from the data. Avoid generic advice.
+Indian clinical context: patients in Kerala often present late, are on multiple medications, and may have undiagnosed diabetes/hypertension alongside acute complaints.`;
+
+    // ── 6. Call Claude ────────────────────────────────────────────────────────
     const response = await this.claude.messages
       .create({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 400,
+        max_tokens: 800,
+        system: 'You are a senior clinical assistant. You reason across longitudinal patient data to give doctors precise, actionable pre-consultation briefs. You never give generic advice — every point must reference specific data from the patient record.',
         messages: [{ role: 'user', content: prompt }],
       })
-      .catch(() => null);
+      .catch((e: any) => {
+        console.error('[ai-brief] Claude error:', e.message);
+        return null;
+      });
 
     const brief =
       response?.content?.[0]?.type === 'text'
         ? response.content[0].text
-        : 'Unable to generate brief at this time.';
+        : 'Unable to generate brief — check ANTHROPIC_API_KEY in Railway env vars.';
 
+    // ── 7. Cache ──────────────────────────────────────────────────────────────
     await this.ds
       .query(
         `UPDATE patient_health_summary

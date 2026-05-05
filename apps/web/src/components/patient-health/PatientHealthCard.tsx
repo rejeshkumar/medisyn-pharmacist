@@ -1,19 +1,14 @@
 'use client';
 // ============================================================================
 // apps/web/src/components/patient-health/PatientHealthCard.tsx
-// Doctor-facing Patient Health Intelligence Card
-// Props: patientId, patientName, tenantId (from JWT)
-// Usage: Import inside doctor consultation page, pass patientId from queue
 // ============================================================================
 
 import { useState, useEffect, useCallback } from 'react';
 
 const API = process.env.NEXT_PUBLIC_API_URL || '';
 
-// ── Types ────────────────────────────────────────────────────────────────────
 interface HealthSummary {
   total_visits: number;
-  first_visit_date: string;
   last_visit_date: string;
   latest_bp_systolic: number;
   latest_bp_diastolic: number;
@@ -25,15 +20,14 @@ interface HealthSummary {
   bp_trend: 'up' | 'down' | 'stable';
   weight_trend: 'up' | 'down' | 'stable';
   sugar_trend: 'up' | 'down' | 'stable';
-  active_medicine_count: number;
-  unique_molecules: string[];
   days_since_refill: number;
+  unique_molecules: string[];
+  active_medicine_count: number;
   flag_missed_refill: boolean;
-  flag_polypharmacy: boolean;
   flag_bp_elevated: boolean;
   flag_sugar_elevated: boolean;
   flag_overdue_followup: boolean;
-  flag_multiple_analgesics: boolean;
+  flag_polypharmacy: boolean;
   risk_score: number;
   ai_brief: string;
 }
@@ -48,19 +42,8 @@ interface TimelineEvent {
   bp_diastolic: number;
   weight: number;
   blood_sugar: number;
-  dispensed_medicines: string[];
   follow_up_date: string;
-  advice: string;
-}
-
-interface VitalsPoint {
-  date: string;
-  bp_systolic: number;
-  bp_diastolic: number;
-  weight: number;
-  blood_sugar: number;
-  pulse_rate: number;
-  spo2: number;
+  dispensed_medicines: string[];
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -68,12 +51,6 @@ function trendIcon(trend: string) {
   if (trend === 'up') return '↑';
   if (trend === 'down') return '↓';
   return '→';
-}
-
-function trendColor(trend: string, higherIsBad = true) {
-  if (trend === 'stable') return '#6b7280';
-  if (higherIsBad) return trend === 'up' ? '#ef4444' : '#22c55e';
-  return trend === 'up' ? '#22c55e' : '#ef4444';
 }
 
 function riskColor(score: number) {
@@ -92,32 +69,54 @@ function dayLabel(days: number | null) {
   if (days === null || days === undefined) return '—';
   if (days === 0) return 'Today';
   if (days === 1) return '1 day ago';
-  return `${days} days ago`;
+  return `${days}d ago`;
 }
 
-// Mini sparkline using SVG
-function Sparkline({ data, color }: { data: number[]; color: string }) {
-  if (!data || data.length < 2) return <span style={{ color: '#9ca3af' }}>—</span>;
-  const clean = data.filter(Boolean);
-  if (clean.length < 2) return <span style={{ color: '#9ca3af' }}>—</span>;
+// ── Parse the 4-section brief from Claude ────────────────────────────────────
+function parseBrief(brief: string) {
+  const sections: { icon: string; title: string; content: string; color: string }[] = [];
+  const sectionDefs = [
+    { key: '🔴 RED FLAGS',        icon: '🔴', title: 'Red Flags',         color: '#fef2f2', border: '#fecaca' },
+    { key: '📊 HEALTH TRAJECTORY',icon: '📊', title: 'Health Trajectory', color: '#eff6ff', border: '#bfdbfe' },
+    { key: '🩺 WHAT TO CHECK',    icon: '🩺', title: 'What to Check Today',color: '#f0fdf4', border: '#bbf7d0' },
+    { key: '💡 CLINICAL INSIGHT', icon: '💡', title: 'Clinical Insight',   color: '#fefce8', border: '#fde68a' },
+  ];
+
+  sectionDefs.forEach(def => {
+    const regex = new RegExp(`${def.key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\\s\\S]*?(?=${sectionDefs.map(s => s.key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')}|$)`, 'i');
+    const match = brief.match(regex);
+    if (match) {
+      const raw = match[0].replace(def.key, '').trim();
+      if (raw.length > 5) {
+        sections.push({ icon: def.icon, title: def.title, content: raw, color: def.color });
+      }
+    }
+  });
+
+  // Fallback: show raw brief if parsing fails
+  if (sections.length === 0 && brief.length > 10) {
+    sections.push({ icon: '✨', title: 'Clinical Brief', content: brief, color: '#f0fdf4' });
+  }
+  return sections;
+}
+
+// ── Mini bar chart ────────────────────────────────────────────────────────────
+function MiniBar({ data, color }: { data: number[]; color: string }) {
+  const clean = (data || []).filter(Boolean);
+  if (clean.length < 2) return <span style={{ color: '#9ca3af', fontSize: 11 }}>—</span>;
   const min = Math.min(...clean);
   const max = Math.max(...clean);
   const range = max - min || 1;
-  const w = 60, h = 24;
-  const pts = clean.map((v, i) => {
-    const x = (i / (clean.length - 1)) * w;
-    const y = h - ((v - min) / range) * (h - 4) - 2;
-    return `${x},${y}`;
-  }).join(' ');
   return (
-    <svg width={w} height={h} style={{ display: 'inline-block', verticalAlign: 'middle' }}>
-      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
-      <circle
-        cx={parseFloat(pts.split(' ').pop()!.split(',')[0])}
-        cy={parseFloat(pts.split(' ').pop()!.split(',')[1])}
-        r="2.5" fill={color}
-      />
-    </svg>
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 20 }}>
+      {clean.slice(-6).map((v, i) => (
+        <div key={i} style={{
+          width: 6, borderRadius: 2,
+          height: `${Math.max(((v - min) / range) * 100, 15)}%`,
+          background: i === clean.length - 1 ? color : color + '66',
+        }} title={String(v)} />
+      ))}
+    </div>
   );
 }
 
@@ -131,16 +130,16 @@ export default function PatientHealthCard({
   patientName?: string;
   token: string;
 }) {
-  const [summary, setSummary] = useState<HealthSummary | null>(null);
-  const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
-  const [vitals, setVitals] = useState<VitalsPoint[]>([]);
-  const [brief, setBrief] = useState<string>('');
+  const [summary, setSummary]     = useState<HealthSummary | null>(null);
+  const [timeline, setTimeline]   = useState<TimelineEvent[]>([]);
+  const [vitals, setVitals]       = useState<any[]>([]);
+  const [brief, setBrief]         = useState<string>('');
   const [briefLoading, setBriefLoading] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'timeline' | 'vitals'>('overview');
-  const [expanded, setExpanded] = useState(true);
+  const [loading, setLoading]     = useState(true);
+  const [tab, setTab]             = useState<'brief' | 'vitals' | 'history'>('brief');
+  const [collapsed, setCollapsed] = useState(false);
 
-  const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+  const headers = { Authorization: `Bearer ${token}` };
 
   const fetchAll = useCallback(async () => {
     if (!patientId) return;
@@ -167,6 +166,9 @@ export default function PatientHealthCard({
       if (res.ok) {
         const data = await res.json();
         setBrief(data.brief || '');
+        // Also refresh summary for updated flags
+        const sumRes = await fetch(`${API}/patient-health/${patientId}/summary`, { headers });
+        if (sumRes.ok) setSummary(await sumRes.json());
       }
     } catch (_) {}
     setBriefLoading(false);
@@ -179,18 +181,18 @@ export default function PatientHealthCard({
 
   if (!patientId) return null;
 
-  const flags = summary ? [
-    summary.flag_bp_elevated     && { label: 'Elevated BP',       color: '#ef4444', icon: '🩺' },
-    summary.flag_sugar_elevated  && { label: 'High Blood Sugar',   color: '#ef4444', icon: '🩸' },
-    summary.flag_missed_refill   && { label: 'Missed Refill',      color: '#f59e0b', icon: '💊' },
-    summary.flag_overdue_followup&& { label: 'Overdue Follow-up',  color: '#f59e0b', icon: '📅' },
-    summary.flag_polypharmacy    && { label: 'Polypharmacy Risk',  color: '#f59e0b', icon: '⚠️' },
-    summary.flag_multiple_analgesics && { label: 'Frequent Analgesics', color: '#6366f1', icon: '💉' },
+  const activeFlags = summary ? [
+    summary.flag_bp_elevated      && { label: 'High BP',         color: '#ef4444' },
+    summary.flag_sugar_elevated   && { label: 'High Sugar',      color: '#ef4444' },
+    summary.flag_missed_refill    && { label: `No visit ${dayLabel(summary.days_since_refill)}`, color: '#f59e0b' },
+    summary.flag_overdue_followup && { label: 'Follow-up overdue', color: '#f59e0b' },
+    summary.flag_polypharmacy     && { label: 'Polypharmacy',    color: '#8b5cf6' },
   ].filter(Boolean) : [];
 
-  const bpData = vitals.map(v => v.bp_systolic);
-  const weightData = vitals.map(v => v.weight);
-  const sugarData = vitals.map(v => v.blood_sugar);
+  const briefSections = parseBrief(brief);
+  const bpData     = vitals.map(v => v.bp_systolic);
+  const sugarData  = vitals.map(v => v.blood_sugar);
+  const weightData = vitals.map(v => parseFloat(v.weight));
 
   return (
     <div style={{
@@ -199,16 +201,18 @@ export default function PatientHealthCard({
       borderRadius: 12,
       marginBottom: 16,
       overflow: 'hidden',
-      fontFamily: '"Inter", -apple-system, sans-serif',
+      fontFamily: '-apple-system, sans-serif',
       fontSize: 13,
+      boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
     }}>
-      {/* ── Header bar ── */}
+
+      {/* ── Header ── */}
       <div
-        onClick={() => setExpanded(e => !e)}
+        onClick={() => setCollapsed(c => !c)}
         style={{
-          background: '#00475a',
+          background: 'linear-gradient(135deg, #00475a, #006b82)',
           color: '#fff',
-          padding: '10px 16px',
+          padding: '10px 14px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -216,430 +220,353 @@ export default function PatientHealthCard({
           userSelect: 'none',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 16 }}>🧠</span>
-          <span style={{ fontWeight: 600, fontSize: 13.5 }}>
-            Patient Health Intelligence
-            {patientName ? ` — ${patientName}` : ''}
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 15 }}>🧠</span>
+          <span style={{ fontWeight: 700, fontSize: 13 }}>Health Intelligence</span>
+          {patientName && <span style={{ opacity: 0.8, fontSize: 12 }}>— {patientName}</span>}
           {summary && (
             <span style={{
               background: riskColor(summary.risk_score),
               color: '#fff',
-              padding: '2px 8px',
+              padding: '1px 8px',
               borderRadius: 20,
               fontSize: 11,
-              fontWeight: 600,
+              fontWeight: 700,
             }}>
-              {riskLabel(summary.risk_score)} · {summary.risk_score}/100
+              {riskLabel(summary.risk_score)} {summary.risk_score}/100
             </span>
           )}
+          {activeFlags.map((f: any, i) => (
+            <span key={i} style={{
+              background: f.color + '33',
+              color: f.color,
+              border: `1px solid ${f.color}66`,
+              padding: '1px 7px',
+              borderRadius: 20,
+              fontSize: 10,
+              fontWeight: 600,
+            }}>
+              {f.label}
+            </span>
+          ))}
         </div>
-        <span style={{ fontSize: 16, opacity: 0.8 }}>{expanded ? '▲' : '▼'}</span>
+        <span style={{ fontSize: 14, opacity: 0.7 }}>{collapsed ? '▼' : '▲'}</span>
       </div>
 
-      {!expanded ? null : loading ? (
-        <div style={{ padding: 24, textAlign: 'center', color: '#9ca3af' }}>
-          Loading patient health data…
+      {collapsed ? null : loading ? (
+        <div style={{ padding: 20, textAlign: 'center', color: '#9ca3af', fontSize: 12 }}>
+          Loading patient intelligence…
         </div>
       ) : (
         <>
-          {/* ── AI Brief ── */}
+          {/* ── Tab bar ── */}
           <div style={{
-            background: '#f0fdf4',
+            display: 'flex',
             borderBottom: '1px solid #e5e7eb',
-            padding: '10px 16px',
+            background: '#f9fafb',
           }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-              <span style={{ fontSize: 18, marginTop: 1 }}>✨</span>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, color: '#166534', marginBottom: 4, fontSize: 12 }}>
-                  PRE-CONSULTATION BRIEF
-                </div>
-                {briefLoading ? (
-                  <div style={{ color: '#6b7280', fontStyle: 'italic', fontSize: 12 }}>
-                    Generating AI brief…
-                  </div>
-                ) : brief ? (
-                  <div style={{ color: '#1f2937', lineHeight: 1.6, fontSize: 12.5, whiteSpace: 'pre-line' }}>
-                    {brief}
-                  </div>
-                ) : (
-                  <div style={{ color: '#6b7280', fontSize: 12 }}>
-                    No brief available.{' '}
-                    <button onClick={fetchBrief} style={{
-                      background: 'none', border: 'none', color: '#00475a',
-                      cursor: 'pointer', textDecoration: 'underline', fontSize: 12,
-                    }}>Generate now</button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* ── Risk Flags ── */}
-          {flags.length > 0 && (
-            <div style={{
-              padding: '8px 16px',
-              background: '#fff8f0',
-              borderBottom: '1px solid #fed7aa',
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 6,
-            }}>
-              {flags.map((f: any, i) => (
-                <span key={i} style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  background: f.color + '18',
-                  color: f.color,
-                  border: `1px solid ${f.color}44`,
-                  padding: '3px 10px',
-                  borderRadius: 20,
-                  fontSize: 11,
-                  fontWeight: 600,
-                }}>
-                  {f.icon} {f.label}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {/* ── Tabs ── */}
-          <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', background: '#f9fafb' }}>
-            {(['overview', 'timeline', 'vitals'] as const).map(tab => (
-              <button key={tab} onClick={() => setActiveTab(tab)} style={{
-                padding: '8px 16px',
+            {([
+              { id: 'brief',   label: '✨ AI Brief' },
+              { id: 'vitals',  label: '📈 Vitals' },
+              { id: 'history', label: '📋 History' },
+            ] as const).map(t => (
+              <button key={t.id} onClick={() => setTab(t.id)} style={{
+                padding: '7px 14px',
                 border: 'none',
                 background: 'none',
                 cursor: 'pointer',
-                fontWeight: activeTab === tab ? 700 : 400,
-                color: activeTab === tab ? '#00475a' : '#6b7280',
-                borderBottom: activeTab === tab ? '2px solid #00475a' : '2px solid transparent',
+                fontWeight: tab === t.id ? 700 : 400,
+                color: tab === t.id ? '#00475a' : '#6b7280',
+                borderBottom: tab === t.id ? '2px solid #00475a' : '2px solid transparent',
                 fontSize: 12,
-                textTransform: 'capitalize',
               }}>
-                {tab === 'overview' ? '📊 Overview' : tab === 'timeline' ? '📋 Visit History' : '📈 Vitals Trends'}
+                {t.label}
               </button>
             ))}
+            <div style={{ flex: 1 }} />
+            <button
+              onClick={(e) => { e.stopPropagation(); fetchBrief(); }}
+              disabled={briefLoading}
+              style={{
+                margin: '5px 10px',
+                padding: '3px 10px',
+                background: 'none',
+                border: '1px solid #d1d5db',
+                borderRadius: 6,
+                color: '#6b7280',
+                cursor: 'pointer',
+                fontSize: 10,
+                opacity: briefLoading ? 0.5 : 1,
+              }}
+            >
+              {briefLoading ? '⏳ Generating…' : '↻ Refresh Brief'}
+            </button>
           </div>
 
-          {/* ── Tab: Overview ── */}
-          {activeTab === 'overview' && summary && (
-            <div style={{ padding: 16 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
-
-                {/* Vitals */}
-                <div style={{ background: '#f9fafb', borderRadius: 8, padding: 12, border: '1px solid #e5e7eb' }}>
-                  <div style={{ fontWeight: 700, color: '#374151', marginBottom: 8, fontSize: 12 }}>
-                    📟 LATEST VITALS
+          {/* ── AI Brief tab ── */}
+          {tab === 'brief' && (
+            <div style={{ padding: 14 }}>
+              {briefLoading ? (
+                <div style={{
+                  background: '#f0fdf4',
+                  border: '1px solid #bbf7d0',
+                  borderRadius: 10,
+                  padding: 16,
+                  textAlign: 'center',
+                }}>
+                  <div style={{ fontSize: 24, marginBottom: 8 }}>🧠</div>
+                  <div style={{ color: '#166534', fontWeight: 600, fontSize: 13 }}>
+                    Analysing patient history…
                   </div>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <div style={{ color: '#6b7280', fontSize: 11, marginTop: 4 }}>
+                    Claude is reading all visits, vitals trends, and diagnosis patterns
+                  </div>
+                </div>
+              ) : briefSections.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {briefSections.map((s, i) => (
+                    <div key={i} style={{
+                      background: s.color,
+                      border: `1px solid ${s.color === '#fef2f2' ? '#fecaca' : s.color === '#eff6ff' ? '#bfdbfe' : s.color === '#f0fdf4' ? '#bbf7d0' : '#fde68a'}`,
+                      borderRadius: 8,
+                      padding: '10px 12px',
+                    }}>
+                      <div style={{ fontWeight: 700, fontSize: 11, color: '#374151', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        {s.icon} {s.title}
+                      </div>
+                      <div style={{ fontSize: 12.5, color: '#1f2937', lineHeight: 1.65, whiteSpace: 'pre-line' }}>
+                        {s.content}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', color: '#9ca3af', padding: 20, fontSize: 12 }}>
+                  Click ↻ Refresh Brief to generate AI analysis
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Vitals tab ── */}
+          {tab === 'vitals' && (
+            <div style={{ padding: 14 }}>
+              {/* Latest vitals row */}
+              {summary && (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gap: 8,
+                  marginBottom: 12,
+                }}>
+                  {[
+                    {
+                      label: 'Blood Pressure',
+                      value: summary.latest_bp_systolic
+                        ? `${summary.latest_bp_systolic}/${summary.latest_bp_diastolic}`
+                        : '—',
+                      unit: 'mmHg',
+                      trend: summary.bp_trend,
+                      alert: summary.flag_bp_elevated,
+                      data: bpData,
+                      color: '#ef4444',
+                    },
+                    {
+                      label: 'Blood Sugar',
+                      value: summary.latest_blood_sugar ? `${summary.latest_blood_sugar}` : '—',
+                      unit: 'mg/dL',
+                      trend: summary.sugar_trend,
+                      alert: summary.flag_sugar_elevated,
+                      data: sugarData,
+                      color: '#f59e0b',
+                    },
+                    {
+                      label: 'Weight',
+                      value: summary.latest_weight ? `${summary.latest_weight}` : '—',
+                      unit: 'kg',
+                      trend: summary.weight_trend,
+                      alert: false,
+                      data: weightData,
+                      color: '#6366f1',
+                    },
+                    {
+                      label: 'SpO2',
+                      value: summary.latest_spo2 ? `${summary.latest_spo2}` : '—',
+                      unit: '%',
+                      trend: null,
+                      alert: summary.latest_spo2 && summary.latest_spo2 < 95,
+                      data: vitals.map(v => v.spo2),
+                      color: '#0ea5e9',
+                    },
+                    {
+                      label: 'Pulse',
+                      value: summary.latest_pulse ? `${summary.latest_pulse}` : '—',
+                      unit: 'bpm',
+                      trend: null,
+                      alert: false,
+                      data: vitals.map(v => v.pulse_rate),
+                      color: '#ec4899',
+                    },
+                    {
+                      label: 'BMI',
+                      value: summary.latest_bmi ? `${summary.latest_bmi}` : '—',
+                      unit: '',
+                      trend: null,
+                      alert: false,
+                      data: [],
+                      color: '#8b5cf6',
+                    },
+                  ].map((item, i) => (
+                    <div key={i} style={{
+                      background: item.alert ? '#fef2f2' : '#f9fafb',
+                      border: `1px solid ${item.alert ? '#fecaca' : '#e5e7eb'}`,
+                      borderRadius: 8,
+                      padding: '8px 10px',
+                    }}>
+                      <div style={{ fontSize: 10, color: '#6b7280', marginBottom: 2 }}>{item.label}</div>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
+                        <span style={{ fontWeight: 700, fontSize: 16, color: item.alert ? '#ef4444' : '#111827' }}>
+                          {item.value}
+                        </span>
+                        <span style={{ fontSize: 10, color: '#9ca3af' }}>{item.unit}</span>
+                        {item.trend && (
+                          <span style={{
+                            fontSize: 12,
+                            color: item.trend === 'up' ? '#ef4444' : item.trend === 'down' ? '#22c55e' : '#6b7280',
+                            fontWeight: 700,
+                          }}>
+                            {trendIcon(item.trend)}
+                          </span>
+                        )}
+                      </div>
+                      <MiniBar data={item.data} color={item.color} />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Vitals table */}
+              {vitals.length > 0 && (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+                    <thead>
+                      <tr style={{ background: '#f3f4f6' }}>
+                        {['Date', 'BP', 'Pulse', 'Weight', 'Sugar', 'SpO2', 'Temp'].map(h => (
+                          <th key={h} style={{ padding: '5px 8px', textAlign: 'left', color: '#6b7280', fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
                     <tbody>
-                      {[
-                        {
-                          label: 'Blood Pressure',
-                          value: summary.latest_bp_systolic
-                            ? `${summary.latest_bp_systolic}/${summary.latest_bp_diastolic} mmHg`
-                            : '—',
-                          trend: summary.bp_trend,
-                          bad: true,
-                          spark: bpData,
-                          color: summary.flag_bp_elevated ? '#ef4444' : '#1f2937',
-                        },
-                        {
-                          label: 'Blood Sugar',
-                          value: summary.latest_blood_sugar ? `${summary.latest_blood_sugar} mg/dL` : '—',
-                          trend: summary.sugar_trend,
-                          bad: true,
-                          spark: sugarData,
-                          color: summary.flag_sugar_elevated ? '#ef4444' : '#1f2937',
-                        },
-                        {
-                          label: 'Weight',
-                          value: summary.latest_weight ? `${summary.latest_weight} kg` : '—',
-                          trend: summary.weight_trend,
-                          bad: true,
-                          spark: weightData,
-                          color: '#1f2937',
-                        },
-                        {
-                          label: 'SpO2',
-                          value: summary.latest_spo2 ? `${summary.latest_spo2}%` : '—',
-                          trend: null,
-                          bad: false,
-                          spark: vitals.map(v => v.spo2),
-                          color: summary.latest_spo2 && summary.latest_spo2 < 95 ? '#ef4444' : '#1f2937',
-                        },
-                        {
-                          label: 'Pulse',
-                          value: summary.latest_pulse ? `${summary.latest_pulse} bpm` : '—',
-                          trend: null,
-                          bad: false,
-                          spark: vitals.map(v => v.pulse_rate),
-                          color: '#1f2937',
-                        },
-                        {
-                          label: 'BMI',
-                          value: summary.latest_bmi ? `${summary.latest_bmi}` : '—',
-                          trend: null,
-                          bad: false,
-                          spark: [],
-                          color: '#1f2937',
-                        },
-                      ].map((row, i) => (
-                        <tr key={i}>
-                          <td style={{ color: '#6b7280', paddingBottom: 4, paddingRight: 8, fontSize: 11 }}>
-                            {row.label}
+                      {[...vitals].reverse().map((v, i) => (
+                        <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                          <td style={{ padding: '4px 8px', color: '#6b7280', whiteSpace: 'nowrap' }}>
+                            {new Date(v.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                           </td>
-                          <td style={{ fontWeight: 600, color: row.color, paddingBottom: 4 }}>
-                            {row.value}
+                          <td style={{ padding: '4px 8px', fontWeight: 600, color: v.bp_systolic > 140 ? '#ef4444' : '#111827' }}>
+                            {v.bp_systolic ? `${v.bp_systolic}/${v.bp_diastolic}` : '—'}
                           </td>
-                          <td style={{ paddingBottom: 4, paddingLeft: 6 }}>
-                            <Sparkline data={row.spark} color={row.color === '#ef4444' ? '#ef4444' : '#00475a'} />
+                          <td style={{ padding: '4px 8px' }}>{v.pulse_rate || '—'}</td>
+                          <td style={{ padding: '4px 8px' }}>{v.weight ? `${v.weight}kg` : '—'}</td>
+                          <td style={{ padding: '4px 8px', color: v.blood_sugar > 200 ? '#ef4444' : '#111827' }}>
+                            {v.blood_sugar || '—'}
                           </td>
-                          {row.trend && (
-                            <td style={{
-                              color: trendColor(row.trend, row.bad),
-                              fontWeight: 700,
-                              fontSize: 14,
-                              paddingBottom: 4,
-                              paddingLeft: 4,
-                            }}>
-                              {trendIcon(row.trend)}
-                            </td>
-                          )}
+                          <td style={{ padding: '4px 8px', color: v.spo2 < 95 ? '#ef4444' : '#111827' }}>
+                            {v.spo2 ? `${v.spo2}%` : '—'}
+                          </td>
+                          <td style={{ padding: '4px 8px' }}>{v.temperature ? `${v.temperature}°` : '—'}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
-
-                {/* Medication profile */}
-                <div style={{ background: '#f9fafb', borderRadius: 8, padding: 12, border: '1px solid #e5e7eb' }}>
-                  <div style={{ fontWeight: 700, color: '#374151', marginBottom: 8, fontSize: 12 }}>
-                    💊 MEDICATION PROFILE
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: '#6b7280', fontSize: 11 }}>Active Molecules</span>
-                      <span style={{
-                        fontWeight: 700,
-                        color: summary.flag_polypharmacy ? '#f59e0b' : '#1f2937',
-                      }}>
-                        {summary.active_medicine_count}
-                        {summary.flag_polypharmacy && ' ⚠️'}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: '#6b7280', fontSize: 11 }}>Last Refill</span>
-                      <span style={{
-                        fontWeight: 600,
-                        color: summary.flag_missed_refill ? '#ef4444' : '#1f2937',
-                      }}>
-                        {dayLabel(summary.days_since_refill)}
-                        {summary.flag_missed_refill && ' ⚠️'}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: '#6b7280', fontSize: 11 }}>Total Visits</span>
-                      <span style={{ fontWeight: 600, color: '#1f2937' }}>{summary.total_visits}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: '#6b7280', fontSize: 11 }}>Last Visit</span>
-                      <span style={{ fontWeight: 600, color: '#1f2937' }}>
-                        {summary.last_visit_date
-                          ? new Date(summary.last_visit_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-                          : '—'}
-                      </span>
-                    </div>
-
-                    {(summary.unique_molecules || []).length > 0 && (
-                      <div style={{ marginTop: 6 }}>
-                        <div style={{ color: '#6b7280', fontSize: 11, marginBottom: 4 }}>Molecules on record (last 6mo)</div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                          {summary.unique_molecules.slice(0, 8).map((mol, i) => (
-                            <span key={i} style={{
-                              background: '#e0f2fe',
-                              color: '#0369a1',
-                              padding: '1px 7px',
-                              borderRadius: 10,
-                              fontSize: 10,
-                              fontWeight: 500,
-                            }}>
-                              {mol}
-                            </span>
-                          ))}
-                          {summary.unique_molecules.length > 8 && (
-                            <span style={{ color: '#6b7280', fontSize: 10 }}>
-                              +{summary.unique_molecules.length - 8} more
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
           )}
 
-          {/* ── Tab: Timeline ── */}
-          {activeTab === 'timeline' && (
-            <div style={{ padding: 16, maxHeight: 320, overflowY: 'auto' }}>
+          {/* ── History tab ── */}
+          {tab === 'history' && (
+            <div style={{ padding: 14, maxHeight: 340, overflowY: 'auto' }}>
               {timeline.length === 0 ? (
-                <div style={{ textAlign: 'center', color: '#9ca3af', padding: 24 }}>
+                <div style={{ textAlign: 'center', color: '#9ca3af', padding: 20, fontSize: 12 }}>
                   No visit history found
                 </div>
               ) : (
-                <div style={{ position: 'relative' }}>
-                  <div style={{
-                    position: 'absolute', left: 16, top: 0, bottom: 0,
-                    width: 2, background: '#e5e7eb',
-                  }} />
-                  {timeline.map((ev, i) => (
-                    <div key={i} style={{ display: 'flex', gap: 12, marginBottom: 14, paddingLeft: 8 }}>
-                      <div style={{
-                        width: 18, height: 18, borderRadius: '50%', flexShrink: 0, marginTop: 1,
-                        background: ev.event_type === 'consultation' ? '#00475a' : '#0ea5e9',
-                        border: '2px solid #fff',
-                        boxShadow: '0 0 0 1px #e5e7eb',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 9, color: '#fff', fontWeight: 700,
-                        zIndex: 1, position: 'relative',
-                      }}>
-                        {ev.event_type === 'consultation' ? 'C' : 'D'}
-                      </div>
-                      <div style={{
-                        flex: 1, background: '#f9fafb', borderRadius: 8,
-                        padding: '8px 10px', border: '1px solid #e5e7eb',
-                      }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                          <span style={{ fontWeight: 600, color: '#1f2937', fontSize: 11.5 }}>
-                            {ev.event_type === 'consultation' ? `🩺 ${ev.diagnosis || 'Consultation'}` : '💊 Dispensing'}
-                          </span>
-                          <span style={{ color: '#9ca3af', fontSize: 10 }}>
-                            {new Date(ev.visit_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </span>
-                        </div>
-                        {ev.event_type === 'consultation' && (
-                          <div style={{ color: '#6b7280', fontSize: 11, lineHeight: 1.5 }}>
-                            {ev.chief_complaint && <div>Chief complaint: {ev.chief_complaint}</div>}
-                            {ev.doctor_name && <div>Dr. {ev.doctor_name}</div>}
-                            {ev.bp_systolic && <div>BP: {ev.bp_systolic}/{ev.bp_diastolic} mmHg</div>}
-                            {ev.follow_up_date && (
-                              <div style={{ color: '#f59e0b' }}>
-                                Follow-up: {new Date(ev.follow_up_date).toLocaleDateString('en-IN')}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                        {ev.event_type === 'dispensing' && ev.dispensed_medicines && (
-                          <div style={{ color: '#6b7280', fontSize: 11 }}>
-                            {ev.dispensed_medicines.slice(0, 4).join(', ')}
-                            {ev.dispensed_medicines.length > 4 && ` +${ev.dispensed_medicines.length - 4} more`}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ── Tab: Vitals Trends ── */}
-          {activeTab === 'vitals' && (
-            <div style={{ padding: 16 }}>
-              {vitals.length < 2 ? (
-                <div style={{ textAlign: 'center', color: '#9ca3af', padding: 24 }}>
-                  Not enough vitals data for trends (need at least 2 visits)
-                </div>
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-                  {[
-                    { label: 'Systolic BP (mmHg)', data: bpData, color: '#ef4444', normal: '< 120' },
-                    { label: 'Blood Sugar (mg/dL)', data: sugarData, color: '#f59e0b', normal: '< 140' },
-                    { label: 'Weight (kg)', data: weightData, color: '#6366f1', normal: 'BMI 18.5–24.9' },
-                    { label: 'SpO2 (%)', data: vitals.map(v => v.spo2), color: '#0ea5e9', normal: '> 95%' },
-                  ].map((chart, i) => (
-                    <div key={i} style={{
-                      background: '#f9fafb', borderRadius: 8,
-                      padding: 12, border: '1px solid #e5e7eb',
+                timeline.map((ev, i) => (
+                  <div key={i} style={{
+                    display: 'flex',
+                    gap: 10,
+                    marginBottom: 10,
+                    paddingBottom: 10,
+                    borderBottom: i < timeline.length - 1 ? '1px solid #f3f4f6' : 'none',
+                  }}>
+                    <div style={{
+                      width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                      background: ev.event_type === 'consultation' ? '#00475a' : '#0ea5e9',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 11, color: '#fff', fontWeight: 700,
                     }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                        <span style={{ fontWeight: 600, color: '#374151', fontSize: 11 }}>{chart.label}</span>
-                        <span style={{ color: '#9ca3af', fontSize: 10 }}>Normal: {chart.normal}</span>
-                      </div>
-                      {/* Simple table-based chart */}
-                      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 48 }}>
-                        {chart.data.filter(Boolean).slice(-8).map((val, idx, arr) => {
-                          const max = Math.max(...arr);
-                          const min = Math.min(...arr);
-                          const range = max - min || 1;
-                          const heightPct = ((val - min) / range) * 80 + 20;
-                          return (
-                            <div key={idx} style={{
-                              flex: 1, background: chart.color + '33',
-                              height: `${heightPct}%`,
-                              borderRadius: '2px 2px 0 0',
-                              position: 'relative',
-                              cursor: 'default',
-                              transition: 'background 0.2s',
-                            }}
-                              title={`${val}`}
-                            >
-                              {idx === arr.length - 1 && (
-                                <div style={{
-                                  position: 'absolute', top: -18, left: '50%',
-                                  transform: 'translateX(-50%)',
-                                  fontSize: 10, fontWeight: 700,
-                                  color: chart.color, whiteSpace: 'nowrap',
-                                }}>
-                                  {val}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-                        <span style={{ fontSize: 9, color: '#9ca3af' }}>
-                          {vitals.length > 0 ? new Date(vitals[0].date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : ''}
-                        </span>
-                        <span style={{ fontSize: 9, color: '#9ca3af' }}>Today</span>
-                      </div>
+                      {ev.event_type === 'consultation' ? '🩺' : '💊'}
                     </div>
-                  ))}
-                </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                        <span style={{ fontWeight: 600, color: '#111827', fontSize: 12 }}>
+                          {ev.event_type === 'consultation'
+                            ? (ev.diagnosis || 'Consultation')
+                            : 'Dispensing'}
+                        </span>
+                        <span style={{ color: '#9ca3af', fontSize: 10 }}>
+                          {new Date(ev.visit_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' })}
+                        </span>
+                      </div>
+                      {ev.event_type === 'consultation' && (
+                        <div style={{ fontSize: 11, color: '#6b7280', lineHeight: 1.5 }}>
+                          {ev.chief_complaint && <span>{ev.chief_complaint} · </span>}
+                          {ev.bp_systolic && <span>BP {ev.bp_systolic}/{ev.bp_diastolic} · </span>}
+                          {ev.doctor_name && <span>Dr. {ev.doctor_name}</span>}
+                          {ev.follow_up_date && (
+                            <div style={{ color: '#f59e0b', marginTop: 2, fontSize: 10 }}>
+                              Follow-up: {new Date(ev.follow_up_date).toLocaleDateString('en-IN')}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {ev.event_type === 'dispensing' && ev.dispensed_medicines && (
+                        <div style={{ fontSize: 11, color: '#6b7280' }}>
+                          {ev.dispensed_medicines.slice(0, 3).join(', ')}
+                          {ev.dispensed_medicines.length > 3 && ` +${ev.dispensed_medicines.length - 3} more`}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           )}
 
-          {/* ── Footer ── */}
-          <div style={{
-            padding: '6px 16px',
-            background: '#f9fafb',
-            borderTop: '1px solid #e5e7eb',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}>
-            <span style={{ color: '#9ca3af', fontSize: 10 }}>
-              Powered by MediSyn Health Intelligence
-            </span>
-            <button
-              onClick={() => { fetchAll(); fetchBrief(); }}
-              style={{
-                background: 'none', border: '1px solid #d1d5db',
-                borderRadius: 6, padding: '3px 10px',
-                color: '#6b7280', cursor: 'pointer', fontSize: 10,
-              }}
-            >
-              ↻ Refresh
-            </button>
-          </div>
+          {/* ── Stats footer ── */}
+          {summary && (
+            <div style={{
+              padding: '6px 14px',
+              background: '#f9fafb',
+              borderTop: '1px solid #e5e7eb',
+              display: 'flex',
+              gap: 16,
+              fontSize: 10,
+              color: '#6b7280',
+              flexWrap: 'wrap',
+            }}>
+              <span>👁 {summary.total_visits} visits</span>
+              <span>📅 Last: {summary.last_visit_date
+                ? new Date(summary.last_visit_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                : '—'}</span>
+              {summary.days_since_refill !== null && (
+                <span style={{ color: summary.flag_missed_refill ? '#f59e0b' : '#6b7280' }}>
+                  ⏱ {dayLabel(summary.days_since_refill)} since last visit
+                </span>
+              )}
+              <span style={{ marginLeft: 'auto', color: '#d1d5db' }}>MediSyn Health Intelligence</span>
+            </div>
+          )}
         </>
       )}
     </div>
