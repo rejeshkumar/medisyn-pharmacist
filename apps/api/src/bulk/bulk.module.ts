@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { MulterModule } from '@nestjs/platform-express';
 import { BulkController } from './bulk.controller';
 import { BulkService } from './bulk.service';
+import { VendorCsvNormalizerService } from './vendor-csv-normalizer.service';
 import { BulkActivityLog } from '../database/entities/bulk-activity-log.entity';
 import { Medicine } from '../database/entities/medicine.entity';
 import { StockBatch } from '../database/entities/stock-batch.entity';
@@ -28,6 +29,6 @@ import { existsSync, mkdirSync } from 'fs';
     }),
   ],
   controllers: [BulkController],
-  providers: [BulkService],
+  providers: [BulkService, VendorCsvNormalizerService],
 })
 export class BulkModule {}

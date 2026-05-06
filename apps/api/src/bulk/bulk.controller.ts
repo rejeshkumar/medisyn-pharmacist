@@ -13,6 +13,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiConsumes } from '@nestjs/swagger';
 import { BulkService } from './bulk.service';
+import { VendorCsvNormalizerService } from './vendor-csv-normalizer.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -23,7 +24,10 @@ import { UserRole } from '../database/entities/user.entity';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('bulk')
 export class BulkController {
-  constructor(private bulkService: BulkService) {}
+  constructor(
+    private bulkService: BulkService,
+    private csvNormalizer: VendorCsvNormalizerService,
+  ) {}
 
   @Get('template/medicines')
   @Roles(UserRole.OWNER, UserRole.PHARMACIST)
@@ -79,6 +83,32 @@ export class BulkController {
   importInvoice(@Body() body: any, @Request() req) {
     const { items, supplier, invoiceNo } = body;
     return this.bulkService.importInvoiceItems(items, supplier, invoiceNo, req.user.id);
+  }
+
+  @Post('vendor-csv/normalize')
+  @Roles(UserRole.OWNER, UserRole.PHARMACIST)
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ 
+    summary: 'Normalize vendor CSV (Inter Link, MediWMS) to standard stock import format',
+    description: 'Upload any vendor CSV - auto-detects format and returns normalized data ready for /bulk/stock/import'
+  })
+  async normalizeVendorCsv(@UploadedFile() file: Express.Multer.File) {
+    if (!file) throw new Error('No file uploaded');
+
+    const csvContent = file.buffer.toString('utf-8');
+    const result = await this.csvNormalizer.normalizeVendorCsv(csvContent);
+
+    return {
+      success: result.errors.length === 0,
+      format: result.format,
+      recordCount: result.records.length,
+      errors: result.errors,
+      records: result.records,
+      message: result.errors.length === 0 
+        ? `✓ Detected ${result.format} format. ${result.records.length} records ready for import.`
+        : `⚠ Detected ${result.format} format but has ${result.errors.length} errors. Fix and retry.`,
+    };
   }
 
   @Get('logs')
