@@ -232,8 +232,8 @@ export default function BillDocument({ data, mode, onClose, onConfirm, isLoading
             font-size: 11px;
           }
           @page {
-            size: A4 portrait;
-            margin: 8mm 6mm;
+            size: 150mm 280mm;
+            margin: 4mm 6mm;
           }
           body > div {
             width: 100% !important;
