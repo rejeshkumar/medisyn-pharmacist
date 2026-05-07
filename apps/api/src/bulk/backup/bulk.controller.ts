@@ -13,7 +13,6 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiConsumes } from '@nestjs/swagger';
 import { BulkService } from './bulk.service';
-import { VendorCsvNormalizerService } from './vendor-csv-normalizer.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -24,10 +23,7 @@ import { UserRole } from '../database/entities/user.entity';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('bulk')
 export class BulkController {
-  constructor(
-    private bulkService: BulkService,
-    private csvNormalizer: VendorCsvNormalizerService,
-  ) {}
+  constructor(private bulkService: BulkService) {}
 
   @Get('template/medicines')
   @Roles(UserRole.OWNER, UserRole.PHARMACIST)
@@ -83,63 +79,6 @@ export class BulkController {
   importInvoice(@Body() body: any, @Request() req) {
     const { items, supplier, invoiceNo } = body;
     return this.bulkService.importInvoiceItems(items, supplier, invoiceNo, req.user.id);
-  }
-
-  @Post('vendor-csv/normalize')
-  @Roles(UserRole.OWNER, UserRole.PHARMACIST)
-  @UseInterceptors(FileInterceptor('file'))
-  @ApiConsumes('multipart/form-data')
-  @ApiOperation({
-    summary: 'Normalize vendor CSV to standard stock import format',
-    description: 'Upload any vendor CSV (Inter Link, MediWMS) — auto-detects format and returns normalized records',
-  })
-  async normalizeVendorCsv(@UploadedFile() file: Express.Multer.File) {
-    if (!file) throw new Error('No file uploaded');
-
-    // Try buffer first (memory storage), fall back to disk path
-    const csvContent = file.buffer
-      ? file.buffer.toString('utf-8')
-      : require('fs').readFileSync(file.path, 'utf-8');
-
-    const result = await this.csvNormalizer.normalize(csvContent);
-
-    return {
-      success: result.records.length > 0 && result.errors.length === 0,
-      format: result.format,
-      recordCount: result.records.length,
-      errors: result.errors,
-      records: result.records,
-      message: result.errors.length === 0
-        ? `Detected ${result.format} format. ${result.records.length} records ready for import.`
-        : `Detected ${result.format} format. ${result.errors.length} validation errors.`,
-    };
-  }
-
-  @Post('vendor-csv/import')
-  @Roles(UserRole.OWNER, UserRole.PHARMACIST)
-  @ApiOperation({
-    summary: 'Import normalized vendor CSV records directly into stock',
-    description: 'Takes the records from /vendor-csv/normalize and imports them into stock_batches',
-  })
-  async importVendorCsvRecords(@Body() body: any, @Request() req) {
-    const { records } = body;
-    if (!records || !Array.isArray(records) || records.length === 0) {
-      return { success: false, message: 'No records provided' };
-    }
-
-    // Convert normalized records to invoice items format and use existing importInvoiceItems
-    const items = records.map((r: any) => ({
-      medicineName: r.brand_name,
-      batchNo: r.batch_no,
-      expiry: r.expiry,
-      qty: r.quantity,
-      purchasePrice: r.purchase_price,
-      mrp: r.sale_rate,
-      gstPercent: 5,
-    }));
-
-    const supplierName = records[0]?.supplier || 'Unknown Supplier';
-    return this.bulkService.importInvoiceItems(items, supplierName, 'VENDOR-CSV', req.user.id);
   }
 
   @Get('logs')
