@@ -1,3 +1,4 @@
+import { DispensingModule } from "./dispensing/dispensing.module";
 
 import { Module, OnModuleInit } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -46,6 +47,7 @@ import { ScheduleClassifierController } from './schedule-classifier.controller';
 import { MoleculeClassifierController } from './molecule-classifier.controller';
 import { SetReorderController } from './set-reorder.controller';
 import { KaggleImportController } from './kaggle-import.controller';
+import { PatientHealthModule } from './patient-health/patient-health.module';
 
 @Module({
   imports: [
@@ -88,6 +90,7 @@ import { KaggleImportController } from './kaggle-import.controller';
     MedicinesModule,
     StockModule,
     SalesModule,
+    DispensingModule,
     AiPrescriptionModule,
     SubstitutesModule,
     BulkModule,

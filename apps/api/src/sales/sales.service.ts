@@ -1,3 +1,4 @@
+import { DispensingService } from "../dispensing/dispensing.service";
 import {
   Injectable,
   NotFoundException,
@@ -45,6 +46,7 @@ export class SalesService {
     private dataSource: DataSource,
     private auditService: AuditService,
     private autoCarePlan: AutoCarePlanService,
+    private dispensingService: DispensingService,
   ) {}
 
   async createSale(dto: CreateSaleDto, user: UserContext) {
@@ -66,6 +68,15 @@ export class SalesService {
         });
 
         if (!batch) throw new NotFoundException(`Batch ${item.batch_id} not found`);
+        // ── Expiry validation ──
+        await this.dispensingService.enforceExpiryValidation(
+          tenantId,
+          { medicine_id: item.medicine_id || batch.medicine_id, batch_id: item.batch_id, qty: item.qty, course_days: (item as any).course_days, override_flag: (item as any).override_flag, override_reason: (item as any).override_reason },
+          userId,
+          user.full_name,
+        );
+        // ────────────────────────
+
         if (batch.quantity < item.qty) {
           throw new BadRequestException(
             `Insufficient stock for batch ${batch.batch_number}. Available: ${batch.quantity}`,

@@ -1,3 +1,4 @@
+import { DispensingModule } from "../dispensing/dispensing.module";
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SalesController } from './sales.controller';
@@ -17,6 +18,7 @@ import { AutoCarePlanService } from '../ai-care/auto-care-plan.service';
   imports: [
     TypeOrmModule.forFeature([Sale, SaleItem, StockBatch, Medicine, ScheduleDrugLog, Tenant]),
     AuditModule,
+    DispensingModule,
   ],
   controllers: [SalesController, CreditNoteController],
   providers: [SalesService, CreditNoteService, AutoCarePlanService],
