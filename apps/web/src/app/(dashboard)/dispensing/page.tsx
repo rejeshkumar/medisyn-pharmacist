@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import BillDocument, { type BillData } from '@/components/billing/BillDocument';
 import { cn } from '@/lib/utils';
+import ExpiryWarningModal from '@/components/ExpiryWarningModal';
 import { searchMedicinesOffline, queueBill } from '@/lib/offline-store';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -507,6 +508,7 @@ export default function DispensingPage() {
     }
   }, [cart]);
   const [showCompliance, setShowCompliance] = useState(false);
+  const [expiryWarning, setExpiryWarning] = useState<{status:'WARN'|'BLOCK'; message:string; medicineName:string; batchNumber:string; daysToExpiry:number; pendingItem:any; pendingRowIdx:number} | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [completedSale, setCompletedSale] = useState<any>(null);
   const [aiExtracting, setAiExtracting] = useState(false);
@@ -570,6 +572,29 @@ export default function DispensingPage() {
         toast('No stock — showing substitutes', { icon: '⚠️' });
         return;
       }
+
+      // ── Expiry validation ──────────────────────────────────
+      try {
+        const { data: expiryCheck } = await api.post('/dispensing/validate', {
+          medicine_id: med.id, batch_id: bestBatch.id, qty: 1,
+        });
+        if (expiryCheck.status === 'BLOCK' || expiryCheck.status === 'WARN') {
+          setExpiryWarning({
+            status: expiryCheck.status,
+            message: expiryCheck.message,
+            medicineName: med.brand_name,
+            batchNumber: bestBatch.batch_number,
+            daysToExpiry: expiryCheck.days_to_expiry,
+            pendingItem: { med, bestBatch },
+            pendingRowIdx: rowIdx,
+          });
+          if (expiryCheck.status === 'BLOCK') return; // don't add to cart until override
+        }
+      } catch (e) {
+        // Validation endpoint not available — allow dispensing (backward compat)
+        console.warn('Expiry validation skipped:', e);
+      }
+      // ─────────────────────────────────────────────────────
       // ── 3-signal chronic detection ─────────────────────────────
       const isChronicByMolecule = med.is_chronic === true;
       const isChronicByQtySchedule = (
