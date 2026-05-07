@@ -42,7 +42,7 @@ export function VendorCsvNormalizer() {
 
     try {
       const res = await fetch('/api/bulk/vendor-csv/normalize', {
-        method: 'POST',
+        method: 'POST', headers: { 'Authorization': `Bearer ${token}` },
         body: formData,
       });
       const data = await res.json();
@@ -65,8 +65,8 @@ export function VendorCsvNormalizer() {
 
     try {
       const res = await fetch('/api/bulk/vendor-csv/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Authorization': `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token2}` },
         body: JSON.stringify({ records: result.records }),
       });
       const data = await res.json();
