@@ -9,6 +9,7 @@ import {
   FileSpreadsheet, FileText, Trash2, Edit2, Check, X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { VendorCsvNormalizer } from '@/components/bulk/VendorCsvNormalizer';
 
 interface InvoiceItem {
   medicineName: string;
@@ -21,7 +22,7 @@ interface InvoiceItem {
 }
 
 export default function BulkPage() {
-  const [tab, setTab] = useState<'medicines' | 'stock' | 'invoice'>('invoice');
+  const [tab, setTab] = useState<'medicines' | 'stock' | 'invoice' | 'vendor-csv'>('invoice');
   const [result, setResult] = useState<any>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const pdfRef = useRef<HTMLInputElement>(null);
@@ -138,6 +139,7 @@ export default function BulkPage() {
 
   const TABS = [
     { id: 'invoice', label: '📄 PDF Invoice' },
+    { id: 'vendor-csv', label: '📦 Vendor CSV' },
     { id: 'medicines', label: 'Medicine Master' },
     { id: 'stock', label: 'Stock Batches' },
   ];
@@ -457,6 +459,17 @@ export default function BulkPage() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── VENDOR CSV TAB ──────────────────────────────────── */}
+      {tab === 'vendor-csv' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <VendorCsvNormalizer />
+          <div className="card">
+            <h3 className="font-semibold text-gray-900 mb-4">Activity Log</h3>
+            <ActivityLog logs={logs} logsLoading={logsLoading} />
+          </div>
         </div>
       )}
 
