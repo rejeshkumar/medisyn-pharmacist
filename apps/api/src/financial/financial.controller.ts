@@ -218,12 +218,13 @@ export class FinancialController {
   async addExpense(@Body() body: any, @Req() req: any) {
     const { tenant_id, sub } = req.user;
     const r = await this.ds.query(
-      `INSERT INTO expenses (tenant_id, expense_date, category, description, amount, payment_mode, reference_no, vendor_name, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+      `INSERT INTO expenses (tenant_id, expense_date, category, description, amount, payment_mode, reference_no, vendor_name, paid_by, voucher_amount, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
       [tenant_id, body.expense_date || new Date().toISOString().split('T')[0],
        body.category, body.description, body.amount,
        body.payment_mode || 'cash', body.reference_no || null,
-       body.vendor_name || null, sub]
+       body.vendor_name || null, body.paid_by || 'PHARMACY',
+       body.voucher_amount || null, sub]
     );
     return r[0];
   }
