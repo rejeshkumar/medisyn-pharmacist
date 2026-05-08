@@ -2199,6 +2199,51 @@ export default function DispensingPage() {
           onSuccess={() => { setReturnSale(null); refetch(); }}
         />
       )}
+
+      {/* ── Expiry Warning / Block Modal ── */}
+      {expiryWarning && (
+        <ExpiryWarningModal
+          status={expiryWarning.status}
+          message={expiryWarning.message}
+          medicineName={expiryWarning.medicineName}
+          batchNumber={expiryWarning.batchNumber}
+          daysToExpiry={expiryWarning.daysToExpiry}
+          onConfirm={(overrideReason) => {
+            const { med, bestBatch } = expiryWarning.pendingItem;
+            const idx = expiryWarning.pendingRowIdx;
+            const isChronicDetected = med.is_chronic === true || (Number(bestBatch.quantity) >= 20 && ['H','H1'].includes(med.schedule_class));
+            const newItem = {
+              medicine_id: med.id, batch_id: bestBatch.id,
+              medicine_name: med.brand_name, molecule: med.molecule || '',
+              batch_number: bestBatch.batch_number, expiry_date: bestBatch.expiry_date,
+              qty: 0, rate: Number(bestBatch.sale_rate) / (med.tabs_per_strip > 1 ? med.tabs_per_strip : 1),
+              line_discount_pct: 0, gst_percent: Number(med.gst_percent || 0),
+              avl_qty: Number(bestBatch.quantity || 0), rack_location: med.rack_location || '',
+              is_substituted: false, schedule_class: med.schedule_class,
+              tabs_per_strip: med.tabs_per_strip || 1, max_discount_pct: med.max_discount_pct ?? null,
+              is_chronic: isChronicDetected, chronic_category: med.chronic_category || '',
+              create_care_plan: isChronicDetected, all_batches: med.all_batches || [],
+              manufacturer: med.manufacturer || '',
+              purchase_price: bestBatch.purchase_price ? Number(bestBatch.purchase_price) / (med.tabs_per_strip > 1 ? med.tabs_per_strip : 1) : null,
+              override_flag: expiryWarning.status === 'BLOCK',
+              override_reason: overrideReason || '',
+            };
+            if (idx < cart.length) {
+              const updated = [...cart]; updated[idx] = newItem; setCart(updated);
+            } else {
+              setCart(prev => [...prev, newItem]);
+            }
+            const newSearchVals = [...searchValues];
+            newSearchVals[idx] = '';
+            if (idx >= searchValues.length - 1) newSearchVals.push('');
+            setSearchValues(newSearchVals);
+            setTimeout(() => { qtyRefs.current[idx]?.focus(); qtyRefs.current[idx]?.select(); }, 50);
+            setExpiryWarning(null);
+            toast(expiryWarning.status === 'BLOCK' ? 'Expiry override — logged for audit' : 'Near-expiry medicine added', { icon: '⚠️' });
+          }}
+          onCancel={() => setExpiryWarning(null)}
+        />
+      )}
     </div>
   );
 }
