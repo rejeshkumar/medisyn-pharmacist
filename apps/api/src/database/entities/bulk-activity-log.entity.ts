@@ -14,6 +14,7 @@ export enum BulkActionType {
   BULK_MODIFY_MEDICINE = 'bulk_modify_medicine',
   BULK_MODIFY_STOCK = 'bulk_modify_stock',
   VENDOR_CSV_IMPORT = 'vendor_csv_import',
+  VENDOR_CSV_IMPORT = 'vendor_csv_import',
 }
 
 @Entity('bulk_activity_logs')
