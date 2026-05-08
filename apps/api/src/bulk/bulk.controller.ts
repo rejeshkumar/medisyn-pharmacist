@@ -139,7 +139,7 @@ export class BulkController {
     }));
 
     const supplierName = records[0]?.supplier || 'Unknown Supplier';
-    return this.bulkService.importInvoiceItems(items, supplierName, 'VENDOR-CSV', req.user.id);
+    return this.bulkService.importInvoiceItems(items, supplierName, `Vendor CSV: ${supplierName}`, req.user.id);
   }
 
   @Get('logs')
