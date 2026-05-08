@@ -1,3 +1,4 @@
+import { OwnerDashboardModule } from "./owner-dashboard/owner-dashboard.module";
 import { DispensingModule } from "./dispensing/dispensing.module";
 
 import { Module, OnModuleInit } from '@nestjs/common';
@@ -105,6 +106,7 @@ import { PatientHealthModule } from './patient-health/patient-health.module';
     FinancialModule,
     SuperAdminModule,
     DemandLogModule,
+    OwnerDashboardModule,
   ],
   controllers: [ImportMedicinesController, ClearDataController, ImportStockController, ScheduleClassifierController, MoleculeClassifierController, SetReorderController, KaggleImportController],
   providers: [
