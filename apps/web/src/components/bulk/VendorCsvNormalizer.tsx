@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import api from '@/lib/api';
 
 interface NormalizedRecord {
   brand_name: string;
