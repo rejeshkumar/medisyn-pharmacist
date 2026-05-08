@@ -42,11 +42,9 @@ export function VendorCsvNormalizer() {
     formData.append('file', file);
 
     try {
-      const res = await fetch('/api/bulk/vendor-csv/normalize', {
-        method: 'POST', headers: { 'Authorization': `Bearer ${token}` },
-        body: formData,
+      const { data } = await api.post('/bulk/vendor-csv/normalize', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
-      const data = await res.json();
       if (!res.ok) { setError(data.message || 'Failed to normalize CSV'); return; }
       setResult(data);
       if (!data.success && data.errors?.length) {
@@ -65,12 +63,9 @@ export function VendorCsvNormalizer() {
     setImportResult(null);
 
     try {
-      const res = await fetch('/api/bulk/vendor-csv/import', {
-        method: 'POST', headers: { 'Authorization': `Bearer ${token}` },
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token2}` },
-        body: JSON.stringify({ records: result.records }),
+      const { data } = await api.post('/bulk/vendor-csv/import', {
+        records: result.records,
       });
-      const data = await res.json();
       setImportResult(data);
     } catch (err: any) {
       setImportResult({ success: false, message: err.message });
