@@ -45,7 +45,6 @@ export function VendorCsvNormalizer() {
       const { data } = await api.post('/bulk/vendor-csv/normalize', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      if (!res.ok) { setError(data.message || 'Failed to normalize CSV'); return; }
       setResult(data);
       if (!data.success && data.errors?.length) {
         setError(data.message);
