@@ -1,13 +1,36 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import {
   TrendingUp, TrendingDown, DollarSign, ShoppingCart,
   AlertTriangle, Clock, CreditCard, Banknote, ArrowUpRight,
-  Package, BarChart3, Users, ChevronRight, Plus, Edit2,
+  Package, BarChart3, Users, ChevronRight, Plus, Edit2, X,
 } from 'lucide-react';
+
+// ── Expense categories matching your Google Sheet ──────────
+const EXPENSE_CATEGORIES = [
+  'PHARMACY PURCHASES',
+  'CONSULTATION FEE',
+  'STAFF SALARY',
+  'DAILY CHITTI',
+  'FUEL EXPENSES',
+  'MEDICINE RETURN',
+  'CLINIC MISC PURCHASES',
+  'MARKETING AND PURCHASE',
+  'RENT',
+  'ELECTRICITY',
+  'TELEPHONE',
+  'STATIONERY',
+  'INSURANCE',
+  'LICENCE FEE',
+  'BANK CHARGES',
+  'MISCELLANEOUS',
+];
+
+const PAYMENT_MODES = ['CASH', 'CHEQUE CLEARED', 'RTGS', 'UPI', 'NOT PAID'];
+const PAID_BY_OPTIONS = ['PHARMACY', 'CANARABANK', 'OWNER'];
 
 function fmt(n: number) {
   return `₹${Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -63,21 +86,200 @@ function SectionHead({ title, action }: { title: string; action?: { label: strin
   );
 }
 
-// ── Payment mode badge ──────────────────────────────────
 function ModeBadge({ mode }: { mode: string }) {
   const m = (mode || '').toLowerCase();
   const styles: Record<string, string> = {
-    cash:    'bg-green-100 text-green-700',
-    upi:     'bg-blue-100 text-blue-700',
-    gpay:    'bg-blue-100 text-blue-700',
-    cheque:  'bg-amber-100 text-amber-700',
-    rtgs:    'bg-purple-100 text-purple-700',
-    card:    'bg-pink-100 text-pink-700',
+    cash:            'bg-green-100 text-green-700',
+    upi:             'bg-blue-100 text-blue-700',
+    gpay:            'bg-blue-100 text-blue-700',
+    cheque:          'bg-amber-100 text-amber-700',
+    'cheque cleared':'bg-amber-100 text-amber-700',
+    rtgs:            'bg-purple-100 text-purple-700',
+    card:            'bg-pink-100 text-pink-700',
+    'not paid':      'bg-red-100 text-red-700',
   };
   return (
     <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${styles[m] || 'bg-gray-100 text-gray-600'}`}>
       {mode?.toUpperCase() || 'CASH'}
     </span>
+  );
+}
+
+// ── ADD EXPENSE FORM ────────────────────────────────────────
+// Maps 1:1 with your Google Sheet columns:
+// Date | Particulars | Expense Type | Payment Mode | Paid By | Amount | Voucher Received
+function AddExpenseForm({ onSuccess }: { onSuccess: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    expense_date: new Date().toISOString().split('T')[0],
+    category: 'PHARMACY PURCHASES',
+    description: '',
+    amount: '',
+    payment_mode: 'CASH',
+    paid_by: 'PHARMACY',
+    vendor_name: '',
+    reference_no: '',
+    voucher_amount: '',
+  });
+
+  const resetForm = () => setForm({
+    expense_date: new Date().toISOString().split('T')[0],
+    category: 'PHARMACY PURCHASES',
+    description: '',
+    amount: '',
+    payment_mode: 'CASH',
+    paid_by: 'PHARMACY',
+    vendor_name: '',
+    reference_no: '',
+    voucher_amount: '',
+  });
+
+  const handleSave = async () => {
+    if (!form.description || !form.amount) return;
+    setSaving(true);
+    try {
+      await api.post('/financial/expenses', {
+        expense_date: form.expense_date,
+        category: form.category,
+        description: form.description,
+        amount: parseFloat(form.amount),
+        payment_mode: form.payment_mode,
+        paid_by: form.paid_by,
+        vendor_name: form.vendor_name || null,
+        reference_no: form.reference_no || null,
+        voucher_amount: form.voucher_amount ? parseFloat(form.voucher_amount) : null,
+      });
+      resetForm();
+      setOpen(false);
+      onSuccess();
+    } catch {
+      alert('Failed to save expense');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)}
+        className="text-xs bg-red-50 text-red-600 border border-red-200 px-3 py-2 rounded-lg hover:bg-red-100 flex items-center gap-1.5 font-medium">
+        <Plus className="w-3.5 h-3.5" /> Add expense
+      </button>
+    );
+  }
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4 shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <h4 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+          <DollarSign className="w-4 h-4 text-red-500" /> New expense
+        </h4>
+        <button onClick={() => { setOpen(false); resetForm(); }}
+          className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+      </div>
+
+      {/* Row 1: Date, Category, Description */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
+        <div>
+          <label className="text-[11px] text-gray-500 font-medium block mb-1">Date</label>
+          <input type="date" value={form.expense_date}
+            onChange={e => setForm({ ...form, expense_date: e.target.value })}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#00475a] focus:ring-1 focus:ring-[#00475a] outline-none" />
+        </div>
+        <div>
+          <label className="text-[11px] text-gray-500 font-medium block mb-1">Expense type</label>
+          <select value={form.category}
+            onChange={e => setForm({ ...form, category: e.target.value })}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#00475a] outline-none">
+            {EXPENSE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <div className="md:col-span-2">
+          <label className="text-[11px] text-gray-500 font-medium block mb-1">Particulars (description)</label>
+          <input value={form.description}
+            onChange={e => setForm({ ...form, description: e.target.value })}
+            placeholder="e.g., KAIRALI PHARMA & SURGICALS (28/04/2026)"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#00475a] focus:ring-1 focus:ring-[#00475a] outline-none" />
+        </div>
+      </div>
+
+      {/* Row 2: Amount, Payment Mode, Paid By, Vendor */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+        <div>
+          <label className="text-[11px] text-gray-500 font-medium block mb-1">Amount (₹)</label>
+          <input type="number" value={form.amount}
+            onChange={e => setForm({ ...form, amount: e.target.value })}
+            placeholder="0"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#00475a] focus:ring-1 focus:ring-[#00475a] outline-none" />
+        </div>
+        <div>
+          <label className="text-[11px] text-gray-500 font-medium block mb-1">Payment mode</label>
+          <select value={form.payment_mode}
+            onChange={e => setForm({ ...form, payment_mode: e.target.value })}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#00475a] outline-none">
+            {PAYMENT_MODES.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-[11px] text-gray-500 font-medium block mb-1">Paid by</label>
+          <select value={form.paid_by}
+            onChange={e => setForm({ ...form, paid_by: e.target.value })}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#00475a] outline-none">
+            {PAID_BY_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-[11px] text-gray-500 font-medium block mb-1">Vendor name</label>
+          <input value={form.vendor_name}
+            onChange={e => setForm({ ...form, vendor_name: e.target.value })}
+            placeholder="e.g., LINK PHARMA"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#00475a] focus:ring-1 focus:ring-[#00475a] outline-none" />
+        </div>
+      </div>
+
+      {/* Row 3: Reference, Voucher, Save */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div>
+          <label className="text-[11px] text-gray-500 font-medium block mb-1">Reference no. (optional)</label>
+          <input value={form.reference_no}
+            onChange={e => setForm({ ...form, reference_no: e.target.value })}
+            placeholder="Cheque/UPI ref"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#00475a] outline-none" />
+        </div>
+        <div>
+          <label className="text-[11px] text-gray-500 font-medium block mb-1">Voucher received (₹)</label>
+          <input type="number" value={form.voucher_amount}
+            onChange={e => setForm({ ...form, voucher_amount: e.target.value })}
+            placeholder="Optional"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#00475a] outline-none" />
+        </div>
+        {form.voucher_amount && form.amount && (
+          <div className="flex items-end">
+            <div className={`text-xs font-medium px-3 py-2 rounded-lg ${
+              parseFloat(form.voucher_amount) - parseFloat(form.amount) === 0
+                ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+            }`}>
+              Diff: {fmt(parseFloat(form.voucher_amount) - parseFloat(form.amount))}
+            </div>
+          </div>
+        )}
+        <div className="flex items-end">
+          <button onClick={handleSave}
+            disabled={saving || !form.description || !form.amount}
+            className="w-full bg-[#00475a] text-white text-sm font-medium py-2 rounded-lg hover:bg-[#003d4d] disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+            {saving ? 'Saving...' : 'Save expense'}
+          </button>
+        </div>
+      </div>
+
+      {/* Quick help mapping */}
+      <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+        <p className="text-[10px] text-gray-400 leading-relaxed">
+          <strong className="text-gray-500">Google Sheet mapping:</strong> Date = Date • Particulars = Description • Expense Type = Category • Payment Mode = Mode • Paid By = Paid By • Amount = Amount • Voucher Received = Voucher amount
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -166,11 +368,12 @@ function VendorTermsModal({ onClose }: { onClose: () => void }) {
 // ── MAIN DASHBOARD ──────────────────────────────────────
 export default function OwnerFinancialDashboard() {
   const [showTerms, setShowTerms] = useState(false);
+  const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
     queryKey: ['owner-dashboard'],
     queryFn: () => api.get('/owner-dashboard').then(r => r.data),
-    refetchInterval: 60000, // refresh every minute
+    refetchInterval: 60000,
   });
 
   if (isLoading) {
@@ -193,10 +396,13 @@ export default function OwnerFinancialDashboard() {
             {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
         </div>
-        <button onClick={() => setShowTerms(true)}
-          className="text-xs bg-[#00475a] text-white px-3 py-2 rounded-lg hover:bg-[#003d4d] flex items-center gap-1">
-          <Users className="w-3 h-3" /> Vendor terms
-        </button>
+        <div className="flex items-center gap-2">
+          <AddExpenseForm onSuccess={() => queryClient.invalidateQueries({ queryKey: ['owner-dashboard'] })} />
+          <button onClick={() => setShowTerms(true)}
+            className="text-xs bg-gray-50 text-gray-600 border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-100 flex items-center gap-1.5 font-medium">
+            <Users className="w-3.5 h-3.5" /> Vendor terms
+          </button>
+        </div>
       </div>
 
       {/* ── TODAY'S SNAPSHOT ────────────────────────────────── */}
@@ -286,7 +492,6 @@ export default function OwnerFinancialDashboard() {
 
       {/* ── BOTTOM GRID: TOP VENDORS + TOP MARGINS ─────────── */}
       <div className="grid md:grid-cols-2 gap-4 mt-6">
-        {/* Top vendor spend */}
         <div className="border border-gray-200 rounded-xl overflow-hidden">
           <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
             <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
@@ -307,7 +512,6 @@ export default function OwnerFinancialDashboard() {
           </div>
         </div>
 
-        {/* Top margin medicines */}
         <div className="border border-gray-200 rounded-xl overflow-hidden">
           <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
             <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
@@ -330,7 +534,6 @@ export default function OwnerFinancialDashboard() {
 
       {/* ── RECENT ACTIVITY ────────────────────────────────── */}
       <div className="grid md:grid-cols-2 gap-4 mt-4">
-        {/* Recent sales */}
         <div className="border border-gray-200 rounded-xl overflow-hidden">
           <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
             <h3 className="text-sm font-semibold text-gray-700">Recent sales</h3>
@@ -351,7 +554,6 @@ export default function OwnerFinancialDashboard() {
           </div>
         </div>
 
-        {/* Recent expenses */}
         <div className="border border-gray-200 rounded-xl overflow-hidden">
           <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
             <h3 className="text-sm font-semibold text-gray-700">Recent expenses</h3>
