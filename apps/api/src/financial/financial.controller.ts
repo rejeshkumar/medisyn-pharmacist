@@ -1,7 +1,7 @@
 // financial.controller.ts
 // Place at: apps/api/src/financial/financial.controller.ts
 
-import { Controller, Get, Post, Patch, Body, Param, Query, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { TenantGuard } from '../common/guards/tenant.guard';
 import { InjectDataSource } from '@nestjs/typeorm';
@@ -421,5 +421,511 @@ export class FinancialController {
        body.notes||null, id, req.user.tenant_id]
     );
     return { updated: true };
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // PHARMACY PURCHASES (Vendor-wise medicine purchase tracking)
+  // ══════════════════════════════════════════════════════════════════════
+
+  @Get('pharmacy-purchases')
+  async getPharmacyPurchases(
+    @Query('from') from: string,
+    @Query('to') to: string,
+    @Query('vendor') vendor: string,
+    @Query('payment_mode') paymentMode: string,
+    @Query('is_paid') isPaid: string,
+    @Req() req: any,
+  ) {
+    const tid = req.user.tenant_id;
+    const start = from || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+    const end = to || new Date().toISOString().split('T')[0];
+
+    let q = `SELECT pp.*, u.full_name as created_by_name
+             FROM pharmacy_purchases pp
+             LEFT JOIN users u ON u.id = pp.created_by
+             WHERE pp.tenant_id = $1
+               AND pp.purchase_date BETWEEN $2 AND $3`;
+    const params: any[] = [tid, start, end];
+
+    if (vendor) {
+      q += ` AND pp.vendor_name ILIKE $${params.length + 1}`;
+      params.push(`%${vendor}%`);
+    }
+    if (paymentMode) {
+      q += ` AND pp.payment_mode = $${params.length + 1}`;
+      params.push(paymentMode);
+    }
+    if (isPaid === 'true') q += ` AND pp.is_paid = true`;
+    if (isPaid === 'false') q += ` AND pp.is_paid = false`;
+
+    q += ' ORDER BY pp.purchase_date DESC, pp.created_at DESC';
+    return this.ds.query(q, params);
+  }
+
+  @Get('pharmacy-purchases/summary')
+  async getPharmacyPurchasesSummary(
+    @Query('from') from: string,
+    @Query('to') to: string,
+    @Req() req: any,
+  ) {
+    const tid = req.user.tenant_id;
+    const start = from || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
+    const end = to || new Date().toISOString().split('T')[0];
+
+    const vendorSummary = await this.ds.query(
+      `SELECT
+         vendor_name,
+         COUNT(*) as total_invoices,
+         SUM(amount) as total_spend,
+         SUM(CASE WHEN is_paid THEN amount ELSE 0 END) as paid_amount,
+         SUM(CASE WHEN NOT is_paid THEN amount ELSE 0 END) as unpaid_amount,
+         MAX(purchase_date) as last_purchase_date
+       FROM pharmacy_purchases
+       WHERE tenant_id = $1 AND purchase_date BETWEEN $2 AND $3
+       GROUP BY vendor_name
+       ORDER BY total_spend DESC`,
+      [tid, start, end],
+    );
+
+    const modeBreakup = await this.ds.query(
+      `SELECT
+         payment_mode,
+         COUNT(*) as count,
+         SUM(amount) as total
+       FROM pharmacy_purchases
+       WHERE tenant_id = $1 AND purchase_date BETWEEN $2 AND $3
+       GROUP BY payment_mode
+       ORDER BY total DESC`,
+      [tid, start, end],
+    );
+
+    const monthlyTrend = await this.ds.query(
+      `SELECT
+         TO_CHAR(purchase_date, 'YYYY-MM') as month,
+         SUM(amount) as total,
+         COUNT(*) as count
+       FROM pharmacy_purchases
+       WHERE tenant_id = $1 AND purchase_date BETWEEN $2 AND $3
+       GROUP BY TO_CHAR(purchase_date, 'YYYY-MM')
+       ORDER BY month`,
+      [tid, start, end],
+    );
+
+    const totals = await this.ds.query(
+      `SELECT
+         SUM(amount) as total_purchases,
+         SUM(CASE WHEN is_paid THEN amount ELSE 0 END) as total_paid,
+         SUM(CASE WHEN NOT is_paid THEN amount ELSE 0 END) as total_unpaid,
+         COUNT(*) as total_invoices
+       FROM pharmacy_purchases
+       WHERE tenant_id = $1 AND purchase_date BETWEEN $2 AND $3`,
+      [tid, start, end],
+    );
+
+    return {
+      totals: totals[0],
+      vendor_summary: vendorSummary,
+      mode_breakup: modeBreakup,
+      monthly_trend: monthlyTrend,
+    };
+  }
+
+  @Post('pharmacy-purchases')
+  async addPharmacyPurchase(@Body() body: any, @Req() req: any) {
+    const { tenant_id, sub } = req.user;
+    const r = await this.ds.query(
+      `INSERT INTO pharmacy_purchases
+       (tenant_id, purchase_date, vendor_name, invoice_no, amount,
+        payment_mode, paid_by, credit_period, is_paid, paid_date,
+        cheque_no, reference_no, notes, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+       RETURNING *`,
+      [
+        tenant_id,
+        body.purchase_date || new Date().toISOString().split('T')[0],
+        body.vendor_name,
+        body.invoice_no || null,
+        body.amount,
+        body.payment_mode || 'CASH',
+        body.paid_by || null,
+        body.credit_period || null,
+        body.is_paid ?? false,
+        body.paid_date || null,
+        body.cheque_no || null,
+        body.reference_no || null,
+        body.notes || null,
+        sub,
+      ],
+    );
+    return r[0];
+  }
+
+  @Patch('pharmacy-purchases/:id')
+  async updatePharmacyPurchase(@Param('id') id: string, @Body() body: any, @Req() req: any) {
+    const fields: string[] = [];
+    const params: any[] = [];
+    let idx = 1;
+
+    const allowed = [
+      'purchase_date', 'vendor_name', 'invoice_no', 'amount',
+      'payment_mode', 'paid_by', 'credit_period', 'is_paid',
+      'paid_date', 'cheque_no', 'reference_no', 'notes',
+    ];
+
+    for (const f of allowed) {
+      if (body[f] !== undefined) {
+        fields.push(`${f} = $${idx}`);
+        params.push(body[f]);
+        idx++;
+      }
+    }
+    if (fields.length === 0) return { message: 'Nothing to update' };
+
+    fields.push(`updated_at = NOW()`);
+    params.push(id, req.user.tenant_id);
+
+    await this.ds.query(
+      `UPDATE pharmacy_purchases SET ${fields.join(', ')}
+       WHERE id = $${idx} AND tenant_id = $${idx + 1}`,
+      params,
+    );
+    return { success: true };
+  }
+
+  @Delete('pharmacy-purchases/:id')
+  async deletePharmacyPurchase(@Param('id') id: string, @Req() req: any) {
+    await this.ds.query(
+      `DELETE FROM pharmacy_purchases WHERE id = $1 AND tenant_id = $2`,
+      [id, req.user.tenant_id],
+    );
+    return { success: true };
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // VENDOR MASTER
+  // ══════════════════════════════════════════════════════════════════════
+
+  @Get('vendors')
+  async getVendors(@Req() req: any) {
+    return this.ds.query(
+      `SELECT * FROM vendor_master
+       WHERE tenant_id = $1 AND is_active = true
+       ORDER BY vendor_name`,
+      [req.user.tenant_id],
+    );
+  }
+
+  @Post('vendors')
+  async addVendor(@Body() body: any, @Req() req: any) {
+    const r = await this.ds.query(
+      `INSERT INTO vendor_master
+       (tenant_id, vendor_name, payment_mode, credit_period, contact_phone, gst_no, address)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT (tenant_id, vendor_name)
+       DO UPDATE SET payment_mode=$3, credit_period=$4,
+         contact_phone=$5, gst_no=$6, address=$7, updated_at=NOW()
+       RETURNING *`,
+      [
+        req.user.tenant_id,
+        body.vendor_name,
+        body.payment_mode || 'CASH',
+        body.credit_period || 'CASH PURCHASE',
+        body.contact_phone || null,
+        body.gst_no || null,
+        body.address || null,
+      ],
+    );
+    return r[0];
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // UPCOMING PAYMENTS
+  // ══════════════════════════════════════════════════════════════════════
+
+  @Get('upcoming-payments')
+  async getUpcomingPayments(
+    @Query('show_paid') showPaid: string,
+    @Req() req: any,
+  ) {
+    const tid = req.user.tenant_id;
+    let q = `SELECT up.*, u.full_name as created_by_name
+             FROM upcoming_payments up
+             LEFT JOIN users u ON u.id = up.created_by
+             WHERE up.tenant_id = $1`;
+
+    if (showPaid !== 'true') {
+      q += ` AND up.is_paid = false`;
+    }
+    q += ` ORDER BY
+             CASE WHEN up.is_urgent THEN 0 ELSE 1 END,
+             CASE WHEN up.due_date IS NULL THEN 1 ELSE 0 END,
+             up.due_date ASC`;
+
+    const payments = await this.ds.query(q, [tid]);
+
+    // Get latest cash/bank balance
+    const balance = await this.ds.query(
+      `SELECT * FROM cash_bank_balance
+       WHERE tenant_id = $1
+       ORDER BY balance_date DESC LIMIT 1`,
+      [tid],
+    );
+
+    const totalDue = payments
+      .filter((p: any) => !p.is_paid)
+      .reduce((sum: number, p: any) => sum + parseFloat(p.amount || 0), 0);
+
+    const cashBal = balance[0]?.cash_balance || 0;
+    const bankBal = balance[0]?.bank_balance || 0;
+    const cheqIssued = balance[0]?.cheque_issued || 0;
+
+    return {
+      payments,
+      balance: {
+        cash_balance: parseFloat(cashBal),
+        bank_balance: parseFloat(bankBal),
+        cheque_issued: parseFloat(cheqIssued),
+        total_available: parseFloat(cashBal) + parseFloat(bankBal),
+        total_due: totalDue,
+        fund_required: Math.max(0, totalDue - parseFloat(cashBal) - parseFloat(bankBal)),
+        balance_date: balance[0]?.balance_date || null,
+      },
+    };
+  }
+
+  @Post('upcoming-payments')
+  async addUpcomingPayment(@Body() body: any, @Req() req: any) {
+    const { tenant_id, sub } = req.user;
+    const r = await this.ds.query(
+      `INSERT INTO upcoming_payments
+       (tenant_id, payment_type, description, amount, due_date,
+        is_urgent, notes, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+      [
+        tenant_id,
+        body.payment_type,
+        body.description || null,
+        body.amount,
+        body.due_date || null,
+        body.is_urgent ?? false,
+        body.notes || null,
+        sub,
+      ],
+    );
+    return r[0];
+  }
+
+  @Patch('upcoming-payments/:id')
+  async updateUpcomingPayment(@Param('id') id: string, @Body() body: any, @Req() req: any) {
+    const fields: string[] = [];
+    const params: any[] = [];
+    let idx = 1;
+
+    const allowed = [
+      'payment_type', 'description', 'amount', 'due_date',
+      'is_urgent', 'is_paid', 'paid_date', 'paid_amount',
+      'payment_mode', 'reference_no', 'notes',
+    ];
+
+    for (const f of allowed) {
+      if (body[f] !== undefined) {
+        fields.push(`${f} = $${idx}`);
+        params.push(body[f]);
+        idx++;
+      }
+    }
+    if (fields.length === 0) return { message: 'Nothing to update' };
+
+    fields.push(`updated_at = NOW()`);
+    params.push(id, req.user.tenant_id);
+
+    await this.ds.query(
+      `UPDATE upcoming_payments SET ${fields.join(', ')}
+       WHERE id = $${idx} AND tenant_id = $${idx + 1}`,
+      params,
+    );
+    return { success: true };
+  }
+
+  @Patch('upcoming-payments/:id/mark-paid')
+  async markPaymentPaid(@Param('id') id: string, @Body() body: any, @Req() req: any) {
+    await this.ds.query(
+      `UPDATE upcoming_payments SET
+         is_paid = true,
+         paid_date = $1,
+         paid_amount = $2,
+         payment_mode = $3,
+         reference_no = $4,
+         updated_at = NOW()
+       WHERE id = $5 AND tenant_id = $6`,
+      [
+        body.paid_date || new Date().toISOString().split('T')[0],
+        body.paid_amount || null,
+        body.payment_mode || null,
+        body.reference_no || null,
+        id,
+        req.user.tenant_id,
+      ],
+    );
+    return { success: true };
+  }
+
+  @Delete('upcoming-payments/:id')
+  async deleteUpcomingPayment(@Param('id') id: string, @Req() req: any) {
+    await this.ds.query(
+      `DELETE FROM upcoming_payments WHERE id = $1 AND tenant_id = $2`,
+      [id, req.user.tenant_id],
+    );
+    return { success: true };
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // CASH & BANK BALANCE
+  // ══════════════════════════════════════════════════════════════════════
+
+  @Get('cash-bank-balance')
+  async getCashBankBalance(@Req() req: any) {
+    const r = await this.ds.query(
+      `SELECT * FROM cash_bank_balance
+       WHERE tenant_id = $1
+       ORDER BY balance_date DESC LIMIT 1`,
+      [req.user.tenant_id],
+    );
+    return r[0] || { cash_balance: 0, bank_balance: 0, cheque_issued: 0 };
+  }
+
+  @Post('cash-bank-balance')
+  async updateCashBankBalance(@Body() body: any, @Req() req: any) {
+    const { tenant_id, sub } = req.user;
+    const r = await this.ds.query(
+      `INSERT INTO cash_bank_balance
+       (tenant_id, balance_date, cash_balance, bank_balance, cheque_issued, notes, updated_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       ON CONFLICT (tenant_id, balance_date)
+       DO UPDATE SET cash_balance=$3, bank_balance=$4, cheque_issued=$5,
+         notes=$6, updated_by=$7, updated_at=NOW()
+       RETURNING *`,
+      [
+        tenant_id,
+        body.balance_date || new Date().toISOString().split('T')[0],
+        body.cash_balance || 0,
+        body.bank_balance || 0,
+        body.cheque_issued || 0,
+        body.notes || null,
+        sub,
+      ],
+    );
+    return r[0];
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // DASHBOARD — Period-based aggregation (daily/weekly/monthly/yearly)
+  // ══════════════════════════════════════════════════════════════════════
+
+  @Get('dashboard-summary')
+  async getDashboardSummary(
+    @Query('period') period: string,
+    @Query('date') date: string,
+    @Req() req: any,
+  ) {
+    const tid = req.user.tenant_id;
+    const refDate = date || new Date().toISOString().split('T')[0];
+
+    let startDate: string, endDate: string;
+    const d = new Date(refDate);
+
+    switch (period) {
+      case 'weekly':
+        const day = d.getDay();
+        const monday = new Date(d);
+        monday.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        startDate = monday.toISOString().split('T')[0];
+        endDate = sunday.toISOString().split('T')[0];
+        break;
+      case 'monthly':
+        startDate = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+        endDate = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
+        break;
+      case 'yearly':
+        startDate = new Date(d.getFullYear(), 0, 1).toISOString().split('T')[0];
+        endDate = new Date(d.getFullYear(), 11, 31).toISOString().split('T')[0];
+        break;
+      default:
+        startDate = refDate;
+        endDate = refDate;
+    }
+
+    const [revenue, cogs, expenses, purchases, consultations] = await Promise.all([
+      this.ds.query(
+        `SELECT
+           COALESCE(SUM(total_amount), 0) as total_revenue,
+           COALESCE(SUM(CASE WHEN payment_mode='cash' THEN total_amount ELSE 0 END), 0) as cash_revenue,
+           COALESCE(SUM(CASE WHEN payment_mode='upi' THEN total_amount ELSE 0 END), 0) as upi_revenue,
+           COALESCE(SUM(CASE WHEN payment_mode='card' THEN total_amount ELSE 0 END), 0) as card_revenue,
+           COUNT(*) as total_bills
+         FROM sales
+         WHERE tenant_id = $1 AND is_voided = false
+           AND (created_at + INTERVAL '5 hours 30 minutes')::date BETWEEN $2 AND $3`,
+        [tid, startDate, endDate],
+      ),
+      this.ds.query(
+        `SELECT COALESCE(SUM(sb.purchase_price * si.qty), 0) as total_cogs
+         FROM sale_items si
+         JOIN sales s ON s.id = si.sale_id
+         JOIN stock_batches sb ON sb.id = si.batch_id
+         WHERE s.tenant_id = $1 AND s.is_voided = false
+           AND (s.created_at + INTERVAL '5 hours 30 minutes')::date BETWEEN $2 AND $3`,
+        [tid, startDate, endDate],
+      ),
+      this.ds.query(
+        `SELECT COALESCE(SUM(amount), 0) as total_expenses, COUNT(*) as expense_count
+         FROM expenses
+         WHERE tenant_id = $1 AND expense_date BETWEEN $2 AND $3`,
+        [tid, startDate, endDate],
+      ),
+      this.ds.query(
+        `SELECT COALESCE(SUM(amount), 0) as total_purchases, COUNT(*) as purchase_count
+         FROM pharmacy_purchases
+         WHERE tenant_id = $1 AND purchase_date BETWEEN $2 AND $3`,
+        [tid, startDate, endDate],
+      ),
+      this.ds.query(
+        `SELECT COALESCE(SUM(fee_amount), 0) as total_consultation
+         FROM consultations
+         WHERE tenant_id = $1 AND status = 'completed'
+           AND (created_at + INTERVAL '5 hours 30 minutes')::date BETWEEN $2 AND $3`,
+        [tid, startDate, endDate],
+      ).catch(() => [{ total_consultation: 0 }]),
+    ]);
+
+    const totalRevenue = parseFloat(revenue[0]?.total_revenue || 0) + parseFloat(consultations[0]?.total_consultation || 0);
+    const totalCogs = parseFloat(cogs[0]?.total_cogs || 0);
+    const grossProfit = totalRevenue - totalCogs;
+    const totalExpenses = parseFloat(expenses[0]?.total_expenses || 0);
+    const netProfit = grossProfit - totalExpenses;
+
+    return {
+      period,
+      start_date: startDate,
+      end_date: endDate,
+      revenue: {
+        total: Math.round(totalRevenue * 100) / 100,
+        pharmacy: Math.round(parseFloat(revenue[0]?.total_revenue || 0) * 100) / 100,
+        consultation: Math.round(parseFloat(consultations[0]?.total_consultation || 0) * 100) / 100,
+        cash: Math.round(parseFloat(revenue[0]?.cash_revenue || 0) * 100) / 100,
+        upi: Math.round(parseFloat(revenue[0]?.upi_revenue || 0) * 100) / 100,
+        card: Math.round(parseFloat(revenue[0]?.card_revenue || 0) * 100) / 100,
+        total_bills: parseInt(revenue[0]?.total_bills || 0),
+      },
+      cogs: Math.round(totalCogs * 100) / 100,
+      gross_profit: Math.round(grossProfit * 100) / 100,
+      gross_margin: totalRevenue > 0 ? Math.round((grossProfit / totalRevenue) * 1000) / 10 : 0,
+      expenses: Math.round(totalExpenses * 100) / 100,
+      purchases: Math.round(parseFloat(purchases[0]?.total_purchases || 0) * 100) / 100,
+      net_profit: Math.round(netProfit * 100) / 100,
+      net_margin: totalRevenue > 0 ? Math.round((netProfit / totalRevenue) * 1000) / 10 : 0,
+    };
   }
 }
