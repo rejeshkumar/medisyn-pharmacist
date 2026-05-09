@@ -7,7 +7,7 @@ import {
   TrendingUp, TrendingDown, DollarSign, ShoppingCart,
   AlertTriangle, Clock, CreditCard, Banknote, ArrowUpRight,
   Package, BarChart3, Users, ChevronRight, Plus, Edit2, X,
-  Calendar, Clock, Truck,
+  Calendar, Truck,
 } from 'lucide-react';
 
 // ── Expense categories matching your Google Sheet ──────────
