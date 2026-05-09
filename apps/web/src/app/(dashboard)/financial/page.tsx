@@ -2,7 +2,7 @@
 import toast from 'react-hot-toast';
 
 import { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import api from '@/lib/api';
 import {
   TrendingUp, TrendingDown, DollarSign, ShoppingCart,
