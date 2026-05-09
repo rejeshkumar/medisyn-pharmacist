@@ -7,6 +7,7 @@ import {
   TrendingUp, TrendingDown, DollarSign, ShoppingCart,
   AlertTriangle, Clock, CreditCard, Banknote, ArrowUpRight,
   Package, BarChart3, Users, ChevronRight, Plus, Edit2, X,
+  Calendar, Clock, Truck,
 } from 'lucide-react';
 
 // ── Expense categories matching your Google Sheet ──────────
@@ -573,6 +574,596 @@ export default function OwnerFinancialDashboard() {
       </div>
 
       {showTerms && <VendorTermsModal onClose={() => setShowTerms(false)} />}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// PHARMACY PURCHASES TAB
+// ══════════════════════════════════════════════════════════════════════════
+function PharmacyPurchasesTab() {
+  const qc = useQueryClient();
+  const [showForm, setShowForm] = useState(false);
+  const [dateRange, setDateRange] = useState({
+    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+    to: new Date().toISOString().split('T')[0],
+  });
+  const [form, setForm] = useState({
+    purchase_date: new Date().toISOString().split('T')[0],
+    vendor_name: '', invoice_no: '', amount: '',
+    payment_mode: 'CASH', paid_by: '', credit_period: '',
+    is_paid: false, cheque_no: '', reference_no: '', notes: '',
+  });
+  const [viewMode, setViewMode] = useState<'list'|'summary'>('summary');
+
+  const { data: purchases = [], isLoading } = useQuery({
+    queryKey: ['pharmacy-purchases', dateRange],
+    queryFn: () => api.get(`/financial/pharmacy-purchases?from=${dateRange.from}&to=${dateRange.to}`).then(r => r.data),
+  });
+
+  const { data: summary } = useQuery({
+    queryKey: ['pharmacy-purchases-summary', dateRange],
+    queryFn: () => api.get(`/financial/pharmacy-purchases/summary?from=${dateRange.from}&to=${dateRange.to}`).then(r => r.data),
+  });
+
+  const { data: vendors = [] } = useQuery({
+    queryKey: ['vendors'],
+    queryFn: () => api.get('/financial/vendors').then(r => r.data),
+    staleTime: 300_000,
+  });
+
+  const addMut = useMutation({
+    mutationFn: (d: any) => api.post('/financial/pharmacy-purchases', d),
+    onSuccess: () => {
+      toast.success('Purchase recorded');
+      qc.invalidateQueries({ queryKey: ['pharmacy-purchases'] });
+      setShowForm(false);
+      setForm({ purchase_date: new Date().toISOString().split('T')[0], vendor_name: '', invoice_no: '', amount: '', payment_mode: 'CASH', paid_by: '', credit_period: '', is_paid: false, cheque_no: '', reference_no: '', notes: '' });
+    },
+    onError: () => toast.error('Failed to save'),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => api.delete(`/financial/pharmacy-purchases/${id}`),
+    onSuccess: () => { toast.success('Deleted'); qc.invalidateQueries({ queryKey: ['pharmacy-purchases'] }); },
+  });
+
+  const handleSubmit = () => {
+    if (!form.vendor_name || !form.amount) return toast.error('Vendor and amount required');
+    addMut.mutate({ ...form, amount: parseFloat(form.amount) });
+  };
+
+  const PAYMENT_MODES = ['CASH', 'CHEQUE', 'RTGS', 'UPI', 'NOT_PAID'];
+  const CREDIT_PERIODS = ['CASH PURCHASE', '7DAYS', '15DAYS', '30DAYS', '60DAYS', '90DAYS'];
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">Pharmacy Purchases</h3>
+          <p className="text-xs text-gray-500 mt-0.5">Track vendor-wise medicine purchases</p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex gap-1 bg-gray-100 rounded-lg p-0.5">
+            <button onClick={() => setViewMode('summary')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${viewMode === 'summary' ? 'bg-[#00475a] text-white' : 'text-gray-600'}`}>
+              Summary
+            </button>
+            <button onClick={() => setViewMode('list')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${viewMode === 'list' ? 'bg-[#00475a] text-white' : 'text-gray-600'}`}>
+              All Entries
+            </button>
+          </div>
+          <button onClick={() => setShowForm(!showForm)}
+            className="flex items-center gap-1.5 px-3 py-2 bg-[#00475a] text-white text-sm rounded-lg hover:bg-[#003847]">
+            <Plus size={14} /> Add Purchase
+          </button>
+        </div>
+      </div>
+
+      {/* Date Range */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-gray-500">From</label>
+          <input type="date" value={dateRange.from} onChange={e => setDateRange(p => ({ ...p, from: e.target.value }))}
+            className="px-2.5 py-1.5 border rounded-lg text-sm" />
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-gray-500">To</label>
+          <input type="date" value={dateRange.to} onChange={e => setDateRange(p => ({ ...p, to: e.target.value }))}
+            className="px-2.5 py-1.5 border rounded-lg text-sm" />
+        </div>
+      </div>
+
+      {/* Add Form */}
+      {showForm && (
+        <div className="bg-white border rounded-xl p-4 space-y-3">
+          <h4 className="text-sm font-semibold text-gray-800">New Purchase Entry</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Date</label>
+              <input type="date" value={form.purchase_date} onChange={e => setForm(p => ({ ...p, purchase_date: e.target.value }))}
+                className="w-full px-2.5 py-2 border rounded-lg text-sm" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Vendor *</label>
+              <input list="vendor-list" value={form.vendor_name}
+                onChange={e => {
+                  const v = e.target.value;
+                  setForm(p => ({ ...p, vendor_name: v }));
+                  const match = vendors.find((x: any) => x.vendor_name === v);
+                  if (match) {
+                    setForm(p => ({ ...p, payment_mode: match.payment_mode || 'CASH', credit_period: match.credit_period || '' }));
+                  }
+                }}
+                className="w-full px-2.5 py-2 border rounded-lg text-sm" placeholder="Type or select vendor" />
+              <datalist id="vendor-list">
+                {vendors.map((v: any) => <option key={v.id} value={v.vendor_name} />)}
+              </datalist>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Invoice No</label>
+              <input value={form.invoice_no} onChange={e => setForm(p => ({ ...p, invoice_no: e.target.value }))}
+                className="w-full px-2.5 py-2 border rounded-lg text-sm" placeholder="INV-001" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Amount (₹) *</label>
+              <input type="number" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))}
+                className="w-full px-2.5 py-2 border rounded-lg text-sm" placeholder="0.00" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Payment Mode</label>
+              <select value={form.payment_mode} onChange={e => setForm(p => ({ ...p, payment_mode: e.target.value }))}
+                className="w-full px-2.5 py-2 border rounded-lg text-sm bg-white">
+                {PAYMENT_MODES.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Credit Period</label>
+              <select value={form.credit_period} onChange={e => setForm(p => ({ ...p, credit_period: e.target.value }))}
+                className="w-full px-2.5 py-2 border rounded-lg text-sm bg-white">
+                <option value="">Select...</option>
+                {CREDIT_PERIODS.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Paid By</label>
+              <input value={form.paid_by} onChange={e => setForm(p => ({ ...p, paid_by: e.target.value }))}
+                className="w-full px-2.5 py-2 border rounded-lg text-sm" placeholder="PHARMACY / CB / OWNER" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Cheque / Ref No</label>
+              <input value={form.reference_no} onChange={e => setForm(p => ({ ...p, reference_no: e.target.value }))}
+                className="w-full px-2.5 py-2 border rounded-lg text-sm" />
+            </div>
+            <div className="flex items-end">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" checked={form.is_paid} onChange={e => setForm(p => ({ ...p, is_paid: e.target.checked }))}
+                  className="w-4 h-4 rounded border-gray-300 text-[#00475a]" />
+                Paid
+              </label>
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Notes</label>
+            <input value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
+              className="w-full px-2.5 py-2 border rounded-lg text-sm" placeholder="Optional notes..." />
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button onClick={handleSubmit} disabled={addMut.isPending}
+              className="px-4 py-2 bg-[#00475a] text-white text-sm rounded-lg hover:bg-[#003847] disabled:opacity-50">
+              {addMut.isPending ? 'Saving...' : 'Save Purchase'}
+            </button>
+            <button onClick={() => setShowForm(false)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* Summary Cards */}
+      {summary && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="bg-white border rounded-xl p-4">
+            <p className="text-xs text-gray-500">Total Purchases</p>
+            <p className="text-xl font-bold text-gray-900 mt-1">₹{Number(summary.totals?.total_purchases || 0).toLocaleString('en-IN')}</p>
+            <p className="text-xs text-gray-400 mt-1">{summary.totals?.total_invoices || 0} invoices</p>
+          </div>
+          <div className="bg-white border rounded-xl p-4">
+            <p className="text-xs text-gray-500">Paid</p>
+            <p className="text-xl font-bold text-green-700 mt-1">₹{Number(summary.totals?.total_paid || 0).toLocaleString('en-IN')}</p>
+          </div>
+          <div className="bg-white border rounded-xl p-4">
+            <p className="text-xs text-gray-500">Unpaid</p>
+            <p className="text-xl font-bold text-red-600 mt-1">₹{Number(summary.totals?.total_unpaid || 0).toLocaleString('en-IN')}</p>
+          </div>
+          <div className="bg-white border rounded-xl p-4">
+            <p className="text-xs text-gray-500">Vendors Active</p>
+            <p className="text-xl font-bold text-gray-900 mt-1">{summary.vendor_summary?.length || 0}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Summary View — Vendor-wise spend table (like Google Sheet) */}
+      {viewMode === 'summary' && summary?.vendor_summary && (
+        <div className="bg-white border rounded-xl overflow-hidden">
+          <div className="px-4 py-3 border-b bg-gray-50">
+            <h4 className="text-sm font-semibold text-gray-800">Vendor-wise Spend Analysis</h4>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 text-left">
+                  <th className="px-4 py-2.5 text-xs font-medium text-gray-500">#</th>
+                  <th className="px-4 py-2.5 text-xs font-medium text-gray-500">Vendor</th>
+                  <th className="px-4 py-2.5 text-xs font-medium text-gray-500 text-right">Total Spend</th>
+                  <th className="px-4 py-2.5 text-xs font-medium text-gray-500 text-right">Paid</th>
+                  <th className="px-4 py-2.5 text-xs font-medium text-gray-500 text-right">Unpaid</th>
+                  <th className="px-4 py-2.5 text-xs font-medium text-gray-500 text-right">Invoices</th>
+                  <th className="px-4 py-2.5 text-xs font-medium text-gray-500">Last Purchase</th>
+                </tr>
+              </thead>
+              <tbody>
+                {summary.vendor_summary.map((v: any, i: number) => (
+                  <tr key={v.vendor_name} className="border-t hover:bg-gray-50">
+                    <td className="px-4 py-2.5 text-gray-400">{i + 1}</td>
+                    <td className="px-4 py-2.5 font-medium text-gray-900">{v.vendor_name}</td>
+                    <td className="px-4 py-2.5 text-right font-semibold">₹{Number(v.total_spend).toLocaleString('en-IN')}</td>
+                    <td className="px-4 py-2.5 text-right text-green-700">₹{Number(v.paid_amount).toLocaleString('en-IN')}</td>
+                    <td className="px-4 py-2.5 text-right text-red-600">{Number(v.unpaid_amount) > 0 ? `₹${Number(v.unpaid_amount).toLocaleString('en-IN')}` : '—'}</td>
+                    <td className="px-4 py-2.5 text-right">{v.total_invoices}</td>
+                    <td className="px-4 py-2.5 text-gray-500">{v.last_purchase_date ? new Date(v.last_purchase_date).toLocaleDateString('en-IN') : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+              {summary.vendor_summary.length > 0 && (
+                <tfoot>
+                  <tr className="border-t-2 bg-gray-50 font-semibold">
+                    <td colSpan={2} className="px-4 py-2.5">Total</td>
+                    <td className="px-4 py-2.5 text-right">₹{summary.vendor_summary.reduce((s: number, v: any) => s + Number(v.total_spend), 0).toLocaleString('en-IN')}</td>
+                    <td className="px-4 py-2.5 text-right text-green-700">₹{summary.vendor_summary.reduce((s: number, v: any) => s + Number(v.paid_amount), 0).toLocaleString('en-IN')}</td>
+                    <td className="px-4 py-2.5 text-right text-red-600">₹{summary.vendor_summary.reduce((s: number, v: any) => s + Number(v.unpaid_amount), 0).toLocaleString('en-IN')}</td>
+                    <td className="px-4 py-2.5 text-right">{summary.vendor_summary.reduce((s: number, v: any) => s + Number(v.total_invoices), 0)}</td>
+                    <td></td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Mode Breakup */}
+      {viewMode === 'summary' && summary?.mode_breakup && summary.mode_breakup.length > 0 && (
+        <div className="bg-white border rounded-xl p-4">
+          <h4 className="text-sm font-semibold text-gray-800 mb-3">Payment Mode Breakup</h4>
+          <div className="flex flex-wrap gap-4">
+            {summary.mode_breakup.map((m: any) => (
+              <div key={m.payment_mode} className="flex items-center gap-2">
+                <span className={`w-2.5 h-2.5 rounded-full ${
+                  m.payment_mode === 'CASH' ? 'bg-green-500' :
+                  m.payment_mode === 'CHEQUE' ? 'bg-blue-500' :
+                  m.payment_mode === 'RTGS' ? 'bg-purple-500' :
+                  m.payment_mode === 'UPI' ? 'bg-orange-500' : 'bg-gray-400'
+                }`} />
+                <span className="text-sm text-gray-700">{m.payment_mode}: ₹{Number(m.total).toLocaleString('en-IN')} ({m.count})</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* List View — All entries */}
+      {viewMode === 'list' && (
+        <div className="bg-white border rounded-xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 text-left">
+                  <th className="px-4 py-2.5 text-xs font-medium text-gray-500">Date</th>
+                  <th className="px-4 py-2.5 text-xs font-medium text-gray-500">Vendor</th>
+                  <th className="px-4 py-2.5 text-xs font-medium text-gray-500">Invoice</th>
+                  <th className="px-4 py-2.5 text-xs font-medium text-gray-500 text-right">Amount</th>
+                  <th className="px-4 py-2.5 text-xs font-medium text-gray-500">Mode</th>
+                  <th className="px-4 py-2.5 text-xs font-medium text-gray-500">Credit</th>
+                  <th className="px-4 py-2.5 text-xs font-medium text-gray-500">Status</th>
+                  <th className="px-4 py-2.5 text-xs font-medium text-gray-500"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">Loading...</td></tr>
+                ) : purchases.length === 0 ? (
+                  <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">No purchases found</td></tr>
+                ) : purchases.map((p: any) => (
+                  <tr key={p.id} className="border-t hover:bg-gray-50">
+                    <td className="px-4 py-2.5 text-gray-600">{new Date(p.purchase_date).toLocaleDateString('en-IN')}</td>
+                    <td className="px-4 py-2.5 font-medium text-gray-900">{p.vendor_name}</td>
+                    <td className="px-4 py-2.5 text-gray-500">{p.invoice_no || '—'}</td>
+                    <td className="px-4 py-2.5 text-right font-semibold">₹{Number(p.amount).toLocaleString('en-IN')}</td>
+                    <td className="px-4 py-2.5">
+                      <span className={`px-2 py-0.5 rounded-full text-xs ${
+                        p.payment_mode === 'CASH' ? 'bg-green-50 text-green-700' :
+                        p.payment_mode === 'CHEQUE' ? 'bg-blue-50 text-blue-700' :
+                        p.payment_mode === 'RTGS' ? 'bg-purple-50 text-purple-700' :
+                        p.payment_mode === 'NOT_PAID' ? 'bg-red-50 text-red-700' : 'bg-gray-50 text-gray-700'
+                      }`}>{p.payment_mode}</span>
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-gray-500">{p.credit_period || '—'}</td>
+                    <td className="px-4 py-2.5">
+                      <span className={`px-2 py-0.5 rounded-full text-xs ${p.is_paid ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
+                        {p.is_paid ? 'Paid' : 'Pending'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <button onClick={() => { if (confirm('Delete this entry?')) deleteMut.mutate(p.id); }}
+                        className="text-gray-400 hover:text-red-500">
+                        <X size={14} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════
+// UPCOMING PAYMENTS TAB
+// ══════════════════════════════════════════════════════════════════════════
+function UpcomingPaymentsTab() {
+  const qc = useQueryClient();
+  const [showForm, setShowForm] = useState(false);
+  const [showPaid, setShowPaid] = useState(false);
+  const [showBalanceForm, setShowBalanceForm] = useState(false);
+  const [form, setForm] = useState({
+    payment_type: '', description: '', amount: '',
+    due_date: '', is_urgent: false, notes: '',
+  });
+  const [balForm, setBalForm] = useState({ cash_balance: '', bank_balance: '', cheque_issued: '' });
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['upcoming-payments', showPaid],
+    queryFn: () => api.get(`/financial/upcoming-payments?show_paid=${showPaid}`).then(r => r.data),
+  });
+
+  const payments = data?.payments || [];
+  const balance = data?.balance || {};
+
+  const addMut = useMutation({
+    mutationFn: (d: any) => api.post('/financial/upcoming-payments', d),
+    onSuccess: () => { toast.success('Payment added'); qc.invalidateQueries({ queryKey: ['upcoming-payments'] }); setShowForm(false); setForm({ payment_type: '', description: '', amount: '', due_date: '', is_urgent: false, notes: '' }); },
+  });
+
+  const markPaidMut = useMutation({
+    mutationFn: ({ id, ...d }: any) => api.patch(`/financial/upcoming-payments/${id}/mark-paid`, d),
+    onSuccess: () => { toast.success('Marked as paid'); qc.invalidateQueries({ queryKey: ['upcoming-payments'] }); },
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => api.delete(`/financial/upcoming-payments/${id}`),
+    onSuccess: () => { toast.success('Deleted'); qc.invalidateQueries({ queryKey: ['upcoming-payments'] }); },
+  });
+
+  const updateBalMut = useMutation({
+    mutationFn: (d: any) => api.post('/financial/cash-bank-balance', d),
+    onSuccess: () => { toast.success('Balance updated'); qc.invalidateQueries({ queryKey: ['upcoming-payments'] }); setShowBalanceForm(false); },
+  });
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">Upcoming Payments</h3>
+          <p className="text-xs text-gray-500 mt-0.5">Track vendor payments, rent, and other dues</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer">
+            <input type="checkbox" checked={showPaid} onChange={e => setShowPaid(e.target.checked)} className="rounded" />
+            Show paid
+          </label>
+          <button onClick={() => setShowForm(!showForm)}
+            className="flex items-center gap-1.5 px-3 py-2 bg-[#00475a] text-white text-sm rounded-lg hover:bg-[#003847]">
+            <Plus size={14} /> Add Payment
+          </button>
+        </div>
+      </div>
+
+      {/* Balance Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="bg-white border rounded-xl p-4">
+          <p className="text-xs text-gray-500">Cash Balance</p>
+          <p className="text-lg font-bold text-gray-900 mt-1">₹{Number(balance.cash_balance || 0).toLocaleString('en-IN')}</p>
+        </div>
+        <div className="bg-white border rounded-xl p-4">
+          <p className="text-xs text-gray-500">Bank Balance</p>
+          <p className="text-lg font-bold text-gray-900 mt-1">₹{Number(balance.bank_balance || 0).toLocaleString('en-IN')}</p>
+        </div>
+        <div className="bg-white border rounded-xl p-4">
+          <p className="text-xs text-gray-500">Total Available</p>
+          <p className="text-lg font-bold text-[#00475a] mt-1">₹{Number(balance.total_available || 0).toLocaleString('en-IN')}</p>
+        </div>
+        <div className="bg-white border rounded-xl p-4 border-red-200">
+          <p className="text-xs text-gray-500">Total Due</p>
+          <p className="text-lg font-bold text-red-600 mt-1">₹{Number(balance.total_due || 0).toLocaleString('en-IN')}</p>
+        </div>
+        <div className={`border rounded-xl p-4 ${Number(balance.fund_required || 0) > 0 ? 'bg-red-50 border-red-300' : 'bg-green-50 border-green-300'}`}>
+          <p className="text-xs text-gray-500">Fund Required</p>
+          <p className={`text-lg font-bold mt-1 ${Number(balance.fund_required || 0) > 0 ? 'text-red-700' : 'text-green-700'}`}>
+            ₹{Number(balance.fund_required || 0).toLocaleString('en-IN')}
+          </p>
+        </div>
+      </div>
+
+      {/* Update Balance */}
+      <div className="flex justify-end">
+        <button onClick={() => {
+          setBalForm({ cash_balance: String(balance.cash_balance || ''), bank_balance: String(balance.bank_balance || ''), cheque_issued: String(balance.cheque_issued || '') });
+          setShowBalanceForm(!showBalanceForm);
+        }} className="text-xs text-[#00475a] hover:underline">
+          Update cash/bank balance
+        </button>
+      </div>
+
+      {showBalanceForm && (
+        <div className="bg-white border rounded-xl p-4 space-y-3">
+          <h4 className="text-sm font-semibold text-gray-800">Update Balance</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Cash Balance (₹)</label>
+              <input type="number" value={balForm.cash_balance} onChange={e => setBalForm(p => ({ ...p, cash_balance: e.target.value }))}
+                className="w-full px-2.5 py-2 border rounded-lg text-sm" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Bank Balance (₹)</label>
+              <input type="number" value={balForm.bank_balance} onChange={e => setBalForm(p => ({ ...p, bank_balance: e.target.value }))}
+                className="w-full px-2.5 py-2 border rounded-lg text-sm" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Cheque Issued (₹)</label>
+              <input type="number" value={balForm.cheque_issued} onChange={e => setBalForm(p => ({ ...p, cheque_issued: e.target.value }))}
+                className="w-full px-2.5 py-2 border rounded-lg text-sm" />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => updateBalMut.mutate({
+              cash_balance: parseFloat(balForm.cash_balance) || 0,
+              bank_balance: parseFloat(balForm.bank_balance) || 0,
+              cheque_issued: parseFloat(balForm.cheque_issued) || 0,
+            })} className="px-4 py-2 bg-[#00475a] text-white text-sm rounded-lg hover:bg-[#003847]">
+              Save Balance
+            </button>
+            <button onClick={() => setShowBalanceForm(false)} className="px-4 py-2 text-sm text-gray-600">Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* Add Payment Form */}
+      {showForm && (
+        <div className="bg-white border rounded-xl p-4 space-y-3">
+          <h4 className="text-sm font-semibold text-gray-800">New Upcoming Payment</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Payment Type *</label>
+              <input value={form.payment_type} onChange={e => setForm(p => ({ ...p, payment_type: e.target.value }))}
+                className="w-full px-2.5 py-2 border rounded-lg text-sm" placeholder="e.g. DRUG LINK, RENT, INTERLINK" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Amount (₹) *</label>
+              <input type="number" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))}
+                className="w-full px-2.5 py-2 border rounded-lg text-sm" placeholder="0.00" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Due Date</label>
+              <input type="date" value={form.due_date} onChange={e => setForm(p => ({ ...p, due_date: e.target.value }))}
+                className="w-full px-2.5 py-2 border rounded-lg text-sm" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Description</label>
+              <input value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+                className="w-full px-2.5 py-2 border rounded-lg text-sm" />
+            </div>
+            <div className="flex items-end">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" checked={form.is_urgent} onChange={e => setForm(p => ({ ...p, is_urgent: e.target.checked }))}
+                  className="w-4 h-4 rounded border-gray-300 text-red-500" />
+                <span className="text-red-600 font-medium">ASAP / Urgent</span>
+              </label>
+            </div>
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button onClick={() => {
+              if (!form.payment_type || !form.amount) return toast.error('Type and amount required');
+              addMut.mutate({ ...form, amount: parseFloat(form.amount), due_date: form.due_date || null });
+            }} disabled={addMut.isPending}
+              className="px-4 py-2 bg-[#00475a] text-white text-sm rounded-lg hover:bg-[#003847] disabled:opacity-50">
+              {addMut.isPending ? 'Saving...' : 'Add Payment'}
+            </button>
+            <button onClick={() => setShowForm(false)} className="px-4 py-2 text-sm text-gray-600">Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* Payments Table */}
+      <div className="bg-white border rounded-xl overflow-hidden">
+        <div className="px-4 py-3 border-b bg-gray-50">
+          <h4 className="text-sm font-semibold text-gray-800">
+            Upcoming Opex & Vendor Payments
+          </h4>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 text-left">
+                <th className="px-4 py-2.5 text-xs font-medium text-gray-500">Payment</th>
+                <th className="px-4 py-2.5 text-xs font-medium text-gray-500 text-right">Amount</th>
+                <th className="px-4 py-2.5 text-xs font-medium text-gray-500">Due Date</th>
+                <th className="px-4 py-2.5 text-xs font-medium text-gray-500">Status</th>
+                <th className="px-4 py-2.5 text-xs font-medium text-gray-500">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">Loading...</td></tr>
+              ) : payments.length === 0 ? (
+                <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">No upcoming payments</td></tr>
+              ) : payments.map((p: any) => (
+                <tr key={p.id} className={`border-t hover:bg-gray-50 ${p.is_urgent && !p.is_paid ? 'bg-red-50' : ''}`}>
+                  <td className="px-4 py-2.5">
+                    <span className="font-medium text-gray-900">{p.payment_type}</span>
+                    {p.description && <p className="text-xs text-gray-500 mt-0.5">{p.description}</p>}
+                  </td>
+                  <td className="px-4 py-2.5 text-right font-semibold">₹{Number(p.amount).toLocaleString('en-IN')}</td>
+                  <td className="px-4 py-2.5">
+                    {p.is_urgent && !p.is_paid ? (
+                      <span className="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-700 font-semibold">ASAP</span>
+                    ) : p.due_date ? (
+                      <span className={`text-sm ${new Date(p.due_date) < new Date() && !p.is_paid ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
+                        {new Date(p.due_date).toLocaleDateString('en-IN')}
+                      </span>
+                    ) : '—'}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <span className={`px-2 py-0.5 rounded-full text-xs ${p.is_paid ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
+                      {p.is_paid ? 'Paid' : 'Pending'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <div className="flex items-center gap-2">
+                      {!p.is_paid && (
+                        <button onClick={() => markPaidMut.mutate({ id: p.id })}
+                          className="text-xs text-green-600 hover:text-green-800 font-medium">
+                          Mark Paid
+                        </button>
+                      )}
+                      <button onClick={() => { if (confirm('Delete?')) deleteMut.mutate(p.id); }}
+                        className="text-gray-400 hover:text-red-500">
+                        <X size={14} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            {payments.filter((p: any) => !p.is_paid).length > 0 && (
+              <tfoot>
+                <tr className="border-t-2 bg-gray-50 font-semibold">
+                  <td className="px-4 py-2.5">Total Due</td>
+                  <td className="px-4 py-2.5 text-right text-red-600">
+                    ₹{payments.filter((p: any) => !p.is_paid).reduce((s: number, p: any) => s + Number(p.amount), 0).toLocaleString('en-IN')}
+                  </td>
+                  <td colSpan={3}></td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
