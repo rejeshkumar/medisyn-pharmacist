@@ -229,15 +229,6 @@ export class FinancialController {
     return r[0];
   }
 
-  @Delete('expenses/:id')
-  async deleteExpense(@Param('id') id: string, @Req() req: any) {
-    await this.ds.query(
-      `DELETE FROM expenses WHERE id = $1 AND tenant_id = $2`,
-      [id, req.user.tenant_id],
-    );
-    return { success: true };
-  }
-
   @Patch('expenses/:id')
   async updateExpense(@Param('id') id: string, @Body() body: any, @Req() req: any) {
     await this.ds.query(
@@ -566,38 +557,7 @@ export class FinancialController {
         sub,
       ],
     );
-
-    const purchase = r[0];
-
-    // ── AUTO-LINK: Create upcoming payment if unpaid with credit period ──
-    if (!purchase.is_paid && purchase.credit_period && purchase.credit_period !== 'CASH PURCHASE') {
-      const days = parseInt(purchase.credit_period) || 0;
-      if (days > 0) {
-        const purchaseDate = new Date(purchase.purchase_date);
-        const dueDate = new Date(purchaseDate);
-        dueDate.setDate(dueDate.getDate() + days);
-
-        await this.ds.query(
-          `INSERT INTO upcoming_payments
-           (tenant_id, payment_type, description, amount, due_date,
-            source_type, source_id, notes, created_by)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-          [
-            tenant_id,
-            purchase.vendor_name,
-            `Purchase ${purchase.invoice_no || ''} — ${purchase.credit_period} credit`.trim(),
-            purchase.amount,
-            dueDate.toISOString().split('T')[0],
-            'pharmacy_purchase',
-            purchase.id,
-            purchase.notes || null,
-            sub,
-          ],
-        );
-      }
-    }
-
-    return purchase;
+    return r[0];
   }
 
   @Patch('pharmacy-purchases/:id')
@@ -634,12 +594,6 @@ export class FinancialController {
 
   @Delete('pharmacy-purchases/:id')
   async deletePharmacyPurchase(@Param('id') id: string, @Req() req: any) {
-    // Also delete any linked upcoming payment
-    await this.ds.query(
-      `DELETE FROM upcoming_payments
-       WHERE source_type = 'pharmacy_purchase' AND source_id = $1 AND tenant_id = $2`,
-      [id, req.user.tenant_id],
-    );
     await this.ds.query(
       `DELETE FROM pharmacy_purchases WHERE id = $1 AND tenant_id = $2`,
       [id, req.user.tenant_id],
@@ -795,7 +749,7 @@ export class FinancialController {
 
   @Patch('upcoming-payments/:id/mark-paid')
   async markPaymentPaid(@Param('id') id: string, @Body() body: any, @Req() req: any) {
-    const result = await this.ds.query(
+    await this.ds.query(
       `UPDATE upcoming_payments SET
          is_paid = true,
          paid_date = $1,
@@ -803,8 +757,7 @@ export class FinancialController {
          payment_mode = $3,
          reference_no = $4,
          updated_at = NOW()
-       WHERE id = $5 AND tenant_id = $6
-       RETURNING source_type, source_id`,
+       WHERE id = $5 AND tenant_id = $6`,
       [
         body.paid_date || new Date().toISOString().split('T')[0],
         body.paid_amount || null,
@@ -814,28 +767,6 @@ export class FinancialController {
         req.user.tenant_id,
       ],
     );
-
-    // If linked to a pharmacy purchase, mark that as paid too
-    const payment = result[0];
-    if (payment?.source_type === 'pharmacy_purchase' && payment.source_id) {
-      await this.ds.query(
-        `UPDATE pharmacy_purchases SET
-           is_paid = true,
-           paid_date = $1,
-           payment_mode = COALESCE($2, payment_mode),
-           reference_no = COALESCE($3, reference_no),
-           updated_at = NOW()
-         WHERE id = $4 AND tenant_id = $5`,
-        [
-          body.paid_date || new Date().toISOString().split('T')[0],
-          body.payment_mode || null,
-          body.reference_no || null,
-          payment.source_id,
-          req.user.tenant_id,
-        ],
-      );
-    }
-
     return { success: true };
   }
 
@@ -895,20 +826,12 @@ export class FinancialController {
   async getDashboardSummary(
     @Query('period') period: string,
     @Query('date') date: string,
-    @Query('from') fromDate: string,
-    @Query('to') toDate: string,
     @Req() req: any,
   ) {
     const tid = req.user.tenant_id;
+    const refDate = date || new Date().toISOString().split('T')[0];
 
     let startDate: string, endDate: string;
-
-    // Custom date range overrides period
-    if (fromDate && toDate) {
-      startDate = fromDate;
-      endDate = toDate;
-    } else {
-    const refDate = date || new Date().toISOString().split('T')[0];
     const d = new Date(refDate);
 
     switch (period) {
@@ -933,7 +856,6 @@ export class FinancialController {
         startDate = refDate;
         endDate = refDate;
     }
-    } // end else (custom range check)
 
     const [revenue, cogs, expenses, purchases, consultations] = await Promise.all([
       this.ds.query(
