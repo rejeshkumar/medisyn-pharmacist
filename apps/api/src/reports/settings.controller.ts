@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Body, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Body, Req, Param, UseGuards } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -27,4 +27,85 @@ export class SettingsController {
     );
     return { expiry_warning_days: days };
   }
+
+
+  // ══════════════════════════════════════════════════════════
+  // DOCTOR PROFILE MANAGEMENT
+  // ══════════════════════════════════════════════════════════
+
+  @Get('doctor-profiles')
+  async getDoctorProfiles(@Req() req: any) {
+    return this.ds.query(
+      `SELECT id, full_name, qualification, registration_no, designation, role, is_active
+       FROM users
+       WHERE tenant_id = $1 AND role = 'doctor'
+       ORDER BY full_name`,
+      [req.user.tenant_id],
+    );
+  }
+
+  @Patch('doctor-profiles/:id')
+  async updateDoctorProfile(
+    @Param('id') id: string,
+    @Body() body: any,
+    @Req() req: any,
+  ) {
+    const fields: string[] = [];
+    const params: any[] = [];
+    let idx = 1;
+    for (const f of ['qualification', 'registration_no', 'designation', 'full_name']) {
+      if (body[f] !== undefined) {
+        fields.push(`${f} = $${idx}`);
+        params.push(body[f]);
+        idx++;
+      }
+    }
+    if (fields.length === 0) return { message: 'Nothing to update' };
+    fields.push('updated_at = NOW()');
+    params.push(id);
+    params.push(req.user.tenant_id);
+    await this.ds.query(
+      `UPDATE users SET ${fields.join(', ')} WHERE id = $${idx} AND tenant_id = $${idx + 1}`,
+      params,
+    );
+    return { success: true };
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // CLINIC PROFILE (letterhead)
+  // ══════════════════════════════════════════════════════════
+
+  @Get('clinic-profile')
+  async getClinicProfile(@Req() req: any) {
+    const [row] = await this.ds.query(
+      `SELECT name, address, phone, email, logo_url, gstin, license_no,
+              clinic_address, clinic_phone, clinic_email, website, city, state
+       FROM tenants WHERE id = $1`,
+      [req.user.tenant_id],
+    );
+    return row || {};
+  }
+
+  @Patch('clinic-profile')
+  async updateClinicProfile(@Body() body: any, @Req() req: any) {
+    const fields: string[] = [];
+    const params: any[] = [];
+    let idx = 1;
+    for (const f of ['clinic_address', 'clinic_phone', 'clinic_email', 'address', 'phone', 'email', 'website', 'city', 'state', 'gstin', 'license_no']) {
+      if (body[f] !== undefined) {
+        fields.push(`${f} = $${idx}`);
+        params.push(body[f]);
+        idx++;
+      }
+    }
+    if (fields.length === 0) return { message: 'Nothing to update' };
+    fields.push('updated_at = NOW()');
+    params.push(req.user.tenant_id);
+    await this.ds.query(
+      `UPDATE tenants SET ${fields.join(', ')} WHERE id = $${idx}`,
+      params,
+    );
+    return { success: true };
+  }
+
 }
