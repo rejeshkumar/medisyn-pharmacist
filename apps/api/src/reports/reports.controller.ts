@@ -735,4 +735,28 @@ export class ReportsController {
     return { success: true };
   }
 
+
+  @Get('export/near-expiry')
+  @ApiOperation({ summary: 'Export near-expiry report to Excel' })
+  @ApiQuery({ name: 'days', required: false, type: Number })
+  async exportNearExpiry(
+    @Query('days') days: number,
+    @Request() req,
+    @Res() res: Response,
+  ) {
+    const buffer = await this.reportsService.exportNearExpiryToExcel(
+      req.tenantId,
+      days ? Number(days) : 90,
+    );
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename=expiry-report-${days || 90}days.xlsx`,
+    );
+    res.send(buffer);
+  }
+
 }
