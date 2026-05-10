@@ -718,6 +718,11 @@ export default function ConsultPage() {
       });
       await api.patch(`/queue/${queueId}/status`, { status: 'consultation_done' });
       toast.success('Prescription issued & sent to pharmacy');
+
+      // Open prescription print page in new tab
+      if (consultId && confirm('Print prescription for patient?')) {
+        window.open(`/reports/prescription?id=${consultId}`, '_blank');
+      }
       router.back();
     } catch (e: any) {
       toast.error(e.response?.data?.message || 'Failed to issue prescription');

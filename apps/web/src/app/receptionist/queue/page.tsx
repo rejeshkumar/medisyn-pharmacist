@@ -313,12 +313,32 @@ export default function QueueMonitorPage() {
               </div>
               <div className="divide-y divide-slate-50">
                 {done.map(q => (
-                  <div key={q.id} className="flex items-center gap-3 px-4 py-2.5 opacity-60">
+                  <div key={q.id} className="flex items-center gap-3 px-4 py-2.5 opacity-80 hover:opacity-100 transition-opacity">
                     <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-400">{q.token_number}</div>
                     <p className="flex-1 text-sm text-slate-500 truncate">{q.patient?.full_name || q.patient?.first_name || '—'}</p>
                     <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${STATUS_COLOR[q.status]||'bg-slate-100 text-slate-500 border-slate-200'}`}>
                       {STATUS_LABEL[q.status]||q.status}
                     </span>
+                    {(q.status === 'completed' || q.status === 'consultation_done') && (
+                      <button
+                        onClick={async () => {
+                          try {
+                            const token = getToken();
+                            const { data } = await axios.get(`${API}/consultations/queue/${q.id}`, {
+                              headers: { Authorization: `Bearer ${token}` }
+                            });
+                            if (data?.id) {
+                              window.open(`/reports/prescription?id=${data.id}`, '_blank');
+                            } else {
+                              alert('No consultation found for this patient');
+                            }
+                          } catch { alert('Could not load prescription'); }
+                        }}
+                        className="text-xs px-2.5 py-1 rounded-lg bg-[#00475a] text-white hover:bg-[#003847] font-medium flex items-center gap-1"
+                        title="Print prescription">
+                        🖨️ Print Rx
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
