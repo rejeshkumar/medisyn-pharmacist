@@ -14,7 +14,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private usersRepo: Repository<User>,
   ) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+        ExtractJwt.fromUrlQueryParameter('token'),
+      ]),
       ignoreExpiration: false,
       secretOrKey: configService.get('JWT_SECRET', 'medisyn-secret-key'),
     });
