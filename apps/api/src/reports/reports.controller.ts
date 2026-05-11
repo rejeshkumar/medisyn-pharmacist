@@ -737,26 +737,84 @@ export class ReportsController {
 
 
   @Get('export/near-expiry')
-  @ApiOperation({ summary: 'Export near-expiry report to Excel' })
-  @ApiQuery({ name: 'days', required: false, type: Number })
   async exportNearExpiry(
     @Query('days') days: number,
-    @Request() req,
+    @Req() req: any,
     @Res() res: Response,
   ) {
-    const buffer = await this.reportsService.exportNearExpiryToExcel(
-      req.tenantId,
-      days ? Number(days) : 90,
+    const tenantId = req.user.tenant_id;
+    const d = days ? Number(days) : 90;
+
+    const rows = await this.ds.query(
+      `SELECT
+         m.brand_name,
+         sb.batch_number AS batch_no,
+         sb.expiry_date,
+         sb.quantity AS available_qty,
+         sb.purchase_price,
+         sb.mrp,
+         m.rack_location
+       FROM stock_batches sb
+       JOIN medicines m ON m.id = sb.medicine_id
+       WHERE sb.tenant_id = $1
+         AND sb.quantity > 0
+         AND sb.is_active = true
+         AND sb.expiry_date <= CURRENT_DATE + INTERVAL '1 day' * $2
+       ORDER BY sb.expiry_date ASC`,
+      [tenantId, d],
     );
+
+    const ExcelJS = require('exceljs');
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Near Expiry');
+
+    sheet.columns = [
+      { header: 'Medicine', key: 'brand_name', width: 35 },
+      { header: 'Batch No', key: 'batch_no', width: 18 },
+      { header: 'Expiry Date', key: 'expiry_date', width: 15 },
+      { header: 'Qty', key: 'available_qty', width: 10 },
+      { header: 'Purchase Price', key: 'purchase_price', width: 15 },
+      { header: 'MRP', key: 'mrp', width: 12 },
+      { header: 'Rack', key: 'rack_location', width: 12 },
+    ];
+
+    sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    sheet.getRow(1).fill = {
+      type: 'pattern', pattern: 'solid',
+      fgColor: { argb: 'FF00475A' },
+    };
+
+    for (const row of rows) {
+      const r = sheet.addRow({
+        brand_name: row.brand_name,
+        batch_no: row.batch_no,
+        expiry_date: row.expiry_date
+          ? new Date(row.expiry_date).toLocaleDateString('en-IN')
+          : '-',
+        available_qty: Number(row.available_qty),
+        purchase_price: Number(row.purchase_price || 0).toFixed(2),
+        mrp: Number(row.mrp || 0).toFixed(2),
+        rack_location: row.rack_location || '-',
+      });
+
+      if (new Date(row.expiry_date) < new Date()) {
+        r.fill = {
+          type: 'pattern', pattern: 'solid',
+          fgColor: { argb: 'FFFEE2E2' },
+        };
+      }
+    }
+
+    const buffer = await workbook.xlsx.writeBuffer();
     res.setHeader(
       'Content-Type',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     );
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename=expiry-report-${days || 90}days.xlsx`,
+      `attachment; filename=expiry-report-${d}days.xlsx`,
     );
-    res.send(buffer);
+    res.send(Buffer.from(buffer));
   }
 
 }
