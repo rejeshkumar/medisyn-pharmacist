@@ -49,6 +49,7 @@ import { MoleculeClassifierController } from './molecule-classifier.controller';
 import { SetReorderController } from './set-reorder.controller';
 import { KaggleImportController } from './kaggle-import.controller';
 import { PatientHealthModule } from './patient-health/patient-health.module';
+import { InventoryClassificationController } from './inventory-classification/inventory-classification.controller';
 
 @Module({
   imports: [
@@ -108,7 +109,7 @@ import { PatientHealthModule } from './patient-health/patient-health.module';
     DemandLogModule,
     OwnerDashboardModule,
   ],
-  controllers: [ImportMedicinesController, ClearDataController, ImportStockController, ScheduleClassifierController, MoleculeClassifierController, SetReorderController, KaggleImportController],
+  controllers: [ImportMedicinesController, ClearDataController, ImportStockController, ScheduleClassifierController, MoleculeClassifierController, SetReorderController, KaggleImportController, InventoryClassificationController],
   providers: [
     // Applied globally in order — JwtAuthGuard first, then TenantGuard
     { provide: APP_GUARD, useClass: JwtAuthGuard },
