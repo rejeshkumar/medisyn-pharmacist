@@ -1,9 +1,9 @@
 import {
   IsString, IsNotEmpty, IsEnum, IsOptional, IsBoolean,
-  IsEmail, IsInt, Min, IsDateString,
+  IsEmail, IsInt, Min, IsDateString, ValidateIf,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { Salutation, Gender, PatientCategory } from '../../database/entities/patient.entity';
 
 export class CreatePatientDto {
@@ -45,6 +45,8 @@ export class CreatePatientDto {
   mobile: string;
 
   @ApiPropertyOptional()
+  @Transform(({ value }) => value === '' ? undefined : value)
+  @ValidateIf((o) => o.email !== '' && o.email !== null && o.email !== undefined)
   @IsEmail()
   @IsOptional()
   email?: string;
@@ -143,6 +145,8 @@ export class VipRegisterDto {
   dob?: string;
 
   @ApiPropertyOptional()
+  @Transform(({ value }) => value === '' ? undefined : value)
+  @ValidateIf((o) => o.email !== '' && o.email !== null && o.email !== undefined)
   @IsEmail()
   @IsOptional()
   email?: string;
