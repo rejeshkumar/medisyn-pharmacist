@@ -1,4 +1,4 @@
-import { Controller, Post, Headers, ForbiddenException, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Controller, Post, Headers, ForbiddenException, UploadedFile, UseInterceptors, Get } from '@nestjs/common';
 import { Public } from './common/decorators/public.decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { DataSource } from 'typeorm';
@@ -33,6 +33,92 @@ export class ImportStockController {
     }
     const [{ count }] = await this.ds.query(`SELECT COUNT(*) FROM medicines WHERE tenant_id = $1`, [TENANT]);
     return { status: 'cleared', medicines_remaining: count, results };
+  }
+
+  // ── Data Integrity Check Endpoint ───────────────────────────────────────────
+  @Public()
+  @Get('check-data-integrity')
+  async checkDataIntegrity(@Headers('x-admin-key') key: string) {
+    if (key !== 'medisyn-import-2024') throw new ForbiddenException();
+
+    const issues: any = {
+      duplicate_batches: [],
+      duplicate_medicines: [],
+      orphan_batches: [],
+      missing_molecule: [],
+    };
+
+    // Check for duplicate batch numbers across different medicines
+    const dupBatches = await this.ds.query(`
+      SELECT 
+        batch_number,
+        COUNT(DISTINCT medicine_id) as medicine_count,
+        array_agg(DISTINCT m.brand_name) as medicine_names,
+        array_agg(DISTINCT sb.id) as batch_ids
+      FROM stock_batches sb
+      JOIN medicines m ON m.id = sb.medicine_id
+      WHERE sb.tenant_id = $1
+      GROUP BY batch_number
+      HAVING COUNT(DISTINCT medicine_id) > 1
+    `, [TENANT]);
+    issues.duplicate_batches = dupBatches;
+
+    // Check for potentially duplicate medicine names (fuzzy match)
+    const allMeds = await this.ds.query(`
+      SELECT id, brand_name, molecule, manufacturer
+      FROM medicines 
+      WHERE tenant_id = $1
+      ORDER BY brand_name
+    `, [TENANT]);
+
+    const normalizeName = (name: string): string => {
+      return name
+        .toUpperCase()
+        .replace(/\s+/g, ' ')
+        .replace(/^(TAB|CAP|SYP|INJ|CREAM|GEL|OINT)\s+/i, '')
+        .replace(/\s+(TAB|TABLET|CAP|CAPSULE|SYP|SYRUP|INJ|INJECTION)\s*(\(.*?\))?$/i, '')
+        .replace(/[^\w\s]/g, '')
+        .trim();
+    };
+
+    const normalized = new Map<string, any[]>();
+    for (const med of allMeds) {
+      const norm = normalizeName(med.brand_name);
+      if (!normalized.has(norm)) normalized.set(norm, []);
+      normalized.get(norm)!.push(med);
+    }
+
+    for (const [norm, meds] of normalized) {
+      if (meds.length > 1) {
+        issues.duplicate_medicines.push({
+          normalized_name: norm,
+          count: meds.length,
+          medicines: meds.map(m => ({ id: m.id, brand_name: m.brand_name })),
+        });
+      }
+    }
+
+    // Check for medicines with missing molecule info
+    const missingMolecule = await this.ds.query(`
+      SELECT id, brand_name, molecule
+      FROM medicines
+      WHERE tenant_id = $1 
+        AND (molecule IS NULL OR molecule = '' OR molecule = brand_name)
+      ORDER BY created_at DESC
+      LIMIT 50
+    `, [TENANT]);
+    issues.missing_molecule = missingMolecule;
+
+    return {
+      status: 'integrity_check_complete',
+      timestamp: new Date().toISOString(),
+      issues,
+      summary: {
+        duplicate_batch_numbers: dupBatches.length,
+        potential_duplicate_medicines: issues.duplicate_medicines.length,
+        medicines_missing_molecule: missingMolecule.length,
+      },
+    };
   }
 
   // ── Import stock from Purchase/Sales Excel ──────────────────────────────────
@@ -125,7 +211,18 @@ export class ImportStockController {
       return null;
     };
 
-    // ── Upsert medicines ─────────────────────────────────────────────────────
+    // ── Helper: Normalize medicine name for fuzzy matching ──────────────────
+    const normalizeName = (name: string): string => {
+      return name
+        .toUpperCase()
+        .replace(/\s+/g, ' ')           // normalize spaces
+        .replace(/^(TAB|CAP|SYP|INJ|CREAM|GEL|OINT)\s+/i, '')  // strip dosage form prefix
+        .replace(/\s+(TAB|TABLET|CAP|CAPSULE|SYP|SYRUP|INJ|INJECTION)\s*(\(.*?\))?$/i, '')  // strip suffix
+        .replace(/[^\w\s]/g, '')        // remove special chars
+        .trim();
+    };
+
+    // ── Upsert medicines with fuzzy matching ────────────────────────────────
     const medMap = new Map<string, string>();
     const uniqueMeds = new Map<string, any>();
     for (const row of stockRows) {
@@ -133,20 +230,47 @@ export class ImportStockController {
       if (!uniqueMeds.has(name)) uniqueMeds.set(name, row);
     }
 
-    let medInserted = 0, medUpdated = 0;
+    let medInserted = 0, medUpdated = 0, medMatched = 0;
+    const matchLog: any[] = [];
 
     for (const [name, row] of uniqueMeds) {
       const mrp          = f(row['Mrp']) ?? 0;
       const manufacturer = str(row['Mfg Name']);
       const hsn          = str(row['HSN Code']);
       const gstPct       = gstVal(row['Tax%']);
-      const strips       = int(row['Strip Qty']);  // MUST be integer
+      const strips       = int(row['Strip Qty']);
       const form         = dosage(name);
 
-      const existing = await this.ds.query(
-        `SELECT id FROM medicines WHERE LOWER(TRIM(brand_name)) = LOWER($1) AND tenant_id = $2 LIMIT 1`,
+      // STEP 1: Try exact match
+      let existing = await this.ds.query(
+        `SELECT id, brand_name FROM medicines WHERE LOWER(TRIM(brand_name)) = LOWER($1) AND tenant_id = $2 LIMIT 1`,
         [name, TENANT]
       );
+
+      let matchType = 'exact';
+
+      // STEP 2: If no exact match, try fuzzy match
+      if (existing.length === 0) {
+        const normalized = normalizeName(name);
+        const allMeds = await this.ds.query(
+          `SELECT id, brand_name FROM medicines WHERE tenant_id = $1`,
+          [TENANT]
+        );
+        
+        for (const med of allMeds) {
+          if (normalizeName(med.brand_name) === normalized) {
+            existing = [med];
+            matchType = 'fuzzy';
+            medMatched++;
+            matchLog.push({
+              csv_name: name,
+              matched_to: med.brand_name,
+              normalized: normalized,
+            });
+            break;
+          }
+        }
+      }
 
       if (existing.length > 0) {
         const id = existing[0].id;
@@ -164,11 +288,6 @@ export class ImportStockController {
         medMap.set(name, id);
         medUpdated++;
       } else {
-        // All NOT NULL columns explicitly set — no DB surprises:
-        // brand_name, molecule(''), strength(''), dosage_form,
-        // schedule_class defaults to 'OTC', gst_percent(0),
-        // discount_percent(0), reorder_qty(0),
-        // is_rx_required(false), is_active(true), is_chronic(false)
         const res = await this.ds.query(`
           INSERT INTO medicines (
             brand_name, molecule, strength, dosage_form,
@@ -189,10 +308,9 @@ export class ImportStockController {
       }
     }
 
-    // ── Insert stock batches ─────────────────────────────────────────────────
-    // IMPORTANT: sale_rate = mrp (MRP is GST-inclusive selling price)
-    // purchase_price = Rate from Excel (your cost, GST-inclusive)
+    // ── Insert stock batches with validation ────────────────────────────────
     let batchInserted = 0, batchUpdated = 0;
+    const batchConflicts: any[] = [];
 
     for (const row of stockRows) {
       const name    = String(row['Drug Name']).trim();
@@ -201,8 +319,8 @@ export class ImportStockController {
 
       const batchNo  = str(row['Batch No']);
       const qty      = f(row['Avail Qty']) ?? 0;
-      const cost     = f(row['Rate']);          // purchase cost (GST-inclusive)
-      const mrp      = f(row['Mrp']) ?? 0;     // MRP = selling price (GST-inclusive)
+      const cost     = f(row['Rate']);
+      const mrp      = f(row['Mrp']) ?? 0;
       const invoiceNo= str(row['Invoice No']);
       const freeQty  = f(row['Free Qty']);
       const batchQty = f(row['Batch Qty']);
@@ -211,10 +329,31 @@ export class ImportStockController {
       const purVal   = f(row['Purchase Value']);
       const exp      = expiry(row['Expiry By']);
 
+      // Check if batch exists for THIS medicine
       const existing = await this.ds.query(
         `SELECT id FROM stock_batches WHERE medicine_id=$1 AND batch_number=$2 AND tenant_id=$3 LIMIT 1`,
         [medId, batchNo, TENANT]
       );
+
+      // CRITICAL: Check if batch exists for DIFFERENT medicine (data integrity issue)
+      const conflicting = await this.ds.query(
+        `SELECT sb.id, sb.medicine_id, m.brand_name
+         FROM stock_batches sb
+         JOIN medicines m ON m.id = sb.medicine_id
+         WHERE sb.batch_number=$1 AND sb.medicine_id != $2 AND sb.tenant_id=$3
+         LIMIT 1`,
+        [batchNo, medId, TENANT]
+      );
+
+      if (conflicting.length > 0) {
+        batchConflicts.push({
+          batch_number: batchNo,
+          csv_medicine: name,
+          existing_medicine: conflicting[0].brand_name,
+          action: 'skipped',
+        });
+        continue; // Skip this batch - it's a duplicate across different medicines
+      }
 
       if (existing.length > 0) {
         await this.ds.query(`
@@ -262,8 +401,22 @@ export class ImportStockController {
 
     return {
       status: 'success',
-      medicines: { inserted: medInserted, updated: medUpdated, total: medCount },
-      batches:   { inserted: batchInserted, updated: batchUpdated, total: batchCount },
+      medicines: { 
+        inserted: medInserted, 
+        updated: medUpdated, 
+        fuzzy_matched: medMatched,
+        total: medCount 
+      },
+      batches: { 
+        inserted: batchInserted, 
+        updated: batchUpdated, 
+        conflicts_skipped: batchConflicts.length,
+        total: batchCount 
+      },
+      warnings: {
+        fuzzy_matches: matchLog,
+        batch_conflicts: batchConflicts,
+      },
     };
   }
 }
