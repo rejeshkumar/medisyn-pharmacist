@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import api from '@/lib/api';
@@ -16,7 +16,7 @@ const PRICES = {
   extended: 1499,
 };
 
-export default function VipRegisterSecurePage() {
+function VipRegisterContent() {
   const searchParams = useSearchParams();
   const [step, setStep] = useState<Step>('form');
   const [loading, setLoading] = useState(false);
@@ -36,7 +36,6 @@ export default function VipRegisterSecurePage() {
     upi_txn_id: '',
   });
 
-  // Generate UPI QR code
   useEffect(() => {
     if (form.vip_category) {
       const amount = PRICES[form.vip_category];
@@ -365,5 +364,17 @@ MediSyn Specialty Clinic, Taliparamba`;
 
       <p className="mt-6 text-xs text-gray-400 text-center">MediSyn Specialty Clinic, Taliparamba</p>
     </div>
+  );
+}
+
+export default function VipRegisterSecurePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-yellow-50 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
+      </div>
+    }>
+      <VipRegisterContent />
+    </Suspense>
   );
 }
