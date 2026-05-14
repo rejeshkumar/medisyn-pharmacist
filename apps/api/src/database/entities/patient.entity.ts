@@ -81,6 +81,20 @@ export class Patient {
   @Column({ nullable: true })
   vip_registered_by: string;
 
+  // ── VIP Payment Information ────────────────────────────────────────────────
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  vip_payment_method: string; // 'upi' or 'cash'
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  vip_payment_amount: number;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  vip_payment_date: Date;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  vip_upi_txn_id: string; // UPI transaction reference
+
+
   @Column({ default: true })
   is_active: boolean;
 

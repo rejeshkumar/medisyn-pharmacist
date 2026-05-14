@@ -6,9 +6,11 @@ import { Patient } from '../database/entities/patient.entity';
 import { PatientAppointment } from '../database/entities/patient-appointment.entity';
 import { PatientReminder } from '../database/entities/patient-reminder.entity';
 import { AuditModule } from '../audit/audit.module';
+import { SalesAgentsModule } from '../sales-agents/sales-agents.module';
+import { VipRegistration } from '../database/entities/vip-registration.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Patient, PatientAppointment, PatientReminder]), AuditModule],
+  imports: [TypeOrmModule.forFeature([Patient, PatientAppointment, PatientReminder, SalesAgentsModule, VipRegistration]), AuditModule],
   controllers: [PatientsController],
   providers: [PatientsService],
   exports: [PatientsService],

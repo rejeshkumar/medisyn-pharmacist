@@ -5,6 +5,7 @@ import {
 import { ApiBearerAuth, ApiTags, ApiQuery, ApiOperation } from '@nestjs/swagger';
 import { PatientsService } from './patients.service';
 import { CreatePatientDto, VipRegisterDto } from './dto/create-patient.dto';
+import { VipRegisterEnhancedDto } from './dto/create-patient-vip-enhanced.dto';
 import { CreateAppointmentDto, UpdateAppointmentDto } from './dto/create-appointment.dto';
 import { CreateReminderDto } from './dto/create-reminder.dto';
 import { Public } from '../common/decorators/public.decorator';
@@ -23,6 +24,14 @@ export class PatientsController {
   }
 
   // ── Protected endpoints ───────────────────────────────────────────────────
+  // ── Enhanced VIP registration with payment & agent validation ─────────────
+  @Public()
+  @Post('vip-register-secure')
+  vipRegisterSecure(@Body() dto: VipRegisterEnhancedDto, @Req() req: any) {
+    const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+    return this.patientsService.vipRegisterEnhanced(dto, '00000000-0000-0000-0000-000000000001', ip);
+  }
+
   @Get('stats')
   getStats(@Request() req) {
     return this.patientsService.getStats(req.tenantId);

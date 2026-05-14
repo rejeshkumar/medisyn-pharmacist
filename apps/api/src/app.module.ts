@@ -50,6 +50,7 @@ import { SetReorderController } from './set-reorder.controller';
 import { KaggleImportController } from './kaggle-import.controller';
 import { PatientHealthModule } from './patient-health/patient-health.module';
 import { InventoryClassificationController } from './inventory-classification/inventory-classification.controller';
+import { SalesAgentsModule } from './sales-agents/sales-agents.module';
 
 @Module({
   imports: [
@@ -99,6 +100,7 @@ import { InventoryClassificationController } from './inventory-classification/in
     ComplianceModule,
     ReportsModule,
     PatientsModule,
+    SalesAgentsModule,
     QueueModule,
     AiModule,
     AvailabilityModule,
