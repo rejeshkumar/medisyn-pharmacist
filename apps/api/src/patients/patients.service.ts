@@ -446,7 +446,6 @@ export class PatientsService {
     const date  = dayjs().format('YYYYMMDD');
     return `MED-${date}-${String(count + 1).padStart(4, '0')}`;
   }
-}
 
   // ══════════════════════════════════════════════════════════════
   // Enhanced VIP Registration with Payment & Agent Validation
@@ -551,8 +550,7 @@ Thank you for choosing MediSyn!
 📍 MediSyn Specialty Clinic, Taliparamba
 📞 0490 234 5678`;
 
-    // Check if WhatsApp is configured
-    const whatsappUrl = this.configService.get('WHATSAPP_API_URL');
+    const whatsappUrl = this.configService?.get('WHATSAPP_API_URL');
     if (whatsappUrl && patient.mobile) {
       await fetch(whatsappUrl, {
         method: 'POST',
@@ -564,3 +562,5 @@ Thank you for choosing MediSyn!
       });
     }
   }
+
+}
