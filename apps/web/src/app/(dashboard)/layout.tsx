@@ -343,20 +343,20 @@ function SidebarLayout({
         </nav>
 
         {/* User footer */}
-        <div className="p-3 border-t border-gray-100">
-          <div className="flex items-center gap-2 px-2 py-2 mb-1">
-            <div className="w-7 h-7 bg-teal-100 rounded-full flex items-center justify-center text-[#00475a] font-bold text-xs flex-shrink-0">
+        <div className="p-3 border-t border-white/10">
+          <div className="flex items-center gap-2 px-2 py-2 mb-2">
+            <div className="w-8 h-8 bg-white/15 rounded-full flex items-center justify-center text-white font-semibold text-xs flex-shrink-0">
               {user?.full_name?.[0]?.toUpperCase() || 'U'}
             </div>
-            <div className="min-w-0">
-              <p className="text-xs font-semibold text-gray-900 truncate">{user?.full_name}</p>
-              <p className="text-[10px] text-gray-400 capitalize">{user?.role}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-white truncate">{user?.full_name}</p>
+              <p className="text-[10px] text-white/60 capitalize">{user?.role}</p>
             </div>
             <NotificationBell role={user?.role} />
           </div>
           <button onClick={handleLogout}
-            className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-            <LogOut className="w-3.5 h-3.5" /> Sign out
+            className="flex items-center justify-center gap-2 w-full px-3 py-2 text-xs font-medium text-white/70 hover:text-white hover:bg-white/8 rounded-lg transition-all">
+            <LogOut className="w-4 h-4" /> Sign out
           </button>
         </div>
       </aside>
