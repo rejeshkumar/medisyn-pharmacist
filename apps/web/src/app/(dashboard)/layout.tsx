@@ -321,10 +321,10 @@ function SidebarLayout({
                     <Link key={item.href} href={item.href}
                       onClick={() => setSidebarOpen(false)}
                       className={cn(
-                        'flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all',
+                        'flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all',
                         active
                           ? 'bg-white/95 text-[#00475a] shadow-sm'
-                          : 'text-white/70 hover:bg-white/8 hover:text-white',
+                          : 'text-white hover:bg-white/8',
                       )}>
                       <Icon className="w-[18px] h-[18px] flex-shrink-0" />
                       <span className="truncate">{item.label}</span>
