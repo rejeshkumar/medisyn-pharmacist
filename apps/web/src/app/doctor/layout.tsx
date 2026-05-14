@@ -55,19 +55,19 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
       )}
 
       <aside className={cn(
-        'fixed top-0 left-0 h-full w-64 bg-white border-r border-slate-100 z-30 transform transition-transform duration-200 flex flex-col',
+        'fixed top-0 left-0 h-full w-64 bg-[#00475a] border-r border-white/10 z-30 transform transition-transform duration-200 flex flex-col',
         sidebarOpen ? 'translate-x-0' : '-translate-x-full',
         'lg:translate-x-0 lg:static lg:z-auto',
       )}>
-        <div className="p-5 border-b border-slate-100 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-[#00475a] flex items-center justify-center flex-shrink-0">
-            <Stethoscope className="w-5 h-5 text-white" />
+        <div className="p-5 border-b border-white/10 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center flex-shrink-0">
+            <Stethoscope className="w-5 h-5 text-[#00475a]" />
           </div>
           <div>
-            <h1 className="font-bold text-[#00475a] text-sm leading-tight">MediSyn</h1>
-            <p className="text-xs text-slate-400">Doctor Portal</p>
+            <h1 className="font-semibold text-white text-sm leading-tight">MediSyn</h1>
+            <p className="text-xs text-white/60">Doctor Portal</p>
           </div>
-          <button className="ml-auto lg:hidden text-slate-400" onClick={() => setSidebarOpen(false)}>
+          <button className="ml-auto lg:hidden text-white/60 hover:text-white" onClick={() => setSidebarOpen(false)}>
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -82,26 +82,26 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
                 href={item.href}
                 onClick={() => setSidebarOpen(false)}
                 className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
-                  active ? 'bg-[#00475a] text-white' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
+                  'flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all',
+                  active ? 'bg-white/95 text-[#00475a] shadow-sm' : 'text-white hover:bg-white/8',
                 )}
               >
                 <Icon style={{ width: 18, height: 18 }} className="flex-shrink-0" />
                 {item.label}
-                {active && <ChevronRight className="w-4 h-4 ml-auto" />}
+                
               </Link>
             );
           })}
           <RoleSwitcher />
         </nav>
 
-        <div className="p-3 border-t border-slate-100">
+        <div className="p-3 border-t border-white/10">
           <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1">
-            <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center text-[#00475a] font-bold text-sm flex-shrink-0">
+            <div className="w-8 h-8 bg-white/15 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
               {user?.name?.[0]?.toUpperCase() || user?.full_name?.[0]?.toUpperCase() || 'D'}
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-medium text-slate-900 truncate">{user?.name || user?.full_name}</p>
+              <p className="text-xs font-medium text-white truncate">{user?.name || user?.full_name}</p>
               <p className="text-xs text-slate-400">Doctor</p>
             </div>
           </div>
