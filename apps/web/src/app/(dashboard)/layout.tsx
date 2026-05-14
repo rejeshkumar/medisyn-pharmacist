@@ -278,42 +278,42 @@ function SidebarLayout({
           onClick={() => setSidebarOpen(false)} />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar - Material Design (Option 4) */}
       <aside className={cn(
-        'fixed top-0 left-0 h-full w-56 bg-white border-r border-gray-100 z-30 transform transition-transform duration-200 flex flex-col',
+        'fixed top-0 left-0 h-full w-56 bg-[#00475a] border-r border-white/10 z-30 transform transition-transform duration-200 flex flex-col',
         sidebarOpen ? 'translate-x-0' : '-translate-x-full',
         'lg:translate-x-0 lg:static lg:z-auto',
       )}>
         {/* Logo */}
-        <div className="px-4 py-4 border-b border-gray-100 flex items-center gap-3">
-          <div className="w-8 h-8 bg-[#00475a] rounded-lg flex items-center justify-center flex-shrink-0">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="white">
+        <div className="px-4 py-5 border-b border-white/10 flex items-center gap-3">
+          <div className="w-9 h-9 bg-white rounded-lg flex items-center justify-center flex-shrink-0">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="#00475a">
               <rect x="6.5" y="1" width="3" height="14" rx="1.5"/>
               <rect x="1" y="6.5" width="14" height="3" rx="1.5"/>
             </svg>
           </div>
           <div className="min-w-0">
-            <h1 className="font-bold text-[#00475a] text-sm leading-tight">MediSyn</h1>
-            <p className="text-[10px] text-gray-400">Admin portal</p>
+            <h1 className="font-semibold text-white text-sm leading-tight">MediSyn</h1>
+            <p className="text-[11px] text-white/60">Admin portal</p>
           </div>
-          <button className="ml-auto lg:hidden text-gray-400 hover:text-gray-600"
+          <button className="ml-auto lg:hidden text-white/60 hover:text-white"
             onClick={() => setSidebarOpen(false)}>
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Nav — grouped sections */}
-        <nav className="flex-1 overflow-y-auto py-2 px-2 scrollbar-thin">
+        <nav className="flex-1 overflow-y-auto py-3 px-2 scrollbar-thin">
           {OWNER_NAV_SECTIONS.map((section, si) => (
             <div key={si} className={si > 0 ? 'mt-1' : ''}>
               {/* Section label */}
               {section.section && (
-                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-3 pt-3 pb-1">
+                <p className="text-[10px] font-medium text-white/50 uppercase tracking-widest px-4 pt-4 pb-2">
                   {section.section}
                 </p>
               )}
               {/* Section items */}
-              <div className="space-y-0.5">
+              <div className="space-y-1 px-2">
                 {section.items.map(item => {
                   const Icon = item.icon;
                   const active = isActive(item.href);
@@ -321,15 +321,14 @@ function SidebarLayout({
                     <Link key={item.href} href={item.href}
                       onClick={() => setSidebarOpen(false)}
                       className={cn(
-                        'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all',
+                        'flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all',
                         active
-                          ? 'bg-[#00475a] text-white'
-                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
+                          ? 'bg-white/95 text-[#00475a] shadow-sm'
+                          : 'text-white/70 hover:bg-white/8 hover:text-white',
                       )}>
-                      <Icon className="w-4 h-4 flex-shrink-0" />
+                      <Icon className="w-[18px] h-[18px] flex-shrink-0" />
                       <span className="truncate">{item.label}</span>
                       {item.href === '/hr/leaves' && <PendingLeaveBadge />}
-                      {active && <ChevronRight className="w-3.5 h-3.5 ml-auto flex-shrink-0" />}
                     </Link>
                   );
                 })}
