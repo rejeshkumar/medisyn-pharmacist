@@ -26,7 +26,6 @@ export class PatientsService {
     @InjectRepository(PatientReminder)
     private reminderRepo: Repository<PatientReminder>,
     private auditService: AuditService,
-  ,
     @InjectRepository(VipRegistration)
     private vipRegRepo: Repository<VipRegistration>,
     private salesAgentService: SalesAgentsService,

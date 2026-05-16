@@ -36,7 +36,7 @@ export class SalesAgentsService {
       where: {
         agent_id: agentId,
         tenant_id: tenantId,
-        created_at: MoreThan(oneHourAgo),
+        createdAt: MoreThan(oneHourAgo),
       },
     });
 
