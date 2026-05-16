@@ -164,7 +164,7 @@ export default function HrSettingsPage() {
           <p className="text-sm text-slate-500 mt-1">Geo-fence, check-in rules, remote work reasons</p>
         </div>
         <button onClick={save} disabled={saving}
-          className="flex items-center gap-2 px-5 py-2.5 bg-[#00475a] text-white text-sm font-semibold rounded-xl hover:bg-[#003d4d] disabled:opacity-50">
+          className="flex items-center gap-2 px-5 py-2.5 bg-[#00b8a0] text-white text-sm font-semibold rounded-xl hover:bg-[#009688] disabled:opacity-50">
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           Save all
         </button>
@@ -220,7 +220,7 @@ export default function HrSettingsPage() {
           <button
             onClick={() => setSettings(s=>({...s,geo_fence_enabled:!s.geo_fence_enabled}))}
             className={`relative w-11 h-6 rounded-full transition-colors ${
-              settings.geo_fence_enabled ? 'bg-[#00475a]' : 'bg-slate-200'
+              settings.geo_fence_enabled ? 'bg-[#00b8a0]' : 'bg-slate-200'
             }`}
           >
             <span className={`absolute top-0.5 rounded-full bg-white shadow transition-all w-5 h-5 ${

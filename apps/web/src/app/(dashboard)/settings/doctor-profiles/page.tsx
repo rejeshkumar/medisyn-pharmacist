@@ -76,7 +76,7 @@ export default function DoctorProfilesPage() {
 
       {/* DOCTOR PROFILES */}
       <div className="bg-white border rounded-xl overflow-hidden">
-        <div className="px-5 py-4 bg-[#00475a]">
+        <div className="px-5 py-4 bg-[#00b8a0]">
           <h2 className="text-white font-semibold text-sm">Doctor Profiles</h2>
           <p className="text-white/60 text-xs mt-0.5">These details appear on prescription reports as the doctor&#39;s signature</p>
         </div>
@@ -134,7 +134,7 @@ export default function DoctorProfilesPage() {
                     <div className="flex gap-2">
                       <button onClick={() => updateDoctor.mutate({ id: doc.id, ...form })}
                         disabled={updateDoctor.isPending}
-                        className="px-4 py-2 bg-[#00475a] text-white text-sm rounded-lg hover:bg-[#003847] disabled:opacity-50">
+                        className="px-4 py-2 bg-[#00b8a0] text-white text-sm rounded-lg hover:bg-[#009688] disabled:opacity-50">
                         {updateDoctor.isPending ? 'Saving...' : 'Save'}
                       </button>
                       <button onClick={() => setEditingId(null)}
@@ -173,7 +173,7 @@ export default function DoctorProfilesPage() {
 
       {/* CLINIC PROFILE */}
       <div className="bg-white border rounded-xl overflow-hidden">
-        <div className="px-5 py-4 bg-[#00475a]">
+        <div className="px-5 py-4 bg-[#00b8a0]">
           <h2 className="text-white font-semibold text-sm">Clinic Profile</h2>
           <p className="text-white/60 text-xs mt-0.5">Appears as letterhead on prescriptions and reports</p>
         </div>
@@ -240,7 +240,7 @@ export default function DoctorProfilesPage() {
           <div className="flex justify-end">
             <button onClick={() => updateClinic.mutate(clinicForm)}
               disabled={updateClinic.isPending}
-              className="px-4 py-2 bg-[#00475a] text-white text-sm rounded-lg hover:bg-[#003847] disabled:opacity-50">
+              className="px-4 py-2 bg-[#00b8a0] text-white text-sm rounded-lg hover:bg-[#009688] disabled:opacity-50">
               {updateClinic.isPending ? 'Saving...' : 'Save Clinic Details'}
             </button>
           </div>

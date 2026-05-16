@@ -79,7 +79,7 @@ function OverrideModal({ entry, action, onConfirm, onClose }: {
             className={`flex-1 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-40 transition-colors ${
               action === 'urgent' ? 'bg-red-500 hover:bg-red-600' :
               action === 'cancel' || action === 'no_show' ? 'bg-amber-500 hover:bg-amber-600' :
-              'bg-[#00475a] hover:bg-[#003d4d]'}`}>
+              'bg-[#00b8a0] hover:bg-[#009688]'}`}>
             Confirm
           </button>
         </div>
@@ -195,7 +195,7 @@ export default function QueueMonitorPage() {
         </div>
         <div className="flex gap-2">
           <button onClick={() => router.push('/receptionist/book-appointment')}
-            className="flex items-center gap-1.5 text-sm bg-[#00475a] text-white px-3 py-1.5 rounded-lg hover:bg-[#003d4d]">
+            className="flex items-center gap-1.5 text-sm bg-[#00b8a0] text-white px-3 py-1.5 rounded-lg hover:bg-[#009688]">
             <Plus className="w-4 h-4" /> Add Patient
           </button>
           <button onClick={load} className="flex items-center gap-2 text-sm text-slate-500 hover:text-[#00475a] border border-slate-200 px-3 py-1.5 rounded-lg">
@@ -334,7 +334,7 @@ export default function QueueMonitorPage() {
                             }
                           } catch { alert('Could not load prescription'); }
                         }}
-                        className="text-xs px-2.5 py-1 rounded-lg bg-[#00475a] text-white hover:bg-[#003847] font-medium flex items-center gap-1"
+                        className="text-xs px-2.5 py-1 rounded-lg bg-[#00b8a0] text-white hover:bg-[#009688] font-medium flex items-center gap-1"
                         title="Print prescription">
                         🖨️ Print Rx
                       </button>

@@ -274,7 +274,7 @@ export default function DoctorQueuePage() {
                   {(isReady || isActive) && (
                     <button onClick={() => handleCall(entry)} disabled={calling === entry.id}
                       className={cn('flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all flex-shrink-0',
-                        isActive ? 'bg-purple-600 text-white hover:bg-purple-700' : 'bg-[#00475a] text-white hover:bg-[#003d4d]',
+                        isActive ? 'bg-purple-600 text-white hover:bg-purple-700' : 'bg-[#00b8a0] text-white hover:bg-[#009688]',
                         calling===entry.id ? 'opacity-50' : '')}>
                       {calling===entry.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
                       {isActive ? 'Resume' : 'Call'} <ArrowRight className="w-3.5 h-3.5" />

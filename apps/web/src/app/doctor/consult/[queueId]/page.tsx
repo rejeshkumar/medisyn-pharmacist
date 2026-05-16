@@ -847,17 +847,17 @@ export default function ConsultPage() {
             <div className="pb-3 border-b border-slate-100">
               <div className="flex items-center gap-3 mb-2">
                 <button onClick={toggleVoice}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${voiceListening ? 'bg-red-500 text-white shadow-lg shadow-red-200' : 'bg-[#00475a] text-white hover:bg-[#003d4d]'}`}>
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${voiceListening ? 'bg-red-500 text-white shadow-lg shadow-red-200' : 'bg-[#00b8a0] text-white hover:bg-[#009688]'}`}>
                   {voiceListening ? <><MicOff className="w-4 h-4" />Stop Recording</> : <><Mic className="w-4 h-4" />Speak</>}
                 </button>
                 {/* Language toggle */}
                 <div className="flex rounded-lg border border-slate-200 overflow-hidden text-xs font-medium">
                   <button onClick={() => { setVoiceLang('en-IN'); if (voiceListening) { recognitionRef.current?.stop(); setTimeout(() => recognitionRef.current?.start(), 100); }}}
-                    className={`px-2.5 py-1.5 transition-colors ${voiceLang === 'en-IN' ? 'bg-[#00475a] text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
+                    className={`px-2.5 py-1.5 transition-colors ${voiceLang === 'en-IN' ? 'bg-[#00b8a0] text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
                     EN
                   </button>
                   <button onClick={() => { setVoiceLang('ml-IN'); if (voiceListening) { recognitionRef.current?.stop(); setTimeout(() => recognitionRef.current?.start(), 100); }}}
-                    className={`px-2.5 py-1.5 transition-colors ${voiceLang === 'ml-IN' ? 'bg-[#00475a] text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
+                    className={`px-2.5 py-1.5 transition-colors ${voiceLang === 'ml-IN' ? 'bg-[#00b8a0] text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
                     മ
                   </button>
                 </div>
@@ -873,7 +873,7 @@ export default function ConsultPage() {
                   <span className="text-[10px] text-slate-400">Manual override:</span>
                   {(['symptoms', 'examination', 'diagnosis', 'advice'] as const).map(f => (
                     <button key={f} onClick={() => setActiveVoiceField(f)}
-                      className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors capitalize ${activeVoiceField === f ? 'bg-[#00475a] text-white border-[#00475a]' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}>
+                      className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors capitalize ${activeVoiceField === f ? 'bg-[#00b8a0] text-white border-[#00475a]' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}>
                       {f}
                     </button>
                   ))}
@@ -943,7 +943,7 @@ export default function ConsultPage() {
 
             <div className="flex justify-end gap-3 pt-2">
               <button onClick={handleSave} disabled={saving}
-                className="flex items-center gap-2 px-5 py-2.5 bg-[#00475a] text-white rounded-lg text-sm font-medium hover:bg-[#003d4d] disabled:opacity-50 transition-colors">
+                className="flex items-center gap-2 px-5 py-2.5 bg-[#00b8a0] text-white rounded-lg text-sm font-medium hover:bg-[#009688] disabled:opacity-50 transition-colors">
                 <Save className="w-4 h-4" />
                 {saving ? 'Saving...' : consultSaved ? 'Update & Continue' : 'Save & Continue to Prescription'}
               </button>
@@ -1115,7 +1115,7 @@ export default function ConsultPage() {
                           onClick={() => updateItem(idx, 'food_relation', opt.val)}
                           className={`text-xs px-2.5 py-1 rounded-full border transition-all ${
                             item.food_relation === opt.val
-                              ? 'bg-[#00475a] text-white border-[#00475a]'
+                              ? 'bg-[#00b8a0] text-white border-[#00475a]'
                               : 'border-slate-200 text-slate-500 hover:border-[#00475a]'
                           }`}>
                           {opt.label}
@@ -1158,7 +1158,7 @@ export default function ConsultPage() {
 
             <div className="flex justify-end">
               <button onClick={handleFinish} disabled={finishing}
-                className="flex items-center gap-2 px-6 py-2.5 bg-[#00475a] text-white rounded-lg text-sm font-medium hover:bg-[#003d4d] disabled:opacity-50 transition-colors">
+                className="flex items-center gap-2 px-6 py-2.5 bg-[#00b8a0] text-white rounded-lg text-sm font-medium hover:bg-[#009688] disabled:opacity-50 transition-colors">
                 <CheckCircle2 className="w-4 h-4" />
                 {finishing ? 'Processing...' : 'Issue Prescription & Send to Pharmacy'}
               </button>

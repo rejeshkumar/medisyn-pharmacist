@@ -122,7 +122,7 @@ export default function PaymentPage() {
           </>
         )}
         <button onClick={() => router.push(backPath)}
-          className="w-full py-2.5 bg-[#00475a] text-white rounded-xl text-sm font-semibold hover:bg-[#003d4d] transition-colors">
+          className="w-full py-2.5 bg-[#00b8a0] text-white rounded-xl text-sm font-semibold hover:bg-[#009688] transition-colors">
           Back to Queue
         </button>
       </div>
@@ -252,7 +252,7 @@ export default function PaymentPage() {
 
       {/* Submit */}
       <button onClick={handleSubmit} disabled={submitting || !bill}
-        className="w-full py-3.5 bg-[#00475a] text-white rounded-xl text-sm font-bold hover:bg-[#003d4d] disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
+        className="w-full py-3.5 bg-[#00b8a0] text-white rounded-xl text-sm font-bold hover:bg-[#009688] disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
         {submitting
           ? <><Loader2 className="w-4 h-4 animate-spin" />Processing...</>
           : <><CheckCircle2 className="w-4 h-4" />Confirm Payment — ₹{total.toFixed(2)}</>}

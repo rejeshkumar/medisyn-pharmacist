@@ -126,7 +126,7 @@ function VendorTermsModal({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[80vh] overflow-hidden">
-        <div className="px-5 py-4 bg-[#00475a] flex items-center justify-between">
+        <div className="px-5 py-4 bg-[#00b8a0] flex items-center justify-between">
           <h3 className="text-white font-semibold">Vendor payment terms</h3>
           <button onClick={onClose} className="text-white/70 hover:text-white text-sm">Close</button>
         </div>
@@ -388,7 +388,7 @@ function ExpensesTab() {
             <div className="flex items-end">
               <button onClick={handleSubmit}
                 disabled={addMut.isPending || !form.description || !form.amount}
-                className="w-full bg-[#00475a] text-white text-sm font-medium py-2 rounded-lg hover:bg-[#003d4d] disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                className="w-full bg-[#00b8a0] text-white text-sm font-medium py-2 rounded-lg hover:bg-[#009688] disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                 {addMut.isPending ? 'Saving...' : 'Save expense'}
               </button>
             </div>
@@ -543,16 +543,16 @@ function PharmacyPurchasesTab() {
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex gap-1 bg-gray-100 rounded-lg p-0.5">
             <button onClick={() => setViewMode('summary')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${viewMode === 'summary' ? 'bg-[#00475a] text-white' : 'text-gray-600'}`}>
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${viewMode === 'summary' ? 'bg-[#00b8a0] text-white' : 'text-gray-600'}`}>
               Summary
             </button>
             <button onClick={() => setViewMode('list')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${viewMode === 'list' ? 'bg-[#00475a] text-white' : 'text-gray-600'}`}>
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${viewMode === 'list' ? 'bg-[#00b8a0] text-white' : 'text-gray-600'}`}>
               All Entries
             </button>
           </div>
           <button onClick={() => setShowForm(!showForm)}
-            className="flex items-center gap-1.5 px-3 py-2 bg-[#00475a] text-white text-sm rounded-lg hover:bg-[#003847]">
+            className="flex items-center gap-1.5 px-3 py-2 bg-[#00b8a0] text-white text-sm rounded-lg hover:bg-[#009688]">
             <Plus size={14} /> Add Purchase
           </button>
         </div>
@@ -661,7 +661,7 @@ function PharmacyPurchasesTab() {
           )}
           <div className="flex gap-2 pt-1">
             <button onClick={handleSubmit} disabled={addMut.isPending}
-              className="px-4 py-2 bg-[#00475a] text-white text-sm rounded-lg hover:bg-[#003847] disabled:opacity-50">
+              className="px-4 py-2 bg-[#00b8a0] text-white text-sm rounded-lg hover:bg-[#009688] disabled:opacity-50">
               {addMut.isPending ? 'Saving...' : 'Save Purchase'}
             </button>
             <button onClick={() => setShowForm(false)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Cancel</button>
@@ -881,7 +881,7 @@ function UpcomingPaymentsTab() {
             Show paid
           </label>
           <button onClick={() => setShowForm(!showForm)}
-            className="flex items-center gap-1.5 px-3 py-2 bg-[#00475a] text-white text-sm rounded-lg hover:bg-[#003847]">
+            className="flex items-center gap-1.5 px-3 py-2 bg-[#00b8a0] text-white text-sm rounded-lg hover:bg-[#009688]">
             <Plus size={14} /> Add Payment
           </button>
         </div>
@@ -948,7 +948,7 @@ function UpcomingPaymentsTab() {
               cash_balance: parseFloat(balForm.cash_balance) || 0,
               bank_balance: parseFloat(balForm.bank_balance) || 0,
               cheque_issued: parseFloat(balForm.cheque_issued) || 0,
-            })} className="px-4 py-2 bg-[#00475a] text-white text-sm rounded-lg hover:bg-[#003847]">
+            })} className="px-4 py-2 bg-[#00b8a0] text-white text-sm rounded-lg hover:bg-[#009688]">
               Save Balance
             </button>
             <button onClick={() => setShowBalanceForm(false)} className="px-4 py-2 text-sm text-gray-600">Cancel</button>
@@ -994,7 +994,7 @@ function UpcomingPaymentsTab() {
               if (!form.payment_type || !form.amount) return toast.error('Type and amount required');
               addMut.mutate({ ...form, amount: parseFloat(form.amount), due_date: form.due_date || null });
             }} disabled={addMut.isPending}
-              className="px-4 py-2 bg-[#00475a] text-white text-sm rounded-lg hover:bg-[#003847] disabled:opacity-50">
+              className="px-4 py-2 bg-[#00b8a0] text-white text-sm rounded-lg hover:bg-[#009688] disabled:opacity-50">
               {addMut.isPending ? 'Saving...' : 'Add Payment'}
             </button>
             <button onClick={() => setShowForm(false)} className="px-4 py-2 text-sm text-gray-600">Cancel</button>
@@ -1178,7 +1178,7 @@ export default function OwnerFinancialDashboard() {
           <button key={p} onClick={() => setDashPeriod(p)}
             className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
               dashPeriod === p
-                ? 'bg-[#00475a] text-white'
+                ? 'bg-[#00b8a0] text-white'
                 : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200'
             }`}>
             {p === 'daily' ? 'Today' : p === 'weekly' ? 'This Week' : p === 'monthly' ? 'This Month' : p === 'yearly' ? 'This Year' : 'Custom'}

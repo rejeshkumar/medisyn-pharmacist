@@ -141,7 +141,7 @@ export default function InventoryIntelligencePage() {
           <button
             onClick={handleRefreshAll}
             disabled={refreshing}
-            className="px-4 py-2 bg-[#00475a] text-white rounded-md hover:bg-[#003845] disabled:opacity-50"
+            className="px-4 py-2 bg-[#00b8a0] text-white rounded-md hover:bg-[#003845] disabled:opacity-50"
           >
             {refreshing ? '🔄 Refreshing...' : '🔄 Refresh All'}
           </button>

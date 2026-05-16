@@ -139,7 +139,7 @@ export default function PatientEditPage() {
       </button>
 
       <div className="flex items-center gap-3 mb-6">
-        <div className="w-12 h-12 rounded-full bg-[#00475a] text-white flex items-center justify-center text-lg font-bold">
+        <div className="w-12 h-12 rounded-full bg-[#00b8a0] text-white flex items-center justify-center text-lg font-bold">
           {(form.first_name?.[0] ?? '?').toUpperCase()}
         </div>
         <div>
@@ -259,7 +259,7 @@ export default function PatientEditPage() {
         <button
           onClick={saveProfile}
           disabled={saving}
-          className="flex items-center gap-2 px-5 py-2.5 bg-[#00475a] text-white text-sm font-medium rounded-xl hover:bg-[#003d4d] disabled:opacity-50 transition-colors"
+          className="flex items-center gap-2 px-5 py-2.5 bg-[#00b8a0] text-white text-sm font-medium rounded-xl hover:bg-[#009688] disabled:opacity-50 transition-colors"
         >
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           Save profile

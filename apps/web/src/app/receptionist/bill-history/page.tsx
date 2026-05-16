@@ -114,7 +114,7 @@ export default function BillHistoryPage() {
         </div>
         <button
           onClick={() => router.push('/receptionist/billing')}
-          className="flex items-center gap-2 px-4 py-2 bg-[#00475a] text-white text-sm font-medium rounded-xl hover:bg-[#003d4d] transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-[#00b8a0] text-white text-sm font-medium rounded-xl hover:bg-[#009688] transition-colors"
         >
           <Receipt className="w-4 h-4" /> New bill
         </button>

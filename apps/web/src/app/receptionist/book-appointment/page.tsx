@@ -267,7 +267,7 @@ export default function BookAppointmentPage() {
             Book another
           </button>
           <button onClick={() => router.push('/receptionist/queue')}
-            className="flex-1 py-2.5 bg-[#00475a] text-white rounded-xl text-sm font-medium hover:bg-[#003d4d]">
+            className="flex-1 py-2.5 bg-[#00b8a0] text-white rounded-xl text-sm font-medium hover:bg-[#009688]">
             View queue
           </button>
         </div>
@@ -288,7 +288,7 @@ export default function BookAppointmentPage() {
           </h2>
           {selectedPatient ? (
             <div className="flex items-center gap-3 bg-teal-50 rounded-xl px-4 py-3 border border-teal-100">
-              <div className="w-9 h-9 rounded-full bg-[#00475a] text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
+              <div className="w-9 h-9 rounded-full bg-[#00b8a0] text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
                 {initials(patientName(selectedPatient))}
               </div>
               <div className="flex-1">
@@ -330,7 +330,7 @@ export default function BookAppointmentPage() {
                   <button
                     onClick={() => { setShowNewPatient(true); setPatients([]); setNewPatientForm(f => ({ ...f, name: patientSearch, mobile: /^\d+$/.test(patientSearch) ? patientSearch : '' })); }}
                     className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-teal-50 text-left bg-teal-50/50 border-t border-slate-100">
-                    <div className="w-8 h-8 rounded-full bg-[#00475a]/10 text-[#00475a] flex items-center justify-center text-xs font-bold">+</div>
+                    <div className="w-8 h-8 rounded-full bg-[#00b8a0]/10 text-[#00475a] flex items-center justify-center text-xs font-bold">+</div>
                     <div>
                       <p className="text-sm font-semibold text-[#00475a]">Register new patient</p>
                       <p className="text-xs text-slate-400">Add "{patientSearch}" as a new patient</p>
@@ -380,7 +380,7 @@ export default function BookAppointmentPage() {
                           toast.error(e.response?.data?.message || 'Failed to register');
                         } finally { setSavingPatient(false); }
                       }}
-                      className="flex-1 py-2 bg-[#00475a] text-white rounded-lg text-sm font-semibold disabled:opacity-50">
+                      className="flex-1 py-2 bg-[#00b8a0] text-white rounded-lg text-sm font-semibold disabled:opacity-50">
                       {savingPatient ? 'Saving...' : 'Register & Select'}
                     </button>
                     <button onClick={() => setShowNewPatient(false)}
@@ -403,7 +403,7 @@ export default function BookAppointmentPage() {
                 onClick={() => setVisitType(vt.value)}
                 className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-all ${
                   visitType === vt.value
-                    ? 'bg-[#00475a] text-white border-[#00475a]'
+                    ? 'bg-[#00b8a0] text-white border-[#00475a]'
                     : 'border-slate-200 text-slate-500 hover:border-slate-300'
                 }`}
               >
@@ -435,7 +435,7 @@ export default function BookAppointmentPage() {
                 onClick={() => setSelSpecialty(sp)}
                 className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 border transition-all ${
                   selSpecialty === sp
-                    ? 'bg-[#00475a] text-white border-[#00475a]'
+                    ? 'bg-[#00b8a0] text-white border-[#00475a]'
                     : 'border-slate-200 text-slate-500 hover:border-slate-300'
                 }`}
               >
@@ -510,7 +510,7 @@ export default function BookAppointmentPage() {
                 <button key={v}
                   onClick={() => { setView(v); setSelectedSlot(null); }}
                   className={`px-3 py-1.5 font-medium transition-colors ${
-                    view === v ? 'bg-[#00475a] text-white' : 'text-slate-500 hover:bg-slate-50'
+                    view === v ? 'bg-[#00b8a0] text-white' : 'text-slate-500 hover:bg-slate-50'
                   }`}
                 >
                   {v.charAt(0).toUpperCase() + v.slice(1)}
@@ -551,7 +551,7 @@ export default function BookAppointmentPage() {
                     <button key={i}
                       onClick={() => { setCursor(d); setSelectedSlot(null); setView('day'); }}
                       className={`flex flex-col items-center py-2 rounded-xl text-xs transition-all ${
-                        isSel ? 'bg-[#00475a] text-white' :
+                        isSel ? 'bg-[#00b8a0] text-white' :
                         isToday ? 'bg-teal-50 text-[#00475a] border border-teal-200' :
                         'hover:bg-slate-50 text-slate-600'
                       }`}
@@ -589,7 +589,7 @@ export default function BookAppointmentPage() {
                       <button key={i}
                         onClick={() => { setCursor(d); setSelectedSlot(null); setView('day'); }}
                         className={`aspect-square flex items-center justify-center text-xs rounded-lg font-medium transition-all ${
-                          isSel ? 'bg-[#00475a] text-white' :
+                          isSel ? 'bg-[#00b8a0] text-white' :
                           isToday ? 'bg-teal-50 text-[#00475a] border border-teal-200' :
                           'hover:bg-slate-50 text-slate-700'
                         }`}
@@ -643,7 +643,7 @@ export default function BookAppointmentPage() {
                                 onClick={() => !isBooked && selectedDoctor && setSelectedSlot(slot)}
                                 disabled={isBooked || !selectedDoctor}
                                 className={`py-1.5 rounded-lg text-xs font-medium transition-all ${
-                                  isSel    ? 'bg-[#00475a] text-white' :
+                                  isSel    ? 'bg-[#00b8a0] text-white' :
                                   isBooked ? 'bg-slate-100 text-slate-300 line-through cursor-not-allowed' :
                                   !selectedDoctor ? 'bg-slate-50 text-slate-300 cursor-not-allowed' :
                                   'border border-slate-200 text-slate-600 hover:border-[#00475a] hover:text-[#00475a]'
@@ -689,7 +689,7 @@ export default function BookAppointmentPage() {
         <button
           onClick={handleBook}
           disabled={submitting || !selectedPatient}
-          className="w-full py-3.5 bg-[#00475a] text-white rounded-xl text-sm font-bold hover:bg-[#003d4d] disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+          className="w-full py-3.5 bg-[#00b8a0] text-white rounded-xl text-sm font-bold hover:bg-[#009688] disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
         >
           {submitting
             ? <><Loader2 className="w-4 h-4 animate-spin" />Booking...</>

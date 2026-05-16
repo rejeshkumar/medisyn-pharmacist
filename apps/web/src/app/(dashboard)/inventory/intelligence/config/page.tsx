@@ -180,7 +180,7 @@ export default function InventoryConfigPage() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-6 py-2 bg-[#00475a] text-white rounded-md hover:bg-[#003845] disabled:opacity-50"
+            className="px-6 py-2 bg-[#00b8a0] text-white rounded-md hover:bg-[#003845] disabled:opacity-50"
           >
             {saving ? 'Saving...' : 'Save Configuration'}
           </button>

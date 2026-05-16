@@ -162,7 +162,7 @@ export default function MedicinesPage() {
         <button onClick={() => setShowFilters(v => !v)}
           className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition-all ${
             showFilters || activeFilters > 0
-              ? 'bg-[#00475a] text-white border-[#00475a]'
+              ? 'bg-[#00b8a0] text-white border-[#00475a]'
               : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
           }`}>
           <Filter className="w-4 h-4" />
@@ -183,13 +183,13 @@ export default function MedicinesPage() {
             <div className="flex flex-wrap gap-1.5">
               <button onClick={() => setFilterCat('')}
                 className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all ${
-                  !filterCat ? 'bg-[#00475a] text-white border-[#00475a]' : 'bg-white text-gray-600 border-gray-200'
+                  !filterCat ? 'bg-[#00b8a0] text-white border-[#00475a]' : 'bg-white text-gray-600 border-gray-200'
                 }`}>All</button>
               {CATEGORIES.map(cat => (
                 <button key={cat} onClick={() => setFilterCat(cat === filterCat ? '' : cat)}
                   className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all ${
                     filterCat === cat
-                      ? 'bg-[#00475a] text-white border-[#00475a]'
+                      ? 'bg-[#00b8a0] text-white border-[#00475a]'
                       : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
                   }`}>
                   {cat}
@@ -204,7 +204,7 @@ export default function MedicinesPage() {
                 <button key={s} onClick={() => setFilterSched(s)}
                   className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all ${
                     filterSched === s
-                      ? 'bg-[#00475a] text-white border-[#00475a]'
+                      ? 'bg-[#00b8a0] text-white border-[#00475a]'
                       : 'bg-white text-gray-600 border-gray-200'
                   }`}>
                   {s || 'All'}

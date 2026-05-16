@@ -130,7 +130,7 @@ export default function ServiceRatesPage() {
         <button
           onClick={saveAll}
           disabled={saving || !rates.some(r => r._dirty)}
-          className="flex items-center gap-2 px-4 py-2 bg-[#00475a] text-white text-sm font-medium rounded-xl hover:bg-[#003d4d] disabled:opacity-50 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-[#00b8a0] text-white text-sm font-medium rounded-xl hover:bg-[#009688] disabled:opacity-50 transition-colors"
         >
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           Save all changes
@@ -151,7 +151,7 @@ export default function ServiceRatesPage() {
           >
             {cat.label}
             <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${
-              activeTab === cat.key ? 'bg-[#00475a]/10 text-[#00475a]' : 'bg-slate-200 text-slate-500'
+              activeTab === cat.key ? 'bg-[#00b8a0]/10 text-[#00475a]' : 'bg-slate-200 text-slate-500'
             }`}>
               {rates.filter(r => r.category === cat.key && r.is_active !== false).length}
             </span>

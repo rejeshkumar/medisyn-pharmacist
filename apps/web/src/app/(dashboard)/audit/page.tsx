@@ -148,7 +148,7 @@ export default function AuditLogPage() {
           </button>
           {canEditSettings && (
             <button onClick={() => setShowSettings(!showSettings)}
-              className={`flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border transition-colors ${showSettings ? 'bg-[#00475a] text-white border-[#00475a]' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+              className={`flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border transition-colors ${showSettings ? 'bg-[#00b8a0] text-white border-[#00475a]' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
               <Settings className="w-4 h-4" />Audit Settings
             </button>
           )}
@@ -177,7 +177,7 @@ export default function AuditLogPage() {
             <div className="grid grid-cols-2 gap-2">
               {ALL_ACTIONS.filter(a => a.mandatory).map(a => (
                 <div key={a.value} className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg border border-slate-100">
-                  <div className="w-4 h-4 rounded bg-[#00475a] flex items-center justify-center flex-shrink-0">
+                  <div className="w-4 h-4 rounded bg-[#00b8a0] flex items-center justify-center flex-shrink-0">
                     <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 10 10"><path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   </div>
                   <span className="text-xs text-slate-600">{a.label}</span>
@@ -214,7 +214,7 @@ export default function AuditLogPage() {
           <div className="flex gap-3 pt-3 border-t border-slate-100">
             <button onClick={() => setShowSettings(false)} className="flex-1 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
             <button onClick={saveConfig} disabled={savingConfig}
-              className="flex-1 py-2 bg-[#00475a] text-white rounded-lg text-sm font-semibold hover:bg-[#00475a]/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
+              className="flex-1 py-2 bg-[#00b8a0] text-white rounded-lg text-sm font-semibold hover:bg-[#00b8a0]/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
               {savingConfig ? <Loader2 className="w-4 h-4 animate-spin" /> : <Settings className="w-4 h-4" />}
               Save Settings
             </button>

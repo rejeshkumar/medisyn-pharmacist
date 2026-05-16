@@ -130,7 +130,7 @@ export default function BillReceiptPage() {
         </button>
         <button
           onClick={handlePrint}
-          className="flex items-center gap-2 px-5 py-2.5 bg-[#00475a] text-white text-sm font-medium rounded-xl hover:bg-[#003d4d] transition-colors"
+          className="flex items-center gap-2 px-5 py-2.5 bg-[#00b8a0] text-white text-sm font-medium rounded-xl hover:bg-[#009688] transition-colors"
         >
           <Printer className="w-4 h-4" /> Print receipt
         </button>

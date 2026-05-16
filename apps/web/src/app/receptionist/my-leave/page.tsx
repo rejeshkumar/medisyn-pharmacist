@@ -108,7 +108,7 @@ export default function MyLeavePage() {
           <p className="text-xs text-slate-400">Requests and balances</p>
         </div>
         <button onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-[#00475a] text-white text-sm font-semibold rounded-xl hover:bg-[#003d4d] transition-colors">
+          className="flex items-center gap-2 px-4 py-2 bg-[#00b8a0] text-white text-sm font-semibold rounded-xl hover:bg-[#009688] transition-colors">
           <Plus className="w-4 h-4" /> Apply leave
         </button>
       </div>
@@ -133,7 +133,7 @@ export default function MyLeavePage() {
           <button key={s} onClick={() => setStatusFilter(s)}
             className={`px-3 py-1.5 rounded-full text-xs font-semibold border whitespace-nowrap flex-shrink-0 transition-all ${
               statusFilter === s
-                ? 'bg-[#00475a] text-white border-[#00475a]'
+                ? 'bg-[#00b8a0] text-white border-[#00475a]'
                 : 'border-slate-200 text-slate-500 hover:border-slate-300'
             }`}>
             {s.charAt(0).toUpperCase() + s.slice(1)}
@@ -283,7 +283,7 @@ export default function MyLeavePage() {
                   Cancel
                 </button>
                 <button onClick={applyLeave} disabled={applyingLeave}
-                  className="flex-1 py-2.5 bg-[#00475a] text-white rounded-xl text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2">
+                  className="flex-1 py-2.5 bg-[#00b8a0] text-white rounded-xl text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2">
                   {applyingLeave ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Submit request'}
                 </button>
               </div>

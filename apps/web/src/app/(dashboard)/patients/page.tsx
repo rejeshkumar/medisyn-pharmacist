@@ -174,7 +174,7 @@ export default function PatientsPage() {
               <div><label className="label">Notes</label><textarea className="input resize-none" rows={2} value={form.notes} onChange={(e) => set('notes',e.target.value)} placeholder="Any notes..." /></div>
 
               {/* ── DPDPA Consent ── */}
-              <div className={`rounded-xl border-2 p-4 transition-all ${form.consent_given ? 'border-[#00475a] bg-[#00475a]/5' : 'border-amber-300 bg-amber-50'}`}>
+              <div className={`rounded-xl border-2 p-4 transition-all ${form.consent_given ? 'border-[#00475a] bg-[#00b8a0]/5' : 'border-amber-300 bg-amber-50'}`}>
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input type="checkbox" checked={form.consent_given} onChange={(e) => set('consent_given', e.target.checked)} className="mt-0.5 w-4 h-4 accent-[#00475a] cursor-pointer flex-shrink-0" />
                   <div className="flex-1">

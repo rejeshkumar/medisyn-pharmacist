@@ -129,13 +129,13 @@ export default function DoctorPatientsPage() {
                     onClick={() => setSelected(isSelected ? null : patient)}
                     className={`px-4 py-3 cursor-pointer transition-all flex items-center gap-3 ${
                       isSelected
-                        ? 'bg-[#00475a]/5 border-l-2 border-[#00475a]'
+                        ? 'bg-[#00b8a0]/5 border-l-2 border-[#00475a]'
                         : 'hover:bg-slate-50 border-l-2 border-transparent'
                     }`}
                   >
                     {/* Avatar */}
                     <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm ${
-                      isSelected ? 'bg-[#00475a] text-white' : 'bg-teal-100 text-teal-700'
+                      isSelected ? 'bg-[#00b8a0] text-white' : 'bg-teal-100 text-teal-700'
                     }`}>
                       {getName(patient).charAt(0).toUpperCase()}
                     </div>
@@ -181,7 +181,7 @@ export default function DoctorPatientsPage() {
           {/* Panel header */}
           <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#00475a] text-white flex items-center justify-center font-bold">
+              <div className="w-10 h-10 rounded-full bg-[#00b8a0] text-white flex items-center justify-center font-bold">
                 {getName(selected).charAt(0).toUpperCase()}
               </div>
               <div>

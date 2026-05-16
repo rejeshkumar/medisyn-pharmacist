@@ -386,7 +386,7 @@ function AdjustmentModal({
             className={`w-full py-3.5 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 transition-colors ${
               currentType.key === 'patient_return' || direction === 'increase'
                 ? 'bg-green-600 hover:bg-green-700'
-                : 'bg-[#00475a] hover:bg-[#003d4d]'
+                : 'bg-[#00b8a0] hover:bg-[#009688]'
             } disabled:opacity-50`}>
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : (
               direction === 'increase'
@@ -559,7 +559,7 @@ export default function StockAdjustmentPage() {
                         <td className="px-4 py-3">
                           <button
                             onClick={() => { setSelectedBatch(b); setSelectedMed(b); }}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#00475a] text-white text-xs font-semibold rounded-lg hover:bg-[#003d4d] transition-colors">
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#00b8a0] text-white text-xs font-semibold rounded-lg hover:bg-[#009688] transition-colors">
                             <Package className="w-3 h-3" /> Adjust
                           </button>
                         </td>
@@ -584,7 +584,7 @@ export default function StockAdjustmentPage() {
               <button key={f} onClick={() => setTypeFilter(f)}
                 className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
                   typeFilter === f
-                    ? 'bg-[#00475a] text-white border-[#00475a]'
+                    ? 'bg-[#00b8a0] text-white border-[#00475a]'
                     : 'border-slate-200 text-slate-500 hover:border-slate-300'
                 }`}>
                 {f === 'all' ? 'All' : ADJ_TYPES.find(t => t.key === f)?.label ?? f}

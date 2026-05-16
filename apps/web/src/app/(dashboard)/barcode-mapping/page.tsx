@@ -204,7 +204,7 @@ export default function BulkBarcodeMappingPage() {
         {(['scan', 'review', 'done'] as Mode[]).map(m => (
           <button key={m} onClick={() => setMode(m)}
             className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all capitalize
-              ${mode === m ? 'bg-[#00475a] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+              ${mode === m ? 'bg-[#00b8a0] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
             {m} {m === 'review' && pendingCount > 0 ? `(${pendingCount})` : ''}
           </button>
         ))}
@@ -233,7 +233,7 @@ export default function BulkBarcodeMappingPage() {
               />
               <button
                 onClick={() => setShowCamera(true)}
-                className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#00475a] text-white text-sm font-medium hover:bg-[#003d4d] transition-colors"
+                className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#00b8a0] text-white text-sm font-medium hover:bg-[#009688] transition-colors"
                 title="Use phone camera to scan"
               >
                 <Camera className="w-4 h-4" />
@@ -247,7 +247,7 @@ export default function BulkBarcodeMappingPage() {
 
           {/* Auto-match card */}
           {matchedMed && currentBarcode && (
-            <div className="card border-2 border-[#00475a]/30 bg-[#00475a]/5">
+            <div className="card border-2 border-[#00475a]/30 bg-[#00b8a0]/5">
               <div className="flex items-center gap-2 mb-3">
                 <CheckCircle2 className="w-4 h-4 text-[#00475a]" />
                 <span className="text-sm font-semibold text-[#00475a]">Medicine found</span>

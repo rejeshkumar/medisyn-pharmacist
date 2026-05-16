@@ -111,7 +111,7 @@ function FollowUpCard({ c, filter }: { c: any; filter: Filter }) {
             </a>
             <a
               href={`tel:${mobile}`}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#00475a] text-white text-xs font-medium rounded-lg hover:bg-[#003d4d] transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#00b8a0] text-white text-xs font-medium rounded-lg hover:bg-[#009688] transition-colors"
             >
               <Phone className="w-3.5 h-3.5" />
               Call
@@ -168,7 +168,7 @@ export default function FollowUpsPage() {
     <div className="p-6 max-w-4xl mx-auto">
       {/* Page header */}
       <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-xl bg-[#00475a] flex items-center justify-center flex-shrink-0">
+        <div className="w-10 h-10 rounded-xl bg-[#00b8a0] flex items-center justify-center flex-shrink-0">
           <CalendarClock className="w-5 h-5 text-white" />
         </div>
         <div>

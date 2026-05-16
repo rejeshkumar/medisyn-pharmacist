@@ -168,7 +168,7 @@ function MedSearchDropdown({
           <div className="flex gap-2">
             <button
               onClick={() => { setOpen(false); onDemand?.(value); }}
-              className="flex-1 text-xs px-3 py-2 rounded-lg bg-[#00475a] text-white font-medium hover:bg-[#003d4d] transition-colors"
+              className="flex-1 text-xs px-3 py-2 rounded-lg bg-[#00b8a0] text-white font-medium hover:bg-[#009688] transition-colors"
             >
               Log demand
             </button>
@@ -423,7 +423,7 @@ function LogDemandDialog({ query, onClose }: { query: string; onClose: () => voi
               {validation.notes && <p className="mt-1 text-gray-500">{validation.notes}</p>}
             </div>
           )}
-          <button onClick={onClose} className="w-full py-2 bg-[#00475a] text-white rounded-lg text-sm font-medium">Done</button>
+          <button onClick={onClose} className="w-full py-2 bg-[#00b8a0] text-white rounded-lg text-sm font-medium">Done</button>
         </div>
       </div>
     );
@@ -467,7 +467,7 @@ function LogDemandDialog({ query, onClose }: { query: string; onClose: () => voi
           <button
             onClick={handleSubmit}
             disabled={!name || loading || validating}
-            className="flex-2 flex-1 py-2 bg-[#00475a] text-white rounded-lg text-sm font-medium disabled:opacity-40"
+            className="flex-2 flex-1 py-2 bg-[#00b8a0] text-white rounded-lg text-sm font-medium disabled:opacity-40"
           >
             {loading || validating ? 'Validating...' : 'Log demand'}
           </button>
@@ -1129,13 +1129,13 @@ export default function DispensingPage() {
       <div className="flex items-center gap-1 px-3 py-1.5 border-b border-slate-200 bg-white overflow-x-auto flex-shrink-0">
         <button onClick={() => switchToDraft('current')}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium flex-shrink-0 transition-all ${
-            activeDraftId === 'current' ? 'bg-[#00475a] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            activeDraftId === 'current' ? 'bg-[#00b8a0] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
           }`}>
           <ShoppingCart className="w-3.5 h-3.5" /> Current bill
         </button>
         {drafts.map(d => (
           <div key={d.id} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium flex-shrink-0 border transition-all ${
-            activeDraftId === d.id ? 'bg-[#00475a] text-white border-[#00475a]' : 'bg-white border-slate-200 text-slate-600'
+            activeDraftId === d.id ? 'bg-[#00b8a0] text-white border-[#00475a]' : 'bg-white border-slate-200 text-slate-600'
           }`}>
             <button onClick={() => switchToDraft(d.id)} className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
@@ -1507,7 +1507,7 @@ export default function DispensingPage() {
                         />
                         </div>
                         <button onClick={() => setShowScanner(true)}
-                          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#00475a]/10 hover:bg-[#00475a] hover:text-white text-[#00475a] text-xs font-medium transition-colors border border-[#00475a]/20">
+                          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#00b8a0]/10 hover:bg-[#00b8a0] hover:text-white text-[#00475a] text-xs font-medium transition-colors border border-[#00475a]/20">
                           <Scan className="w-3.5 h-3.5" />
                           <span className="hidden sm:inline">Scan</span>
                         </button>
@@ -1688,7 +1688,7 @@ export default function DispensingPage() {
                     }}
                     className={`py-1.5 rounded-lg text-xs font-semibold border transition-all ${
                       paymentMode === m
-                        ? 'bg-[#00475a] text-white border-[#00475a]'
+                        ? 'bg-[#00b8a0] text-white border-[#00475a]'
                         : 'border-slate-200 text-slate-500 hover:border-slate-300'
                     }`}>
                     {m === 'hybrid' ? 'Cash+UPI' : m.toUpperCase()}
@@ -1741,7 +1741,7 @@ export default function DispensingPage() {
           {/* Actions */}
           <div className="p-3 border-t border-slate-100 space-y-2">
             <button ref={generateBillRef} onClick={handleBill} disabled={cart.length === 0 || createSaleMutation.isPending}
-              className="w-full py-3 bg-[#00475a] text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#003d4d] disabled:opacity-40 transition-colors">
+              className="w-full py-3 bg-[#00b8a0] text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#009688] disabled:opacity-40 transition-colors">
               {createSaleMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
               Generate Bill
             </button>
@@ -1796,7 +1796,7 @@ export default function DispensingPage() {
                 <div className="grid grid-cols-3 gap-1.5">
                   {['cash','upi','card','online','hybrid'].map(m => (
                     <button key={m} onClick={() => setPaymentMode(m)}
-                      className={`py-2 rounded-lg text-xs font-semibold border transition-all ${paymentMode===m ? 'bg-[#00475a] text-white border-[#00475a]' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}>
+                      className={`py-2 rounded-lg text-xs font-semibold border transition-all ${paymentMode===m ? 'bg-[#00b8a0] text-white border-[#00475a]' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}>
                       {m === 'hybrid' ? 'Cash+UPI' : m.toUpperCase()}
                     </button>
                   ))}
@@ -1837,7 +1837,7 @@ export default function DispensingPage() {
             <div className="p-4 border-t border-slate-100" style={{paddingBottom: 'calc(1rem + env(safe-area-inset-bottom)'}}>
               <button onClick={() => { setShowBillPanel(false); handleBill(); }}
                 disabled={cart.length === 0 || createSaleMutation.isPending}
-                className="w-full py-3.5 bg-[#00475a] text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#003d4d] disabled:opacity-40">
+                className="w-full py-3.5 bg-[#00b8a0] text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#009688] disabled:opacity-40">
                 {createSaleMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
                 Generate Bill
               </button>
@@ -1866,7 +1866,7 @@ export default function DispensingPage() {
           )}
           <button onClick={() => setShowBillPanel(true)}
             disabled={cart.length === 0}
-            className="flex items-center gap-2 px-4 py-2.5 bg-[#00475a] text-white rounded-xl font-bold text-sm disabled:opacity-40 flex-shrink-0">
+            className="flex items-center gap-2 px-4 py-2.5 bg-[#00b8a0] text-white rounded-xl font-bold text-sm disabled:opacity-40 flex-shrink-0">
             <ShoppingCart className="w-4 h-4" />
             Bill Summary
             {cart.length > 0 && (

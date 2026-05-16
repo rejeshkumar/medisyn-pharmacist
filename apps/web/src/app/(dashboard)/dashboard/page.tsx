@@ -62,7 +62,7 @@ function OwnerDashboard() {
           <p className="text-sm text-gray-500">{new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p>
         </div>
         <div className="flex gap-2">
-          <QuickAction label="Day Close" icon={CheckCircle2} href="/day-close" color="bg-[#00475a] text-white border-[#00475a] hover:bg-[#003d4d]" />
+          <QuickAction label="Day Close" icon={CheckCircle2} href="/day-close" color="bg-[#00b8a0] text-white border-[#00475a] hover:bg-[#009688]" />
         </div>
       </div>
 
@@ -162,7 +162,7 @@ function PharmacistDashboard() {
           <h1 className="text-xl font-bold text-gray-900">Pharmacy</h1>
           <p className="text-sm text-gray-500">{new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})} · {new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'})}</p>
         </div>
-        <QuickAction label="New Bill" icon={ShoppingCart} href="/dispensing" color="bg-[#00475a] text-white border-[#00475a]" />
+        <QuickAction label="New Bill" icon={ShoppingCart} href="/dispensing" color="bg-[#00b8a0] text-white border-[#00475a]" />
       </div>
 
       {/* Today stats */}
@@ -284,7 +284,7 @@ function ReceptionistDashboard() {
           <h1 className="text-xl font-bold text-gray-900">Reception</h1>
           <p className="text-sm text-gray-500">{new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'})}</p>
         </div>
-        <QuickAction label="Book Appointment" icon={Calendar} href="/receptionist/book-appointment" color="bg-[#00475a] text-white border-[#00475a]" />
+        <QuickAction label="Book Appointment" icon={Calendar} href="/receptionist/book-appointment" color="bg-[#00b8a0] text-white border-[#00475a]" />
       </div>
 
       {/* Queue status */}
@@ -384,7 +384,7 @@ function DoctorDashboard() {
               <div key={q.id} onClick={() => router.push(`/doctor/consult/${q.id}`)}
                 className="flex items-center justify-between p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-teal-50 transition-colors border border-slate-100 hover:border-teal-200">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-[#00475a]/10 rounded-full flex items-center justify-center text-[#00475a] text-xs font-bold">{i+1}</div>
+                  <div className="w-8 h-8 bg-[#00b8a0]/10 rounded-full flex items-center justify-center text-[#00475a] text-xs font-bold">{i+1}</div>
                   <div>
                     <p className="text-sm font-semibold text-gray-900">{q.patient_name || `${q.patient?.first_name} ${q.patient?.last_name||''}`}</p>
                     <p className="text-xs text-gray-500">{q.chief_complaint || 'Consultation'}</p>

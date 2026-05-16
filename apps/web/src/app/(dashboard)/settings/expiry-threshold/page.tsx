@@ -93,7 +93,7 @@ export default function ExpiryThresholdPage() {
           <button
             onClick={save}
             disabled={saving}
-            className="flex items-center gap-2 px-6 py-2.5 bg-[#00475a] text-white text-sm font-medium rounded-xl hover:bg-[#003d4d] disabled:opacity-50 transition-colors"
+            className="flex items-center gap-2 px-6 py-2.5 bg-[#00b8a0] text-white text-sm font-medium rounded-xl hover:bg-[#009688] disabled:opacity-50 transition-colors"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Save threshold

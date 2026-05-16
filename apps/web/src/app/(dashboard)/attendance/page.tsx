@@ -118,7 +118,7 @@ function RemoteReasonModal({
               onSubmit(selected, subSelected, note);
             }}
             disabled={!selected}
-            className="w-full py-3 bg-[#00475a] text-white rounded-xl text-sm font-bold disabled:opacity-40 hover:bg-[#003d4d] transition-colors"
+            className="w-full py-3 bg-[#00b8a0] text-white rounded-xl text-sm font-bold disabled:opacity-40 hover:bg-[#009688] transition-colors"
           >
             Confirm check-in
           </button>
@@ -390,7 +390,7 @@ export default function AttendancePage() {
         {/* Action button */}
         {!hasIn ? (
           <button onClick={() => handleCheckIn()} disabled={checking}
-            className="w-full py-4 bg-[#00475a] text-white rounded-2xl font-black text-lg hover:bg-[#003d4d] disabled:opacity-50 flex items-center justify-center gap-3 transition-colors shadow-lg shadow-teal-900/20 active:scale-95">
+            className="w-full py-4 bg-[#00b8a0] text-white rounded-2xl font-black text-lg hover:bg-[#009688] disabled:opacity-50 flex items-center justify-center gap-3 transition-colors shadow-lg shadow-teal-900/20 active:scale-95">
             {checking ? <Loader2 className="w-6 h-6 animate-spin" /> : <LogIn className="w-6 h-6" />}
             Check In
           </button>
@@ -509,7 +509,7 @@ export default function AttendancePage() {
                   Cancel
                 </button>
                 <button onClick={handleApplyLeave} disabled={applyingLeave}
-                  className="flex-1 py-2.5 bg-[#00475a] text-white rounded-xl text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2">
+                  className="flex-1 py-2.5 bg-[#00b8a0] text-white rounded-xl text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2">
                   {applyingLeave ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Submit'}
                 </button>
               </div>

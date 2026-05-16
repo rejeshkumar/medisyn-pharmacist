@@ -72,7 +72,7 @@ function AddServiceModal({ onAdd, onClose }: { onAdd: (item: LineItem) => void; 
             {Object.entries(CATEGORY_META).filter(([k]) => k !== 'pharmacy').map(([k, v]) => (
               <button key={k} onClick={() => { setCategory(k); setSearch(''); }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                  category === k ? 'bg-[#00475a] text-white border-[#00475a]' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                  category === k ? 'bg-[#00b8a0] text-white border-[#00475a]' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
                 }`}>
                 {v.label}
               </button>
@@ -123,7 +123,7 @@ function AddServiceModal({ onAdd, onClose }: { onAdd: (item: LineItem) => void; 
                 </div>
               </div>
               <button onClick={addCustom}
-                className="w-full py-2.5 bg-[#00475a] text-white rounded-xl text-sm font-medium hover:bg-[#003d4d]">
+                className="w-full py-2.5 bg-[#00b8a0] text-white rounded-xl text-sm font-medium hover:bg-[#009688]">
                 Add to bill
               </button>
             </div>
@@ -313,7 +313,7 @@ export default function ReceptionistBillingPage() {
               New bill
             </button>
             <button onClick={() => router.push('/receptionist')}
-              className="flex-1 py-2.5 bg-[#00475a] text-white rounded-xl text-sm font-medium hover:bg-[#003d4d]">
+              className="flex-1 py-2.5 bg-[#00b8a0] text-white rounded-xl text-sm font-medium hover:bg-[#009688]">
               Back to queue
             </button>
           </div>
@@ -332,7 +332,7 @@ export default function ReceptionistBillingPage() {
             <p className="text-sm text-slate-400">Collect consultation fees and service charges</p>
           </div>
           <button onClick={() => { setActiveTab('manual'); setView('billing'); }}
-            className="flex items-center gap-2 px-4 py-2 bg-[#00475a] text-white text-sm font-medium rounded-xl hover:bg-[#003d4d]">
+            className="flex items-center gap-2 px-4 py-2 bg-[#00b8a0] text-white text-sm font-medium rounded-xl hover:bg-[#009688]">
             <Plus className="w-4 h-4" /> Manual bill
           </button>
         </div>
@@ -419,7 +419,7 @@ export default function ReceptionistBillingPage() {
         </h2>
         {selectedPatient ? (
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#00475a] text-white flex items-center justify-center text-sm font-bold">
+            <div className="w-10 h-10 rounded-full bg-[#00b8a0] text-white flex items-center justify-center text-sm font-bold">
               {(selectedPatient.first_name?.[0] ?? selectedPatient.full_name?.[0] ?? '?').toUpperCase()}
             </div>
             <div className="flex-1">
@@ -583,7 +583,7 @@ export default function ReceptionistBillingPage() {
             {(['cash', 'upi', 'card', 'credit'] as const).map(m => (
               <button key={m} onClick={() => setPaymentMode(m)}
                 className={`py-2 rounded-xl text-sm font-medium border transition-all ${
-                  paymentMode === m ? 'bg-[#00475a] text-white border-[#00475a]' : 'border-slate-200 text-slate-500 hover:border-slate-300'
+                  paymentMode === m ? 'bg-[#00b8a0] text-white border-[#00475a]' : 'border-slate-200 text-slate-500 hover:border-slate-300'
                 }`}>
                 {m.toUpperCase()}
               </button>
@@ -595,7 +595,7 @@ export default function ReceptionistBillingPage() {
             className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm mb-4 focus:outline-none focus:border-[#00475a]" />
 
           <button onClick={handleSubmit} disabled={submitting || !selectedPatient}
-            className="w-full py-3.5 bg-[#00475a] text-white rounded-xl text-sm font-bold hover:bg-[#003d4d] disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
+            className="w-full py-3.5 bg-[#00b8a0] text-white rounded-xl text-sm font-bold hover:bg-[#009688] disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
             {submitting
               ? <><Loader2 className="w-4 h-4 animate-spin" />Processing...</>
               : <><CheckCircle2 className="w-4 h-4" />Confirm bill — ₹{fmt(total)}</>

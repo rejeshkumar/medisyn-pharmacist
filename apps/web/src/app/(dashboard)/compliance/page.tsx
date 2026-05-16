@@ -201,7 +201,7 @@ export default function CompliancePage() {
 
         {/* Progress bar */}
         <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mb-4">
-          <div className="h-full bg-[#00475a] rounded-full transition-all duration-500"
+          <div className="h-full bg-[#00b8a0] rounded-full transition-all duration-500"
             style={{ width: `${(completedCount / totalCount) * 100}%` }} />
         </div>
 
@@ -271,7 +271,7 @@ export default function CompliancePage() {
                       Open Report
                     </button>
                     <button onClick={() => markFiled(item.id)}
-                      className="text-xs bg-[#00475a] text-white px-2.5 py-1 rounded-lg hover:bg-[#003d4d] transition-all flex items-center gap-1">
+                      className="text-xs bg-[#00b8a0] text-white px-2.5 py-1 rounded-lg hover:bg-[#009688] transition-all flex items-center gap-1">
                       <Check className="w-3 h-3" /> Mark Filed
                     </button>
                   </div>
@@ -352,7 +352,7 @@ export default function CompliancePage() {
               ))}
             </div>
             <div className="h-2 bg-gray-200 rounded-full overflow-hidden mb-4">
-              <div className="h-full bg-[#00475a] rounded-full transition-all"
+              <div className="h-full bg-[#00b8a0] rounded-full transition-all"
                 style={{ width: `${consent.consent_rate_pct}%` }} />
             </div>
             {consent.deletion_requests > 0 ? (

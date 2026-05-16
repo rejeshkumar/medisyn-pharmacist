@@ -156,7 +156,7 @@ export default function BookAppointmentPage() {
           <p className="text-sm text-slate-400 capitalize">{visitType.replace('_', ' ')}</p>
           <div className="flex gap-3 mt-6">
             <button onClick={reset} className="flex-1 py-2.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">Book Another</button>
-            <button onClick={() => router.push('/receptionist/queue')} className="flex-1 py-2.5 bg-[#00475a] text-white rounded-lg text-sm font-medium hover:bg-[#00475a]/90 transition-colors">View Queue</button>
+            <button onClick={() => router.push('/receptionist/queue')} className="flex-1 py-2.5 bg-[#00b8a0] text-white rounded-lg text-sm font-medium hover:bg-[#00b8a0]/90 transition-colors">View Queue</button>
           </div>
         </div>
       </div>
@@ -174,7 +174,7 @@ export default function BookAppointmentPage() {
           <h2 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2"><User className="w-4 h-4 text-[#00475a]" />Patient</h2>
           {selectedPatient ? (
             <div className="flex items-center gap-3 bg-teal-50 rounded-lg px-4 py-3">
-              <div className="w-9 h-9 rounded-full bg-[#00475a] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">{patientInitial(selectedPatient)}</div>
+              <div className="w-9 h-9 rounded-full bg-[#00b8a0] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">{patientInitial(selectedPatient)}</div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-slate-800">{patientName(selectedPatient)}</p>
                 <p className="text-xs text-slate-500">{selectedPatient.mobile}</p>
@@ -230,7 +230,7 @@ export default function BookAppointmentPage() {
                     </div>
                   </div>
                   <button onClick={createPatient} disabled={creatingPatient}
-                    className="w-full py-2 bg-[#00475a] text-white text-sm font-medium rounded-lg hover:bg-[#00475a]/90 disabled:opacity-50 flex items-center justify-center gap-2">
+                    className="w-full py-2 bg-[#00b8a0] text-white text-sm font-medium rounded-lg hover:bg-[#00b8a0]/90 disabled:opacity-50 flex items-center justify-center gap-2">
                     {creatingPatient ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}Register & Select
                   </button>
                 </div>
@@ -283,7 +283,7 @@ export default function BookAppointmentPage() {
                       <button key={slot.time} onClick={() => slot.available && setSelectedSlot(selectedSlot?.time === slot.time ? null : slot)}
                         disabled={!slot.available}
                         className={`px-2 py-2 rounded-lg text-xs font-medium border transition-colors ${
-                          selectedSlot?.time === slot.time ? 'bg-[#00475a] text-white border-[#00475a]' :
+                          selectedSlot?.time === slot.time ? 'bg-[#00b8a0] text-white border-[#00475a]' :
                           slot.available ? 'border-slate-200 text-slate-700 hover:border-[#00475a] hover:bg-teal-50' :
                           'border-slate-100 text-slate-300 bg-slate-50 cursor-not-allowed line-through'
                         }`}>
@@ -316,7 +316,7 @@ export default function BookAppointmentPage() {
         </div>
 
         <button onClick={handleBook} disabled={!selectedPatient || submitting}
-          className="w-full py-3 bg-[#00475a] text-white font-semibold rounded-xl hover:bg-[#00475a]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2">
+          className="w-full py-3 bg-[#00b8a0] text-white font-semibold rounded-xl hover:bg-[#00b8a0]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2">
           {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Calendar className="w-5 h-5" />}
           {submitting ? 'Booking...' : selectedSlot ? `Book at ${selectedSlot.time}` : 'Book Appointment'}
         </button>

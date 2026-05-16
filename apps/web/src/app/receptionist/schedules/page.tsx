@@ -245,7 +245,7 @@ function DoctorScheduleCard({ doctor, idx }: { doctor: Doctor; idx: number }) {
                           disabled={isSaving}
                           className={`w-10 h-10 rounded-full text-xs font-bold transition-all flex-shrink-0 ${
                             active
-                              ? 'bg-[#00475a] text-white'
+                              ? 'bg-[#00b8a0] text-white'
                               : 'bg-slate-200 text-slate-400 hover:bg-slate-300'
                           }`}
                         >
@@ -372,7 +372,7 @@ function DoctorScheduleCard({ doctor, idx }: { doctor: Doctor; idx: number }) {
                       <button
                         onClick={addLeave}
                         disabled={addingLeave || !newLeave.leave_date}
-                        className="flex items-center gap-2 px-4 py-2 bg-[#00475a] text-white text-sm font-medium rounded-lg hover:bg-[#003d4d] disabled:opacity-50 transition-colors flex-shrink-0"
+                        className="flex items-center gap-2 px-4 py-2 bg-[#00b8a0] text-white text-sm font-medium rounded-lg hover:bg-[#009688] disabled:opacity-50 transition-colors flex-shrink-0"
                       >
                         {addingLeave
                           ? <Loader2 className="w-4 h-4 animate-spin" />

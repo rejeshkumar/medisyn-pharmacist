@@ -105,7 +105,7 @@ export default function VipTierConfigPage() {
                   <button
                     onClick={() => save(t.key)}
                     disabled={isSaving}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[#00475a] text-white text-xs font-medium rounded-lg hover:bg-[#003d4d] disabled:opacity-50 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[#00b8a0] text-white text-xs font-medium rounded-lg hover:bg-[#009688] disabled:opacity-50 transition-colors"
                   >
                     {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                     Save

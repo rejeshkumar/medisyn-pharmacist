@@ -65,7 +65,7 @@ function CashCounter({ value, onChange }: { value: Record<number, number>; onCha
           </div>
         ))}
       </div>
-      <div className="flex justify-between items-center p-3 bg-[#00475a]/5 rounded-xl border border-[#00475a]/20">
+      <div className="flex justify-between items-center p-3 bg-[#00b8a0]/5 rounded-xl border border-[#00475a]/20">
         <span className="text-sm font-semibold text-gray-700">Total Cash Count</span>
         <span className="text-lg font-bold text-[#00475a]">{fmt(total)}</span>
       </div>
@@ -136,11 +136,11 @@ function PharmacistView({ data, date, onSubmit, submitting }: any) {
           </h3>
           <div className="flex rounded-lg overflow-hidden border border-gray-200">
             <button onClick={() => setMode('denomination')}
-              className={`px-3 py-1.5 text-xs font-medium ${mode==='denomination' ? 'bg-[#00475a] text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
+              className={`px-3 py-1.5 text-xs font-medium ${mode==='denomination' ? 'bg-[#00b8a0] text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
               By Denomination
             </button>
             <button onClick={() => setMode('total')}
-              className={`px-3 py-1.5 text-xs font-medium ${mode==='total' ? 'bg-[#00475a] text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
+              className={`px-3 py-1.5 text-xs font-medium ${mode==='total' ? 'bg-[#00b8a0] text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
               Total Only
             </button>
           </div>
@@ -208,7 +208,7 @@ function PharmacistView({ data, date, onSubmit, submitting }: any) {
             : [],
         })}
         disabled={submitting || cashCounted === 0}
-        className="w-full py-4 bg-[#00475a] text-white rounded-2xl font-bold text-base disabled:opacity-50">
+        className="w-full py-4 bg-[#00b8a0] text-white rounded-2xl font-bold text-base disabled:opacity-50">
         {submitting ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : '🔒 Close My Shift'}
       </button>
     </div>
@@ -258,11 +258,11 @@ function ReceptionistView({ data, date, onSubmit, submitting }: any) {
           <h3 className="font-bold text-gray-900">Cash Count</h3>
           <div className="flex rounded-lg overflow-hidden border border-gray-200">
             <button onClick={() => setMode('denomination')}
-              className={`px-3 py-1.5 text-xs font-medium ${mode==='denomination' ? 'bg-[#00475a] text-white' : 'text-gray-500'}`}>
+              className={`px-3 py-1.5 text-xs font-medium ${mode==='denomination' ? 'bg-[#00b8a0] text-white' : 'text-gray-500'}`}>
               By Denomination
             </button>
             <button onClick={() => setMode('total')}
-              className={`px-3 py-1.5 text-xs font-medium ${mode==='total' ? 'bg-[#00475a] text-white' : 'text-gray-500'}`}>
+              className={`px-3 py-1.5 text-xs font-medium ${mode==='total' ? 'bg-[#00b8a0] text-white' : 'text-gray-500'}`}>
               Total Only
             </button>
           </div>
@@ -297,7 +297,7 @@ function ReceptionistView({ data, date, onSubmit, submitting }: any) {
             : [],
         })}
         disabled={submitting || cashCounted === 0}
-        className="w-full py-4 bg-[#00475a] text-white rounded-2xl font-bold disabled:opacity-50">
+        className="w-full py-4 bg-[#00b8a0] text-white rounded-2xl font-bold disabled:opacity-50">
         {submitting ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : '✅ Submit My Count'}
       </button>
     </div>
@@ -491,7 +491,7 @@ function OwnerView({ data, date, onApprove, submitting }: any) {
           owner_notes: ownerNotes,
         })}
         disabled={submitting || !closingCash}
-        className="w-full py-4 bg-[#00475a] text-white rounded-2xl font-bold text-base disabled:opacity-50">
+        className="w-full py-4 bg-[#00b8a0] text-white rounded-2xl font-bold text-base disabled:opacity-50">
         {submitting ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : '✅ Approve & Lock Day'}
       </button>
     </div>
@@ -587,7 +587,7 @@ export default function DayClosePage() {
         ] as const).map(r => (
           <button key={r.key} onClick={() => setRole(r.key)}
             className={`flex-1 py-2.5 text-sm font-medium transition-all ${
-              role === r.key ? 'bg-[#00475a] text-white' : 'text-gray-500 hover:bg-gray-50'
+              role === r.key ? 'bg-[#00b8a0] text-white' : 'text-gray-500 hover:bg-gray-50'
             }`}>
             {r.label}
           </button>

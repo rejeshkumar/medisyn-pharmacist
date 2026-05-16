@@ -138,7 +138,7 @@ function CreatePlanModal({ onClose, onCreated }: { onClose: () => void; onCreate
           <div className="flex gap-3 pt-1">
             <button onClick={onClose} className="flex-1 py-2.5 border border-slate-200 rounded-xl text-sm">Cancel</button>
             <button onClick={submit} disabled={saving}
-              className="flex-1 py-2.5 bg-[#00475a] text-white rounded-xl text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2">
+              className="flex-1 py-2.5 bg-[#00b8a0] text-white rounded-xl text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create plan'}
             </button>
           </div>
@@ -250,7 +250,7 @@ function FollowupCard({ f, onUpdate, onSendReminder }: {
             Notes
           </button>
           <button onClick={() => onUpdate(f.id, 'ordered', notes)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#00475a] text-white text-xs font-semibold rounded-lg hover:bg-[#003d4d] ml-auto">
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#00b8a0] text-white text-xs font-semibold rounded-lg hover:bg-[#009688] ml-auto">
             <CheckCircle2 className="w-3.5 h-3.5" /> Ordered
           </button>
           <button onClick={() => onUpdate(f.id, 'declined', notes)}
@@ -354,7 +354,7 @@ export default function AiCarePage() {
               Send reminders
             </button>
             <button onClick={() => setShowCreate(true)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-[#00475a] text-white text-xs font-semibold rounded-xl hover:bg-[#003d4d]">
+              className="flex items-center gap-1.5 px-3 py-2 bg-[#00b8a0] text-white text-xs font-semibold rounded-xl hover:bg-[#009688]">
               <Plus className="w-3.5 h-3.5" /> New plan
             </button>
           </div>
@@ -407,7 +407,7 @@ export default function AiCarePage() {
               {['all','pending','reminded','escalated','ordered','declined'].map(s => (
                 <button key={s} onClick={() => setStatus(s)}
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                    statusFilter === s ? 'bg-[#00475a] text-white border-[#00475a]' : 'border-slate-200 text-slate-500'
+                    statusFilter === s ? 'bg-[#00b8a0] text-white border-[#00475a]' : 'border-slate-200 text-slate-500'
                   }`}>
                   {s === 'all' ? 'All' : s.replace('_',' ')}
                 </button>
@@ -420,7 +420,7 @@ export default function AiCarePage() {
                         ? p === 'HIGH' ? 'bg-red-500 text-white border-red-500'
                           : p === 'MEDIUM' ? 'bg-amber-500 text-white border-amber-500'
                           : p === 'LOW' ? 'bg-green-500 text-white border-green-500'
-                          : 'bg-[#00475a] text-white border-[#00475a]'
+                          : 'bg-[#00b8a0] text-white border-[#00475a]'
                         : 'border-slate-200 text-slate-500'
                     }`}>
                     {p}
