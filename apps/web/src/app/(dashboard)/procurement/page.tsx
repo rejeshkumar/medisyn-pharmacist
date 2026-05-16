@@ -1,4 +1,6 @@
 'use client';
+import dynamic from 'next/dynamic';
+const MedicineLabelScanner = dynamic(() => import('@/components/medicines/MedicineLabelScanner'), { ssr: false });
 
 import { useState, useEffect, useCallback } from 'react';
 import api from '@/lib/api';
@@ -240,6 +242,14 @@ function ReorderTab() {
         />
       )}
     </div>
+      {showLabelScanner && (
+        <MedicineLabelScanner
+          mode="procurement"
+          onScanComplete={handleLabelScan}
+          onClose={() => setShowLabelScanner(false)}
+        />
+      )}
+    </div>
   );
 }
 
@@ -274,6 +284,7 @@ function POCreateModal({ flags, suppliers, onClose, onCreated, initialMedicineNa
 
   // Manual add
   const [manualSearch, setManualSearch] = useState('');
+  const [showLabelScanner, setShowLabelScanner] = useState(false);
   const [manualResults, setManualResults] = useState<any[]>([]);
 
   useEffect(() => {
@@ -306,6 +317,10 @@ function POCreateModal({ flags, suppliers, onClose, onCreated, initialMedicineNa
       })
       .catch(() => setManualSearch(initialMedicineName || ''));
   }, [initialMedicineName]);
+
+  const handleLabelScan = (data: any) => {
+    if (data.medicine_name) setManualSearch(data.medicine_name);
+  };
 
   const addManualItem = (med: any) => {
     setItems(prev => [...prev, {

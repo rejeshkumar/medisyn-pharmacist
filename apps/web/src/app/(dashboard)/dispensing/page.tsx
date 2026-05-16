@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import dynamic from 'next/dynamic';
 const BarcodeScanner = dynamic(() => import('@/components/dispensing/BarcodeScanner'), { ssr: false });
+const MedicineLabelScanner = dynamic(() => import('@/components/medicines/MedicineLabelScanner'), { ssr: false });
 const PrescriptionBridge = dynamic(() => import('@/components/dispensing/PrescriptionBridge'), { ssr: false });
 import { formatCurrency, getScheduleClassColor, getConfidenceColor } from '@/lib/utils';
 import toast from 'react-hot-toast';
@@ -515,6 +516,7 @@ export default function DispensingPage() {
   const [aiResult, setAiResult] = useState<any>(null);
   const [showAiReview, setShowAiReview] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+  const [showLabelScanner, setShowLabelScanner] = useState(false);
   const [hybridCash, setHybridCash] = useState(0);
   const [hybridUpi, setHybridUpi] = useState(0);
   const [showPaymentPrompt, setShowPaymentPrompt] = useState(false);
@@ -956,6 +958,12 @@ export default function DispensingPage() {
   });
 
   // ── File upload / AI ──────────────────────────────────────────────────
+  const handleLabelScan = (data: any) => {
+    if (data.medicine_name) {
+      setSearch(data.medicine_name);
+    }
+  };
+
   const handleFileUpload = async (file: File) => {
     setAiExtracting(true);
     const formData = new FormData(); formData.append('file', file);
