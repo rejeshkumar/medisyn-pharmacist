@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as dayjs from 'dayjs';
@@ -26,6 +26,7 @@ export class PatientsService {
     @InjectRepository(PatientReminder)
     private reminderRepo: Repository<PatientReminder>,
     private auditService: AuditService,
+  ,
     @InjectRepository(VipRegistration)
     private vipRegRepo: Repository<VipRegistration>,
     private salesAgentService: SalesAgentsService,
@@ -261,7 +262,40 @@ export class PatientsService {
     };
   }
 
-  // DISABLED: VIP registration method has TypeScript errors
+  async vipRegister(dto: VipRegisterDto, tenantId: string) {
+    let patient = await this.patientRepo.findOne({
+      where: { mobile: dto.mobile, tenant_id: tenantId },
+    });
+    const vipStart = dayjs().format('YYYY-MM-DD');
+    const vipEnd   = dayjs().add(1, 'year').format('YYYY-MM-DD');
+
+    if (patient) {
+      patient.is_vip              = true;
+      patient.vip_start_date      = vipStart;
+      patient.vip_end_date        = vipEnd;
+      patient.vip_registered_by   = dto.vip_registered_by || 'Sales Team';
+      if (dto.first_name) patient.first_name = dto.first_name;
+      if (dto.last_name)  patient.last_name  = dto.last_name;
+      if (dto.email)      patient.email      = dto.email;
+      if (dto.area)       patient.area       = dto.area;
+      if (dto.address)    patient.address    = dto.address;
+      if (dto.vip_category) (patient as any).vip_category = dto.vip_category;
+      return this.patientRepo.save(patient);
+    }
+
+    const uhid = await this.generateUhid(tenantId);
+    patient = this.patientRepo.create({
+      ...dto,
+      uhid,
+      tenant_id:          tenantId,
+      is_vip:             true,
+      vip_start_date:     vipStart,
+      vip_end_date:       vipEnd,
+      vip_registered_by:  dto.vip_registered_by || 'Sales Team',
+      category:           'general' as any,
+    });
+    return this.patientRepo.save(patient);
+  }
 
   async getStats(tenantId: string) {
     const today = dayjs().format('YYYY-MM-DD');
@@ -452,29 +486,29 @@ export class PatientsService {
       (patient as any).vip_category = dto.vip_category;
     } else {
       const uhid = await this.generateUhid(tenantId);
-// TEMP_DISABLED:       patient = this.patientRepo.create({
-// TEMP_DISABLED:         ...dto,
-// TEMP_DISABLED:         uhid,
-// TEMP_DISABLED:         tenant_id: tenantId,
-// TEMP_DISABLED:         is_vip: true,
-// TEMP_DISABLED:         vip_start_date: vipStart,
-// TEMP_DISABLED:         vip_end_date: vipEnd,
-// TEMP_DISABLED:         vip_registered_by: agent.agent_name,
-// TEMP_DISABLED:         vip_payment_method: dto.payment_method,
-// TEMP_DISABLED:         vip_payment_amount: dto.payment_amount as any,
-// TEMP_DISABLED:         vip_payment_date: new Date(),
-// TEMP_DISABLED:         vip_upi_txn_id: dto.upi_txn_id,
-// TEMP_DISABLED:         category: 'general' as any,
-// TEMP_DISABLED:         vip_category: dto.vip_category,
-// TEMP_DISABLED:       });
-// TEMP_DISABLED:     }
-// TEMP_DISABLED: 
-// TEMP_DISABLED:     await this.patientRepo.save(patient);
-// TEMP_DISABLED: 
-// TEMP_DISABLED:     // 5. Create VIP registration record for tracking
-// TEMP_DISABLED:     const vipReg = this.vipRegRepo.create({
-// TEMP_DISABLED:       tenant_id: tenantId,
-// TEMP_DISABLED:       patient_id: patient.id,
+      patient = this.patientRepo.create({
+        ...dto,
+        uhid,
+        tenant_id: tenantId,
+        is_vip: true,
+        vip_start_date: vipStart,
+        vip_end_date: vipEnd,
+        vip_registered_by: agent.agent_name,
+        vip_payment_method: dto.payment_method,
+        vip_payment_amount: dto.payment_amount as any,
+        vip_payment_date: new Date(),
+        vip_upi_txn_id: dto.upi_txn_id,
+        category: 'general' as any,
+        vip_category: dto.vip_category,
+      });
+    }
+
+    await this.patientRepo.save(patient);
+
+    // 5. Create VIP registration record for tracking
+    const vipReg = this.vipRegRepo.create({
+      tenant_id: tenantId,
+      patient_id: patient.id,
       agent_id: agent.id,
       vip_category: dto.vip_category,
       payment_method: dto.payment_method,
