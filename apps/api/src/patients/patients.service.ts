@@ -487,7 +487,7 @@ export class PatientsService {
     } else {
       const uhid = await this.generateUhid(tenantId);
       const { vip_category, payment_method, payment_amount, upi_txn_id, ...patientData } = dto;
-      patient = this.patientRepo.create({
+      (patient as any) = this.patientRepo.create({
         ...patientData as any,
         uhid,
         tenant_id: tenantId,
