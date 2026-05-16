@@ -41,7 +41,11 @@ export default function InventoryConfigPage() {
     if (!config) return;
     setSaving(true);
     try {
-      await api.put('/inventory-intelligence/config', config);
+      const { id, tenant_id, created_at, updated_at, updated_by, ...configToSave } = config as any;
+      await api.put('/inventory-intelligence/config', {
+        ...configToSave,
+        seasonal_variance_threshold: configToSave.seasonal_variance_threshold ? parseFloat(configToSave.seasonal_variance_threshold) : undefined,
+      });
       toast.success('Configuration saved successfully');
     } catch (error) {
       console.error('Failed to save config:', error);
