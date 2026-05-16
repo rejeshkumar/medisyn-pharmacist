@@ -241,7 +241,6 @@ function ReorderTab() {
           onCreated={() => { setShowPOForm(false); setSelected(new Set()); load(); }}
         />
       )}
-    </div>
       {showLabelScanner && (
         <MedicineLabelScanner
           mode="procurement"
