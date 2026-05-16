@@ -500,7 +500,7 @@ export class PatientsService {
         vip_payment_date: new Date(),
         vip_upi_txn_id: dto.upi_txn_id,
         category: 'general' as any,
-        vip_category: dto.vip_category,
+
       });
     }
 
