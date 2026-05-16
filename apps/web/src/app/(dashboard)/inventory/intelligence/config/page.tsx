@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
+import api from '@/lib/api';
 
 interface InventoryConfig {
   fast_moving_sales_count: number;
@@ -26,13 +27,8 @@ export default function InventoryConfigPage() {
 
   const fetchConfig = async () => {
     try {
-      const response = await fetch('/api/inventory-intelligence/config', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setConfig(data);
-      }
+      const response = await api.get('/inventory-intelligence/config');
+      setConfig(response.data);
     } catch (error) {
       console.error('Failed to fetch config:', error);
       toast.error('Failed to load configuration');
@@ -45,19 +41,8 @@ export default function InventoryConfigPage() {
     if (!config) return;
     setSaving(true);
     try {
-      const response = await fetch('/api/inventory-intelligence/config', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify(config),
-      });
-      if (response.ok) {
-        toast.success('Configuration saved successfully');
-      } else {
-        throw new Error('Failed to save');
-      }
+      await api.put('/inventory-intelligence/config', config);
+      toast.success('Configuration saved successfully');
     } catch (error) {
       console.error('Failed to save config:', error);
       toast.error('Failed to save configuration');

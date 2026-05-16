@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
+import api from '@/lib/api';
 
 interface MovementSummary {
   fast_moving: { count: number; total_stock: number };
@@ -42,13 +43,8 @@ export default function InventoryIntelligencePage() {
 
   const fetchSummary = async () => {
     try {
-      const response = await fetch('/api/inventory-intelligence/summary', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setSummary(data);
-      }
+      const response = await api.get('/inventory-intelligence/summary');
+      setSummary(response.data);
     } catch (error) {
       console.error('Failed to fetch summary:', error);
     } finally {
@@ -60,20 +56,14 @@ export default function InventoryIntelligencePage() {
     setLoading(true);
     try {
       const endpoints = {
-        fast: '/api/inventory-intelligence/fast-moving',
-        slow: '/api/inventory-intelligence/slow-moving',
-        dead: '/api/inventory-intelligence/dead-stock',
-        stockout: '/api/inventory-intelligence/stockout-risk',
+        fast: '/inventory-intelligence/fast-moving',
+        slow: '/inventory-intelligence/slow-moving',
+        dead: '/inventory-intelligence/dead-stock',
+        stockout: '/inventory-intelligence/stockout-risk',
       };
 
-      const response = await fetch(endpoints[category], {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setMedicines(data);
-      }
+      const response = await api.get(endpoints[category]);
+      setMedicines(response.data);
     } catch (error) {
       console.error('Failed to fetch medicines:', error);
     } finally {
@@ -84,19 +74,10 @@ export default function InventoryIntelligencePage() {
   const handleRefreshAll = async () => {
     setRefreshing(true);
     try {
-      const response = await fetch('/api/inventory-intelligence/refresh-all-velocities', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        toast.success(`Refreshed velocity for ${data.count} medicines`);
-        await fetchSummary();
-        await fetchMedicinesByCategory(activeTab);
-      } else {
-        throw new Error('Failed to refresh');
-      }
+      const response = await api.post('/inventory-intelligence/refresh-all-velocities');
+      toast.success(`Refreshed velocity for ${response.data.count} medicines`);
+      await fetchSummary();
+      await fetchMedicinesByCategory(activeTab);
     } catch (error) {
       console.error('Failed to refresh:', error);
       toast.error('Failed to refresh velocity data');
@@ -108,32 +89,21 @@ export default function InventoryIntelligencePage() {
   const handleAIPrediction = async (medicineId: string) => {
     setAiPredicting(medicineId);
     try {
-      const response = await fetch('/api/inventory-intelligence/ai-predict', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({
-          medicine_id: medicineId,
-          prediction_type: 'STOCKOUT_RISK',
-          forecast_horizon_days: 7,
-        }),
+      const response = await api.post('/inventory-intelligence/ai-predict', {
+        medicine_id: medicineId,
+        prediction_type: 'STOCKOUT_RISK',
+        forecast_horizon_days: 7,
       });
 
-      if (response.ok) {
-        const prediction = await response.json();
-        toast.success(
-          <div>
-            <p className="font-semibold">AI Prediction Complete</p>
-            <p className="text-sm">{prediction.ai_reasoning}</p>
-            <p className="text-sm font-medium mt-1">Action: {prediction.recommended_action}</p>
-          </div>,
-          { duration: 8000 }
-        );
-      } else {
-        throw new Error('Prediction failed');
-      }
+      const prediction = response.data;
+      toast.success(
+        <div>
+          <p className="font-semibold">AI Prediction Complete</p>
+          <p className="text-sm">{prediction.ai_reasoning}</p>
+          <p className="text-sm font-medium mt-1">Action: {prediction.recommended_action}</p>
+        </div>,
+        { duration: 8000 }
+      );
     } catch (error) {
       console.error('AI prediction failed:', error);
       toast.error('AI prediction failed. Check ANTHROPIC_API_KEY configuration.');
