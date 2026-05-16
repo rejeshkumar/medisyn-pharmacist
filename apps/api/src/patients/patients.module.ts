@@ -10,7 +10,7 @@ import { SalesAgentsModule } from '../sales-agents/sales-agents.module';
 import { VipRegistration } from '../database/entities/vip-registration.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Patient, PatientAppointment, PatientReminder, SalesAgentsModule, VipRegistration]), AuditModule],
+  imports: [TypeOrmModule.forFeature([Patient, PatientAppointment, PatientReminder, VipRegistration]), AuditModule, SalesAgentsModule],
   controllers: [PatientsController],
   providers: [PatientsService],
   exports: [PatientsService],
