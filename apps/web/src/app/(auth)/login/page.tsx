@@ -91,9 +91,6 @@ router.push(
 
         <p className="text-center text-xs text-gray-400 mt-6">
           SimpliRx Specialty Clinic, Taliparamba
-          </p>
-          <p className="text-xs text-gray-400 mt-1">Powered by NavamWorks</p>
-          <p className="hidden"
         </p>
       </div>
     </div>
