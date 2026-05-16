@@ -20,8 +20,8 @@ export default function LoginPage() {
     try {
       const { data } = await api.post('/auth/login', { mobile, password });
       setAuth(data.access_token, data.user);
-toast.success(`Welcome, ${data.user.full_name}!`);
-router.push(
+      toast.success(`Welcome, ${data.user.full_name}!`);
+      router.push(
         data.user.role === 'doctor' ? '/doctor' :
         data.user.role === 'receptionist' ? '/receptionist' :
         data.user.role === 'nurse' ? '/nurse' :
@@ -41,15 +41,14 @@ router.push(
           <div className="flex justify-center mb-4">
             <Image
               src="/images/simplirx-logo.jpg"
-              alt="SimpliRx Specialty Clinic"
-              width={140}
-              height={140}
+              alt="SimpliRx"
+              width={160}
+              height={80}
               className="object-contain"
               priority
             />
           </div>
-          <h1 className="text-2xl font-bold text-[#00475a]">SimpliRx</h1>
-          <p className="text-sm text-gray-500 mt-1">Pharmacist Management System</p>
+          <p className="text-sm text-gray-500 mt-2">Pharmacist & Clinic Management System</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-5">
@@ -77,20 +76,15 @@ router.push(
           <button
             type="submit"
             disabled={loading}
-            className="btn-primary w-full py-3 text-base"
+            style={{ backgroundColor: '#00b8a0' }}
+            className="w-full py-3 text-base text-white font-semibold rounded-xl hover:opacity-90 transition disabled:opacity-60"
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
 
-        <div className="mt-6 p-4 bg-primary-50 rounded-lg text-sm text-gray-600">
-          <p className="font-medium text-primary-700 mb-1">Default Admin Login:</p>
-          <p>Mobile: <span className="font-mono">9999999999</span></p>
-          <p>Password: <span className="font-mono">admin123</span></p>
-        </div>
-
         <p className="text-center text-xs text-gray-400 mt-6">
-          SimpliRx Specialty Clinic, Taliparamba
+          Powered by NavamWorks
         </p>
       </div>
     </div>
