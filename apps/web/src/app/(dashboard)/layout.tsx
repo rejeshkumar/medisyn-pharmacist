@@ -75,6 +75,7 @@ const OWNER_NAV_SECTIONS = [
       { href: '/stock',             label: 'Stock',        icon: Package     },
       { href: '/stock-adjustments', label: 'Adjustments',  icon: RefreshCcw  },
       { href: '/procurement',       label: 'Procurement',  icon: ShoppingBag },
+      { href: '/inventory/intelligence', label: 'Intelligence', icon: Cpu },
     ],
   },
   {
