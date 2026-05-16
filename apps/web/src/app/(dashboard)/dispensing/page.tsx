@@ -1245,6 +1245,11 @@ export default function DispensingPage() {
           </button>
           <input ref={fileRef} type="file" accept=".jpg,.jpeg,.png,.pdf" className="hidden"
             onChange={e => e.target.files?.[0] && handleFileUpload(e.target.files[0])} />
+          <button onClick={() => setShowLabelScanner(true)}
+            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-teal-50 text-[#00b8a0] rounded-lg hover:bg-teal-100 border border-teal-200">
+            <Camera className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Scan</span> Label
+          </button>
         </div>
         {/* Row 2: Ref. Dr + Date (always visible, stacked on mobile) */}
         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
