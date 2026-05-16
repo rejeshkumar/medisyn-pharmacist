@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as dayjs from 'dayjs';
@@ -26,7 +26,7 @@ export class PatientsService {
     @InjectRepository(PatientReminder)
     private reminderRepo: Repository<PatientReminder>,
     private auditService: AuditService,
-  ,
+
     @InjectRepository(VipRegistration)
     private vipRegRepo: Repository<VipRegistration>,
     private salesAgentService: SalesAgentsService,
