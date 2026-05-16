@@ -1893,6 +1893,13 @@ export default function DispensingPage() {
 
       {/* ── Modals ── */}
       {/* Barcode Scanner Modal */}
+      {showLabelScanner && (
+        <MedicineLabelScanner
+          mode="dispensing"
+          onScanComplete={handleLabelScan}
+          onClose={() => setShowLabelScanner(false)}
+        />
+      )}
       {showScanner && (
         <BarcodeScanner
           onFound={(medicine, batch) => {
