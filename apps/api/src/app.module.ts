@@ -51,6 +51,8 @@ import { KaggleImportController } from './kaggle-import.controller';
 import { PatientHealthModule } from './patient-health/patient-health.module';
 import { InventoryClassificationController } from './inventory-classification/inventory-classification.controller';
 import { SalesAgentsModule } from './sales-agents/sales-agents.module';
+import { InventoryIntelligenceController } from './inventory/controllers/inventory-intelligence.controller';
+import { InventoryIntelligenceService } from './inventory/services/inventory-intelligence.service';
 
 @Module({
   imports: [
@@ -111,11 +113,22 @@ import { SalesAgentsModule } from './sales-agents/sales-agents.module';
     DemandLogModule,
     OwnerDashboardModule,
   ],
-  controllers: [ImportMedicinesController, ClearDataController, ImportStockController, ScheduleClassifierController, MoleculeClassifierController, SetReorderController, KaggleImportController, InventoryClassificationController],
+  controllers: [
+    ImportMedicinesController, 
+    ClearDataController, 
+    ImportStockController, 
+    ScheduleClassifierController, 
+    MoleculeClassifierController, 
+    SetReorderController, 
+    KaggleImportController, 
+    InventoryClassificationController,
+    InventoryIntelligenceController,
+  ],
   providers: [
     // Applied globally in order — JwtAuthGuard first, then TenantGuard
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: TenantGuard },
+    InventoryIntelligenceService,
   ],
 })
 export class AppModule implements OnModuleInit {
@@ -126,4 +139,4 @@ export class AppModule implements OnModuleInit {
     await authService.seedOwner();
   }
 }
-// Trigger Railway redeploy: Thu May 14 20:37:05 IST 2026
+// Trigger Railway redeploy: Fri May 16 09:30:00 IST 2026 - Inventory Intelligence with AI

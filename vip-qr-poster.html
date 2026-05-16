@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>MediSyn VIP Registration - Agent QR Codes</title>
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      max-width: 800px; 
+      margin: 40px auto; 
+      padding: 20px;
+    }
+    .header {
+      text-align: center;
+      border-bottom: 3px solid #00475a;
+      padding-bottom: 20px;
+      margin-bottom: 40px;
+    }
+    .header h1 { color: #00475a; margin-bottom: 5px; }
+    .header p { color: #666; }
+    .agent-card {
+      border: 2px solid #ddd;
+      border-radius: 12px;
+      padding: 30px;
+      margin-bottom: 30px;
+      text-align: center;
+      background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%);
+    }
+    .agent-name { 
+      font-size: 24px; 
+      font-weight: bold; 
+      color: #00475a; 
+      margin-bottom: 10px;
+    }
+    .commission { 
+      color: #f59e0b; 
+      font-size: 18px; 
+      font-weight: bold; 
+      margin-bottom: 20px;
+    }
+    .qr-code { 
+      margin: 20px auto;
+      padding: 15px;
+      background: white;
+      border-radius: 8px;
+      display: inline-block;
+    }
+    .benefits {
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 15px;
+      margin: 30px 0;
+      border-radius: 4px;
+    }
+    .benefits h3 { margin-top: 0; color: #92400e; }
+    .benefits ul { margin: 10px 0; }
+    .footer {
+      text-align: center;
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 2px solid #ddd;
+      color: #666;
+    }
+    @media print {
+      .agent-card { page-break-after: always; }
+      .no-print { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🏥 MediSyn VIP Pass Registration</h1>
+    <p>Scan QR code to register customers</p>
+  </div>
+
+  <div class="benefits">
+    <h3>✨ VIP Pass Benefits</h3>
+    <ul>
+      <li>✓ <strong>Individual Pass:</strong> ₹599 - 1 person coverage</li>
+      <li>✓ <strong>Family Pass:</strong> ₹999 - Up to 4 members</li>
+      <li>✓ <strong>Extended Pass:</strong> ₹1,499 - Up to 8 members</li>
+    </ul>
+    <p><strong>All plans include:</strong> Priority service, exclusive discounts, health reminders, loyalty rewards</p>
+  </div>
+
+  <div class="agent-card">
+    <div class="agent-name">Akshaya Taliparamba</div>
+    <div class="commission">Commission: 10%</div>
+    <div class="qr-code">
+      <img src="akshaya_taliparamba_qr.png" alt="Akshaya Taliparamba QR" style="width: 300px; height: 300px;">
+    </div>
+    <p style="font-size: 12px; color: #666; margin-top: 10px;">Agent Code: akshaya_taliparamba</p>
+  </div>
+
+  <div class="agent-card">
+    <div class="agent-name">Akshaya Payyanur</div>
+    <div class="commission">Commission: 10%</div>
+    <div class="qr-code">
+      <img src="akshaya_payyanur_qr.png" alt="Akshaya Payyanur QR" style="width: 300px; height: 300px;">
+    </div>
+    <p style="font-size: 12px; color: #666; margin-top: 10px;">Agent Code: akshaya_payyanur</p>
+  </div>
+
+  <div class="agent-card">
+    <div class="agent-name">Rejesh Kumar</div>
+    <div class="commission">Commission: 15%</div>
+    <div class="qr-code">
+      <img src="rejesh_kumar_qr.png" alt="Rejesh Kumar QR" style="width: 300px; height: 300px;">
+    </div>
+    <p style="font-size: 12px; color: #666; margin-top: 10px;">Agent Code: rejesh_kumar</p>
+  </div>
+
+  <div class="footer no-print">
+    <p>MediSyn Specialty Clinic, Taliparamba | Ph: 0490 234 5678</p>
+    <button onclick="window.print()" style="padding: 10px 20px; font-size: 16px; background: #00475a; color: white; border: none; border-radius: 6px; cursor: pointer; margin-top: 10px;">🖨️ Print Poster</button>
+  </div>
+</body>
+</html>

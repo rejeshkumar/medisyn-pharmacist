@@ -1,0 +1,116 @@
+// Add this method to patients.service.ts to replace the existing vipRegister method
+
+async vipRegisterEnhanced(dto: VipRegisterEnhancedDto, tenantId: string, ipAddress: string) {
+  // 1. Validate agent token
+  const agent = await this.salesAgentService.validateAgentToken(dto.agent_code, dto.access_token, tenantId);
+  
+  // 2. Check rate limit
+  const canRegister = await this.salesAgentService.checkRateLimit(agent.id, tenantId);
+  if (!canRegister) {
+    throw new BadRequestException('Rate limit exceeded. Maximum 10 registrations per hour.');
+  }
+
+  // 3. Check if patient exists
+  let patient = await this.patientRepo.findOne({
+    where: { mobile: dto.mobile, tenant_id: tenantId },
+  });
+
+  const vipStart = dayjs().format('YYYY-MM-DD');
+  const vipEnd = dayjs().add(1, 'year').format('YYYY-MM-DD');
+
+  // 4. Create or update patient
+  if (patient) {
+    patient.is_vip = true;
+    patient.vip_start_date = vipStart;
+    patient.vip_end_date = vipEnd;
+    patient.vip_registered_by = agent.agent_name;
+    patient.vip_payment_method = dto.payment_method;
+    patient.vip_payment_amount = dto.payment_amount;
+    patient.vip_payment_date = new Date();
+    patient.vip_upi_txn_id = dto.upi_txn_id;
+    if (dto.first_name) patient.first_name = dto.first_name;
+    if (dto.last_name) patient.last_name = dto.last_name;
+    if (dto.email) patient.email = dto.email;
+    if (dto.area) patient.area = dto.area;
+    if (dto.address) patient.address = dto.address;
+    (patient as any).vip_category = dto.vip_category;
+  } else {
+    const uhid = await this.generateUhid(tenantId);
+    patient = this.patientRepo.create({
+      ...dto,
+      uhid,
+      tenant_id: tenantId,
+      is_vip: true,
+      vip_start_date: vipStart,
+      vip_end_date: vipEnd,
+      vip_registered_by: agent.agent_name,
+      vip_payment_method: dto.payment_method,
+      vip_payment_amount: dto.payment_amount,
+      vip_payment_date: new Date(),
+      vip_upi_txn_id: dto.upi_txn_id,
+      category: 'general' as any,
+      vip_category: dto.vip_category,
+    });
+  }
+
+  await this.patientRepo.save(patient);
+
+  // 5. Create VIP registration record for tracking
+  const vipReg = this.vipRegRepo.create({
+    tenant_id: tenantId,
+    patient_id: patient.id,
+    agent_id: agent.id,
+    vip_category: dto.vip_category,
+    payment_method: dto.payment_method,
+    payment_amount: dto.payment_amount,
+    upi_txn_id: dto.upi_txn_id,
+    ip_address: ipAddress,
+  });
+  await this.vipRegRepo.save(vipReg);
+
+  // 6. Send WhatsApp notification (if configured)
+  try {
+    await this.sendWhatsAppWelcome(patient, dto.vip_category, vipEnd);
+  } catch (err) {
+    console.error('WhatsApp notification failed:', err);
+    // Don't fail the registration if WhatsApp fails
+  }
+
+  return patient;
+}
+
+private async sendWhatsAppWelcome(patient: any, vipCategory: string, vipEndDate: string) {
+  const message = `🎉 Welcome to MediSyn VIP Club!
+
+Dear ${patient.salutation || ''} ${patient.first_name} ${patient.last_name || ''},
+
+Your VIP Pass has been activated!
+
+UHID: ${patient.uhid}
+Plan: ${vipCategory.toUpperCase()}
+Valid Until: ${dayjs(vipEndDate).format('DD MMM YYYY')}
+
+✨ Your Benefits:
+✓ Priority Service - Skip the queue
+✓ Exclusive Discounts on medicines
+✓ Health Reminders via WhatsApp
+✓ Loyalty Rewards
+
+Thank you for choosing MediSyn Specialty Clinic!
+
+📍 Taliparamba, Kannur
+📞 0490 234 5678`;
+
+  // Use your existing WhatsApp service
+  const whatsappService = this.configService.get('WHATSAPP_API_URL');
+  if (whatsappService && patient.mobile) {
+    await fetch(whatsappService, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to: `91${patient.mobile}`,
+        message: message,
+      }),
+    });
+  }
+}
