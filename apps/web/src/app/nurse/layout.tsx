@@ -42,7 +42,7 @@ export default function NurseLayout({ children }: { children: React.ReactNode })
       {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-20 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
       <aside className={cn(
-        'fixed top-0 left-0 h-full w-64 bg-[#00475a] border-r border-white/10 z-30 transform transition-transform duration-200 flex flex-col',
+        'fixed top-0 left-0 h-full w-64 bg-[#00b8a0] border-r border-white/10 z-30 transform transition-transform duration-200 flex flex-col',
         sidebarOpen ? 'translate-x-0' : '-translate-x-full',
         'lg:translate-x-0 lg:static lg:z-auto',
       )}>
@@ -92,7 +92,7 @@ export default function NurseLayout({ children }: { children: React.ReactNode })
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="bg-[#00475a] border-b border-white/10 px-4 py-3 flex items-center gap-3 lg:hidden">
+        <header className="bg-[#00b8a0] border-b border-white/10 px-4 py-3 flex items-center gap-3 lg:hidden">
           <button onClick={() => setSidebarOpen(true)} className="text-white/80 hover:text-white"><Menu className="w-5 h-5" /></button>
           <span className="font-bold text-white text-sm">Nurse Station</span>
         </header>

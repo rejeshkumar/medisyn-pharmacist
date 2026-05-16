@@ -145,7 +145,7 @@ function BottomTabLayout({
   return (
     <div className="flex flex-col h-screen bg-slate-50">
       {/* ── Top header ── */}
-      <header className="flex-shrink-0 h-14 bg-[#00475a] flex items-center px-4 gap-3 z-20">
+      <header className="flex-shrink-0 h-14 bg-[#00b8a0] flex items-center px-4 gap-3 z-20">
         <div className="flex items-center gap-2 flex-shrink-0">
           <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="white">
@@ -281,7 +281,7 @@ function SidebarLayout({
 
       {/* Sidebar - Material Design (Option 4) */}
       <aside className={cn(
-        'fixed top-0 left-0 h-full w-56 bg-[#00475a] border-r border-white/10 z-30 transform transition-transform duration-200 flex flex-col',
+        'fixed top-0 left-0 h-full w-56 bg-[#00b8a0] border-r border-white/10 z-30 transform transition-transform duration-200 flex flex-col',
         sidebarOpen ? 'translate-x-0' : '-translate-x-full',
         'lg:translate-x-0 lg:static lg:z-auto',
       )}>
@@ -365,7 +365,7 @@ function SidebarLayout({
       {/* Content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Mobile header */}
-        <header className="bg-[#00475a] border-b border-[#003d4d] px-4 py-3 flex items-center gap-3 lg:hidden">
+        <header className="bg-[#00b8a0] border-b border-[#003d4d] px-4 py-3 flex items-center gap-3 lg:hidden">
           <button onClick={() => setSidebarOpen(true)} className="text-white/80 hover:text-white">
             <Menu className="w-5 h-5" />
           </button>
@@ -406,7 +406,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!user) return (
     <div className="flex h-screen items-center justify-center bg-slate-50">
       <div className="flex flex-col items-center gap-3">
-        <div className="w-10 h-10 bg-[#00475a] rounded-xl flex items-center justify-center">
+        <div className="w-10 h-10 bg-[#00b8a0] rounded-xl flex items-center justify-center">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="white">
             <rect x="6.5" y="1" width="3" height="14" rx="1.5"/>
             <rect x="1" y="6.5" width="14" height="3" rx="1.5"/>

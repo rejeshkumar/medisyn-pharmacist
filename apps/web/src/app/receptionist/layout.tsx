@@ -53,7 +53,7 @@ export default function ReceptionistLayout({ children }: { children: React.React
       )}
 
       <aside className={cn(
-        'fixed top-0 left-0 h-full w-64 bg-[#00475a] border-r border-white/10 z-30 transform transition-transform duration-200 flex flex-col',
+        'fixed top-0 left-0 h-full w-64 bg-[#00b8a0] border-r border-white/10 z-30 transform transition-transform duration-200 flex flex-col',
         sidebarOpen ? 'translate-x-0' : '-translate-x-full',
         'lg:translate-x-0 lg:static lg:z-auto',
       )}>
