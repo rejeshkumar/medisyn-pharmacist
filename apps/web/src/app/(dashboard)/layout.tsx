@@ -309,7 +309,7 @@ function SidebarLayout({
             <div key={si} className={si > 0 ? 'mt-1' : ''}>
               {/* Section label */}
               {section.section && (
-                <p className="text-[10px] font-medium text-[#003d30] uppercase tracking-widest px-4 pt-4 pb-2 font-bold">
+                <p className="text-xs font-bold text-[#003d30] uppercase tracking-widest px-4 pt-4 pb-2 font-bold">
                   {section.section}
                 </p>
               )}
