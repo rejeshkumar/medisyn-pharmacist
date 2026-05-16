@@ -262,41 +262,6 @@ export class PatientsService {
   }
 
   // DISABLED: VIP registration method has TypeScript errors
-  /* async vipRegister(
-    let patient = await this.patientRepo.findOne({
-      where: { mobile: dto.mobile, tenant_id: tenantId },
-  */
-    });
-    const vipStart = dayjs().format('YYYY-MM-DD');
-    const vipEnd   = dayjs().add(1, 'year').format('YYYY-MM-DD');
-
-    if (patient) {
-      patient.is_vip              = true;
-      patient.vip_start_date      = vipStart;
-      patient.vip_end_date        = vipEnd;
-      patient.vip_registered_by   = dto.vip_registered_by || 'Sales Team';
-      if (dto.first_name) patient.first_name = dto.first_name;
-      if (dto.last_name)  patient.last_name  = dto.last_name;
-      if (dto.email)      patient.email      = dto.email;
-      if (dto.area)       patient.area       = dto.area;
-      if (dto.address)    patient.address    = dto.address;
-      if (dto.vip_category) (patient as any).vip_category = dto.vip_category;
-      return this.patientRepo.save(patient);
-    }
-
-    const uhid = await this.generateUhid(tenantId);
-    patient = this.patientRepo.create({
-      ...dto,
-      uhid,
-      tenant_id:          tenantId,
-      is_vip:             true,
-      vip_start_date:     vipStart,
-      vip_end_date:       vipEnd,
-      vip_registered_by:  dto.vip_registered_by || 'Sales Team',
-      category:           'general' as any,
-    });
-    return this.patientRepo.save(patient);
-  }
 
   async getStats(tenantId: string) {
     const today = dayjs().format('YYYY-MM-DD');
