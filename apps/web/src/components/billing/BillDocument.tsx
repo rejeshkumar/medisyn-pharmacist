@@ -189,7 +189,7 @@ function ReceiptContent({ data }: { data: BillData }) {
         Medicines once dispensed cannot be returned. Verify before leaving.
       </div>
       <div style={{ fontSize: '10px', textAlign: 'center', marginTop: '3px', color: '#555' }}>
-        Thank you — MediSyn Speciality Clinic
+        Thank you — SimpliRx Speciality Clinic
       </div>
     </div>
   );

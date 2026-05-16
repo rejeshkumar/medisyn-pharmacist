@@ -71,7 +71,7 @@ export default function AnalyticsPage() {
             <BarChart3 className="w-5 h-5 text-[#00475a]" />
             User Behaviour
           </h1>
-          <p className="text-sm text-gray-500">How your team uses MediSyn</p>
+          <p className="text-sm text-gray-500">How your team uses SimpliRx</p>
         </div>
         <div className="flex items-center gap-2">
           {DAYS_OPTIONS.map(opt => (
@@ -98,7 +98,7 @@ export default function AnalyticsPage() {
         <div className="text-center py-20 text-gray-400">
           <BarChart3 className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p className="text-sm font-medium">No activity data yet</p>
-          <p className="text-xs mt-1">Events will appear here as staff use MediSyn</p>
+          <p className="text-xs mt-1">Events will appear here as staff use SimpliRx</p>
         </div>
       ) : (
         <>

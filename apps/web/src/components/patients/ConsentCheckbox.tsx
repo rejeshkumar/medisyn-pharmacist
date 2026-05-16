@@ -48,7 +48,7 @@ export function ConsentCheckbox({ checked, onChange, required }: Props) {
             </span>
           </div>
           <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-            I consent to MediSyn Speciality Clinic collecting and processing my personal and
+            I consent to SimpliRx Speciality Clinic collecting and processing my personal and
             health data for the purpose of providing pharmacy and medical services, as described
             in the{' '}
             <a

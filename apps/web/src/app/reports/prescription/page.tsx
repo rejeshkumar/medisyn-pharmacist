@@ -113,7 +113,7 @@ function PrescriptionContent() {
           </div>
         </div>
         <div style={{ position: 'absolute', bottom: '4mm', left: '10mm', right: '10mm', textAlign: 'center', fontSize: '6.5px', color: '#aaa', borderTop: '0.5px solid #ddd', paddingTop: '3px' }}>
-          Computer-generated prescription. Printed via MediSyn.
+          Computer-generated prescription. Printed via SimpliRx.
         </div>
       </div>
     </>

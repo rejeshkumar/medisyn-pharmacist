@@ -40,7 +40,7 @@ const CHECKLIST_ITEMS = [
   },
   {
     id: 'stock_reconcile',
-    label: 'Reconcile physical stock with MediSyn for top 20 fast-movers',
+    label: 'Reconcile physical stock with SimpliRx for top 20 fast-movers',
     detail: 'Go to Stock → compare physical count with system quantity',
     urgent: false,
     link: '/stock',

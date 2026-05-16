@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { ArrowLeft, Shield } from 'lucide-react';
 
 export default function PrivacyPolicyPage() {
-  const CLINIC = 'MediSyn Speciality Clinic';
+  const CLINIC = 'SimpliRx Speciality Clinic';
   const EMAIL  = 'pharmacy@medisynweb-production.up.railway.app';
   const DATE   = 'April 2026';
 
@@ -148,7 +148,7 @@ export default function PrivacyPolicyPage() {
         <div className="mt-10 pt-6 border-t border-gray-100">
           <Link href="/" className="flex items-center gap-2 text-sm text-[#00475a] hover:underline">
             <ArrowLeft className="w-4 h-4" />
-            Back to MediSyn
+            Back to SimpliRx
           </Link>
         </div>
 

@@ -44,8 +44,8 @@ export default function VipRegisterPage() {
       {/* Header */}
       <div className="text-center mb-6">
         <div className="flex items-center justify-center gap-2 mb-3">
-          <Image src="/images/logo.jpg" alt="MediSyn" width={44} height={44} className="rounded-xl object-contain" />
-          <span className="text-2xl font-bold text-[#00475a]">MediSyn</span>
+          <Image src="/images/simplirx-logo.jpg" alt="SimpliRx" width={44} height={44} className="rounded-xl object-contain" />
+          <span className="text-2xl font-bold text-[#00475a]">SimpliRx</span>
         </div>
         <div className="flex items-center justify-center gap-2 mb-1">
           <Crown className="w-6 h-6 text-amber-500" />
@@ -70,7 +70,7 @@ export default function VipRegisterPage() {
             <div className="bg-gradient-to-r from-amber-500 to-yellow-500 p-5 text-white text-center">
               <Crown className="w-8 h-8 mx-auto mb-1" />
               <p className="font-bold text-lg">Register for VIP Pass</p>
-              <p className="text-amber-100 text-xs mt-1">MediSyn Specialty Clinic, Taliparamba</p>
+              <p className="text-amber-100 text-xs mt-1">SimpliRx Specialty Clinic, Taliparamba</p>
             </div>
 
             <div className="p-5 space-y-4">
@@ -166,8 +166,8 @@ export default function VipRegisterPage() {
               <div className="bg-gradient-to-br from-amber-400 to-yellow-500 rounded-2xl p-5 text-white shadow-lg">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <Image src="/images/logo.jpg" alt="MediSyn" width={22} height={22} className="rounded object-contain brightness-0 invert" />
-                    <span className="font-bold text-sm">MediSyn</span>
+                    <Image src="/images/simplirx-logo.jpg" alt="SimpliRx" width={22} height={22} className="rounded object-contain brightness-0 invert" />
+                    <span className="font-bold text-sm">SimpliRx</span>
                   </div>
                   <Crown className="w-6 h-6" />
                 </div>
@@ -206,7 +206,7 @@ export default function VipRegisterPage() {
         )}
       </div>
 
-      <p className="mt-6 text-xs text-gray-400 text-center">MediSyn Specialty Clinic, Taliparamba · Pharmacy Management System</p>
+      <p className="mt-6 text-xs text-gray-400 text-center">SimpliRx Specialty Clinic, Taliparamba · Pharmacy Management System</p>
     </div>
   );
 }

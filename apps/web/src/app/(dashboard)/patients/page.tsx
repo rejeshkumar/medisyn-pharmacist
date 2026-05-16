@@ -166,7 +166,7 @@ export default function PatientsPage() {
                 </div>
               </div>
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
-                <p className="text-xs font-semibold text-amber-700 uppercase tracking-wider flex items-center gap-1.5"><Crown className="w-3.5 h-3.5" /> MediSyn VIP Pass</p>
+                <p className="text-xs font-semibold text-amber-700 uppercase tracking-wider flex items-center gap-1.5"><Crown className="w-3.5 h-3.5" /> SimpliRx VIP Pass</p>
                 <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={form.is_vip} onChange={(e) => { const c=e.target.checked; const s=c?today():''; const en=c?oneYearFromDate(today()):''; setForm((p: any) => ({...p,is_vip:c,vip_start_date:s,vip_end_date:en})); }} className="w-4 h-4 accent-amber-600" /><span className="text-sm font-medium text-amber-800">Enroll as VIP Member</span></label>
                 {form.is_vip && <div className="grid grid-cols-2 gap-3"><div><label className="label text-amber-700 text-xs">VIP Start</label><input type="date" className="input border-amber-200" value={form.vip_start_date} onChange={(e) => { const s=e.target.value; setForm((p: any) => ({...p,vip_start_date:s,vip_end_date:s?oneYearFromDate(s):''})); }} /></div><div><label className="label text-amber-700 text-xs">VIP End (1 year)</label><input type="date" className="input border-amber-300 bg-amber-100/60 text-amber-900 font-semibold" value={form.vip_end_date} onChange={(e) => set('vip_end_date',e.target.value)} /></div></div>}
               </div>
@@ -183,7 +183,7 @@ export default function PatientsPage() {
                       <span className="text-sm font-semibold text-gray-900">Data Privacy Consent <span className="text-red-500">*</span></span>
                     </div>
                     <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-                      I consent to MediSyn Speciality Clinic collecting and processing my personal and health data for pharmacy and medical services, as described in the{' '}
+                      I consent to SimpliRx Speciality Clinic collecting and processing my personal and health data for pharmacy and medical services, as described in the{' '}
                       <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-[#00475a] underline inline-flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
                         Privacy Policy <ExternalLink className="w-3 h-3" />
                       </a>.

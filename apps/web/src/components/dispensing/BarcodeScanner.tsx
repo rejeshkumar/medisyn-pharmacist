@@ -1,6 +1,6 @@
 'use client';
 /**
- * MediSyn — BarcodeScanner Component (GS1-enabled)
+ * SimpliRx — BarcodeScanner Component (GS1-enabled)
  * ===================================================
  * Supports:
  *   - GS1 DataMatrix: extracts GTIN + Batch + Expiry → auto-selects correct batch

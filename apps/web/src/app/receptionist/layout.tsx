@@ -62,7 +62,7 @@ export default function ReceptionistLayout({ children }: { children: React.React
             <ConciergeBell className="w-5 h-5 text-[#00475a]" />
           </div>
           <div>
-            <h1 className="font-semibold text-white text-sm leading-tight">MediSyn</h1>
+            <h1 className="font-semibold text-white text-sm leading-tight">SimpliRx</h1>
             <p className="text-xs text-white/60">Reception</p>
           </div>
           <button className="ml-auto lg:hidden text-white/60 hover:text-white" onClick={() => setSidebarOpen(false)}>

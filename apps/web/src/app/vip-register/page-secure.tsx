@@ -41,7 +41,7 @@ export default function VipRegisterSecurePage() {
     if (form.vip_category) {
       const amount = PRICES[form.vip_category];
       // UPI payment URL format
-      const upiUrl = `upi://pay?pa=medisyn@paytm&pn=MediSyn Clinic&am=${amount}&cu=INR&tn=VIP Pass ${form.vip_category}`;
+      const upiUrl = `upi://pay?pa=medisyn@paytm&pn=SimpliRx Clinic&am=${amount}&cu=INR&tn=VIP Pass ${form.vip_category}`;
       
       QRCode.toDataURL(upiUrl, { width: 280, margin: 1 })
         .then(setQrDataUrl)
@@ -99,7 +99,7 @@ export default function VipRegisterSecurePage() {
   };
 
   const shareViaWhatsApp = () => {
-    const message = `🎉 Welcome to MediSyn VIP Club!
+    const message = `🎉 Welcome to SimpliRx VIP Club!
 
 Name: ${patient?.salutation} ${patient?.first_name}
 UHID: ${patient?.uhid}
@@ -113,7 +113,7 @@ Valid Until: ${patient?.vip_end_date ? new Date(patient.vip_end_date).toLocaleDa
 ✓ Health Reminders
 ✓ Loyalty Rewards
 
-MediSyn Specialty Clinic, Taliparamba`;
+SimpliRx Specialty Clinic, Taliparamba`;
 
     const whatsappUrl = `https://wa.me/${patient?.mobile}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
@@ -147,8 +147,8 @@ MediSyn Specialty Clinic, Taliparamba`;
       {/* Header */}
       <div className="text-center mb-6">
         <div className="flex items-center justify-center gap-2 mb-3">
-          <Image src="/images/logo.jpg" alt="MediSyn" width={44} height={44} className="rounded-xl object-contain" />
-          <span className="text-2xl font-bold text-[#00475a]">MediSyn</span>
+          <Image src="/images/simplirx-logo.jpg" alt="SimpliRx" width={44} height={44} className="rounded-xl object-contain" />
+          <span className="text-2xl font-bold text-[#00475a]">SimpliRx</span>
         </div>
         <div className="flex items-center justify-center gap-2 mb-1">
           <Crown className="w-6 h-6 text-amber-500" />
@@ -332,8 +332,8 @@ MediSyn Specialty Clinic, Taliparamba`;
               <div className="bg-gradient-to-br from-amber-400 to-yellow-500 rounded-2xl p-5 text-white shadow-lg">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <Image src="/images/logo.jpg" alt="MediSyn" width={22} height={22} className="rounded object-contain brightness-0 invert" />
-                    <span className="font-bold text-sm">MediSyn</span>
+                    <Image src="/images/simplirx-logo.jpg" alt="SimpliRx" width={22} height={22} className="rounded object-contain brightness-0 invert" />
+                    <span className="font-bold text-sm">SimpliRx</span>
                   </div>
                   <Crown className="w-6 h-6" />
                 </div>
@@ -378,7 +378,7 @@ MediSyn Specialty Clinic, Taliparamba`;
         )}
       </div>
 
-      <p className="mt-6 text-xs text-gray-400 text-center">MediSyn Specialty Clinic, Taliparamba</p>
+      <p className="mt-6 text-xs text-gray-400 text-center">SimpliRx Specialty Clinic, Taliparamba</p>
     </div>
   );
 }

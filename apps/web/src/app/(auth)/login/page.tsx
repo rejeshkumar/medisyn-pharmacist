@@ -40,15 +40,15 @@ router.push(
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
             <Image
-              src="/images/logo.jpg"
-              alt="MediSyn Specialty Clinic"
+              src="/images/simplirx-logo.jpg"
+              alt="SimpliRx Specialty Clinic"
               width={140}
               height={140}
               className="object-contain"
               priority
             />
           </div>
-          <h1 className="text-2xl font-bold text-[#00475a]">MediSyn</h1>
+          <h1 className="text-2xl font-bold text-[#00475a]">SimpliRx</h1>
           <p className="text-sm text-gray-500 mt-1">Pharmacist Management System</p>
         </div>
 
@@ -90,7 +90,10 @@ router.push(
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-6">
-          MediSyn Specialty Clinic, Taliparamba
+          SimpliRx Specialty Clinic, Taliparamba
+          </p>
+          <p className="text-xs text-gray-400 mt-1">Powered by NavamWorks</p>
+          <p className="hidden"
         </p>
       </div>
     </div>

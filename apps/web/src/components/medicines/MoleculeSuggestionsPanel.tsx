@@ -1,6 +1,6 @@
 'use client';
 /**
- * MediSyn — Molecule Suggestions Approval UI
+ * SimpliRx — Molecule Suggestions Approval UI
  * ============================================
  * Pharmacist reviews AI-matched medicine data from Kaggle dataset
  * and approves/rejects/edits each suggestion.

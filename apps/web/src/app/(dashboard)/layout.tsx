@@ -153,7 +153,7 @@ function BottomTabLayout({
               <rect x="1" y="6.5" width="14" height="3" rx="1.5"/>
             </svg>
           </div>
-          <span className="text-white font-semibold text-sm hidden sm:block">MediSyn</span>
+          <span className="text-white font-semibold text-sm hidden sm:block">SimpliRx</span>
         </div>
 
         <span className="text-white/60 text-xs capitalize hidden sm:block">{user?.role}</span>
@@ -294,7 +294,7 @@ function SidebarLayout({
             </svg>
           </div>
           <div className="min-w-0">
-            <h1 className="font-semibold text-white text-sm leading-tight">MediSyn</h1>
+            <h1 className="font-semibold text-white text-sm leading-tight">SimpliRx</h1>
             <p className="text-[11px] text-white/60">Admin portal</p>
           </div>
           <button className="ml-auto lg:hidden text-white/60 hover:text-white"
@@ -376,7 +376,7 @@ function SidebarLayout({
                 <rect x="1" y="6.5" width="14" height="3" rx="1.5"/>
               </svg>
             </div>
-            <span className="font-bold text-white text-sm">MediSyn</span>
+            <span className="font-bold text-white text-sm">SimpliRx</span>
           </div>
           <div className="ml-auto flex items-center gap-2">
             <NotificationBell role={user?.role} />

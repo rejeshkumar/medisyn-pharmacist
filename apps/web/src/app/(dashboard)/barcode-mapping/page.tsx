@@ -331,7 +331,7 @@ export default function BulkBarcodeMappingPage() {
             <p className="font-medium text-slate-600">Tips for fast bulk mapping:</p>
             <p>• Scan the barcode on the medicine strip or box</p>
             <p>• If auto-matched, just press Confirm and scan the next one</p>
-            <p>• All scans queue up — save to MediSyn all at once when done</p>
+            <p>• All scans queue up — save to SimpliRx all at once when done</p>
             <p>• USB scanner: just plug in and start scanning — no setup needed</p>
           </div>
         </div>
@@ -378,7 +378,7 @@ export default function BulkBarcodeMappingPage() {
                 <button onClick={saveAll} disabled={saving}
                   className="btn-primary w-full flex items-center justify-center gap-2">
                   {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                  {saving ? 'Saving...' : `Save ${pendingCount} mapping(s) to MediSyn`}
+                  {saving ? 'Saving...' : `Save ${pendingCount} mapping(s) to SimpliRx`}
                 </button>
               )}
             </>

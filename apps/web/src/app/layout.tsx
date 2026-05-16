@@ -6,8 +6,8 @@ import { Providers } from './providers';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'MediSyn Pharmacist App',
-  description: 'MediSyn Specialty Clinic Pharmacy Management System',
+  title: 'SimpliRx Pharmacist App',
+  description: 'SimpliRx Specialty Clinic Pharmacy Management System',
 };
 
 export default function RootLayout({

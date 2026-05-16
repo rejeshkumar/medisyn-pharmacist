@@ -181,7 +181,7 @@ export default function SuperAdminPage() {
       <div style={{ background:'#111827', border:'1px solid #1f2937', borderRadius:16, padding:48, width:380 }}>
         <div style={{ textAlign:'center', marginBottom:32 }}>
           <div style={{ fontSize:40, marginBottom:8 }}>🏥</div>
-          <h1 style={{ color:'#fff', fontSize:24, fontWeight:700, margin:0 }}>MediSyn</h1>
+          <h1 style={{ color:'#fff', fontSize:24, fontWeight:700, margin:0 }}>SimpliRx</h1>
           <p style={{ color:'#6b7280', fontSize:14, margin:'4px 0 0' }}>Super Admin Console</p>
         </div>
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
@@ -202,7 +202,7 @@ export default function SuperAdminPage() {
             Sign In
           </button>
         </div>
-        <p style={{ color:'#374151', fontSize:12, textAlign:'center', marginTop:24 }}>MediSyn Platform v1.0</p>
+        <p style={{ color:'#374151', fontSize:12, textAlign:'center', marginTop:24 }}>SimpliRx Platform v1.0</p>
       </div>
     </div>
   );
@@ -251,7 +251,7 @@ export default function SuperAdminPage() {
       {/* Sidebar */}
       <div style={S.sidebar}>
         <div style={S.logo}>
-          <div style={{ color:'#fff', fontWeight:800, fontSize:18 }}>🏥 MediSyn</div>
+          <div style={{ color:'#fff', fontWeight:800, fontSize:18 }}>🏥 SimpliRx</div>
           <div style={{ color:'#4b5563', fontSize:11, marginTop:2 }}>Super Admin Console</div>
         </div>
         <nav style={S.nav}>
@@ -278,7 +278,7 @@ export default function SuperAdminPage() {
             : view==='tenant-detail' ? selectedTenant?.name
             : 'Audit Log' }
           </h2>
-          <div style={{ fontSize:12, color:'#6b7280' }}>Powered by MediSyn Platform</div>
+          <div style={{ fontSize:12, color:'#6b7280' }}>Powered by SimpliRx Platform</div>
         </div>
 
         <div style={S.content}>
@@ -302,7 +302,7 @@ export default function SuperAdminPage() {
               </div>
               <div style={{ ...S.card, textAlign:'center', padding:48 }}>
                 <div style={{ fontSize:48, marginBottom:12 }}>🚀</div>
-                <h3 style={{ color:'#111', margin:'0 0 8px' }}>Welcome to MediSyn Admin</h3>
+                <h3 style={{ color:'#111', margin:'0 0 8px' }}>Welcome to SimpliRx Admin</h3>
                 <p style={{ color:'#6b7280', margin:'0 0 24px' }}>Manage all your clinic and pharmacy tenants from one place</p>
                 <div style={{ display:'flex', gap:12, justifyContent:'center' }}>
                   <button style={S.btn()} onClick={() => setView('new-tenant')}>➕ Onboard New Tenant</button>
@@ -395,7 +395,7 @@ export default function SuperAdminPage() {
                 <h3 style={{ margin:'0 0 16px', fontSize:16, color:'#111' }}>2. Clinic / Pharmacy Details</h3>
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
                   {[
-                    { label:'Clinic Name *', key:'name', placeholder:'MediSyn Speciality Clinic' },
+                    { label:'Clinic Name *', key:'name', placeholder:'SimpliRx Speciality Clinic' },
                     { label:'URL Slug *', key:'slug', placeholder:'medisyn-taliparamba' },
                     { label:'Phone', key:'phone', placeholder:'+91 9876543210' },
                     { label:'Email', key:'email', placeholder:'clinic@example.com' },
@@ -431,7 +431,7 @@ export default function SuperAdminPage() {
               <div style={S.card}>
                 <h3 style={{ margin:'0 0 4px', fontSize:16, color:'#111' }}>3. Branding</h3>
                 <p style={{ margin:'0 0 16px', fontSize:13, color:'#6b7280' }}>
-                  Clinic gets their own logo and colours. App footer will show "Powered by MediSyn".
+                  Clinic gets their own logo and colours. App footer will show "Powered by NavamWorks".
                 </p>
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:16 }}>
                   <div>
@@ -471,7 +471,7 @@ export default function SuperAdminPage() {
                         {newTenant.tagline && <div style={{ color:'rgba(255,255,255,0.7)', fontSize:11 }}>{newTenant.tagline}</div>}
                       </div>
                     </div>
-                    <div style={{ color:'rgba(255,255,255,0.5)', fontSize:10 }}>Powered by MediSyn</div>
+                    <div style={{ color:'rgba(255,255,255,0.5)', fontSize:10 }}>Powered by NavamWorks</div>
                   </div>
                 </div>
               </div>
@@ -563,7 +563,7 @@ export default function SuperAdminPage() {
                     {/* Live Preview */}
                     <div style={{ background: selectedTenant.primary_color||'#00475a', borderRadius:8, padding:'12px 16px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                       <div style={{ color:'#fff', fontWeight:700 }}>{selectedTenant.name}</div>
-                      <div style={{ color:'rgba(255,255,255,0.5)', fontSize:10 }}>Powered by MediSyn</div>
+                      <div style={{ color:'rgba(255,255,255,0.5)', fontSize:10 }}>Powered by NavamWorks</div>
                     </div>
                   </div>
                 </div>

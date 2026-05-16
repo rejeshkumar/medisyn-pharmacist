@@ -564,7 +564,7 @@ export default function PatientHealthCard({
                   ⏱ {dayLabel(summary.days_since_refill)} since last visit
                 </span>
               )}
-              <span style={{ marginLeft: 'auto', color: '#d1d5db' }}>MediSyn Health Intelligence</span>
+              <span style={{ marginLeft: 'auto', color: '#d1d5db' }}>SimpliRx Health Intelligence</span>
             </div>
           )}
         </>

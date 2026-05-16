@@ -111,7 +111,7 @@ export default function BillReceiptPage() {
   });
 
   const clinic = tenantInfo ?? {
-    name: 'MediSyn Specialty Clinic',
+    name: 'SimpliRx Specialty Clinic',
     address: 'Taliparamba, Kannur, Kerala – 670141',
     phone: '+91 XXXXX XXXXX',
     email: 'clinic@medisyn.in',

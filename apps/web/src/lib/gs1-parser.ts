@@ -1,5 +1,5 @@
 /**
- * MediSyn — GS1 Barcode Parser
+ * SimpliRx — GS1 Barcode Parser
  * ================================
  * Parses GS1 DataMatrix and EAN-13 barcodes from Indian medicine boxes.
  *
