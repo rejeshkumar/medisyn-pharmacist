@@ -32,13 +32,12 @@ export class SalesAgentsService {
 
   async checkRateLimit(agentId: string, tenantId: string): Promise<boolean> {
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-    const recentCount = await this.vipRegRepo.count({
-      where: {
-        agent_id: agentId,
-        tenant_id: tenantId,
-        created_at: MoreThan(oneHourAgo),
-      },
-    });
+    const recentCount = await this.vipRegRepo
+      .createQueryBuilder('reg')
+      .where('reg.agent_id = :agentId', { agentId })
+      .andWhere('reg.tenant_id = :tenantId', { tenantId })
+      .andWhere('reg.created_at > :oneHourAgo', { oneHourAgo })
+      .getCount();
 
     return recentCount < 10;
   }
