@@ -485,29 +485,29 @@ export class PatientsService {
       (patient as any).vip_category = dto.vip_category;
     } else {
       const uhid = await this.generateUhid(tenantId);
-// TEMP_DISABLED:       patient = this.patientRepo.create({
-// TEMP_DISABLED:         ...dto,
-// TEMP_DISABLED:         uhid,
-// TEMP_DISABLED:         tenant_id: tenantId,
-// TEMP_DISABLED:         is_vip: true,
-// TEMP_DISABLED:         vip_start_date: vipStart,
-// TEMP_DISABLED:         vip_end_date: vipEnd,
-// TEMP_DISABLED:         vip_registered_by: agent.agent_name,
-// TEMP_DISABLED:         vip_payment_method: dto.payment_method,
-// TEMP_DISABLED:         vip_payment_amount: dto.payment_amount as any,
-// TEMP_DISABLED:         vip_payment_date: new Date(),
-// TEMP_DISABLED:         vip_upi_txn_id: dto.upi_txn_id,
-// TEMP_DISABLED:         category: 'general' as any,
-// TEMP_DISABLED:         vip_category: dto.vip_category,
-// TEMP_DISABLED:       });
-// TEMP_DISABLED:     }
-// TEMP_DISABLED: 
-// TEMP_DISABLED:     await this.patientRepo.save(patient);
-// TEMP_DISABLED: 
-// TEMP_DISABLED:     // 5. Create VIP registration record for tracking
-// TEMP_DISABLED:     const vipReg = this.vipRegRepo.create({
-// TEMP_DISABLED:       tenant_id: tenantId,
-// TEMP_DISABLED:       patient_id: patient.id,
+      patient = this.patientRepo.create({
+        ...dto,
+        uhid,
+        tenant_id: tenantId,
+        is_vip: true,
+        vip_start_date: vipStart,
+        vip_end_date: vipEnd,
+        vip_registered_by: agent.agent_name,
+        vip_payment_method: dto.payment_method,
+        vip_payment_amount: dto.payment_amount as any,
+        vip_payment_date: new Date(),
+        vip_upi_txn_id: dto.upi_txn_id,
+        category: 'general' as any,
+        vip_category: dto.vip_category,
+      });
+    }
+
+    await this.patientRepo.save(patient);
+
+    // 5. Create VIP registration record for tracking
+    const vipReg = this.vipRegRepo.create({
+      tenant_id: tenantId,
+      patient_id: patient.id,
       agent_id: agent.id,
       vip_category: dto.vip_category,
       payment_method: dto.payment_method,
