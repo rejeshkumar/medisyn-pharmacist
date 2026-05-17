@@ -130,7 +130,7 @@ function OwnerDashboard() {
       <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 16, marginBottom: 16 }}>
 
         {/* Sales Analytics Chart */}
-        <div style={{ background: 'white', borderRadius: 16, border: '1.5px solid #00b8a0', overflow: 'hidden' }}>
+        <div style={{ background: 'white', borderRadius: 16, border: '0.5px solid #e5e7eb', overflow: 'hidden' }}>
           <div style={{ padding: '16px 20px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: 15, fontWeight: 600, color: '#1a1a2e' }}>Sales Analytics</span>
             <span style={{ fontSize: 12, color: '#6b7280', background: '#f3f4f6', padding: '4px 10px', borderRadius: 6 }}>This Month</span>
@@ -183,7 +183,7 @@ function OwnerDashboard() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
 
         {/* Latest Orders Table */}
-        <div style={{ background: 'white', borderRadius: 16, border: '1.5px solid #00b8a0', overflow: 'hidden' }}>
+        <div style={{ background: 'white', borderRadius: 16, border: '0.5px solid #e5e7eb', overflow: 'hidden' }}>
           <div style={{ padding: '16px 20px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '0.5px solid #f3f4f6' }}>
             <span style={{ fontSize: 15, fontWeight: 600, color: '#1a1a2e' }}>Latest Orders</span>
             <span onClick={() => router.push('/billing')} style={{ fontSize: 12, color: '#00b8a0', cursor: 'pointer', fontWeight: 500 }}>View All</span>
@@ -215,7 +215,7 @@ function OwnerDashboard() {
         </div>
 
         {/* Top Selling Medicines */}
-        <div style={{ background: 'white', borderRadius: 16, border: '1.5px solid #00b8a0', overflow: 'hidden' }}>
+        <div style={{ background: 'white', borderRadius: 16, border: '0.5px solid #e5e7eb', overflow: 'hidden' }}>
           <div style={{ padding: '16px 20px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '0.5px solid #f3f4f6' }}>
             <span style={{ fontSize: 15, fontWeight: 600, color: '#1a1a2e' }}>Top Selling Medicine</span>
             <span style={{ fontSize: 12, color: '#6b7280', background: '#f3f4f6', padding: '4px 10px', borderRadius: 6 }}>This Month</span>
