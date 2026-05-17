@@ -1,143 +1,144 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import axios from 'axios';
-import { getToken } from '@/lib/auth';
-import { Loader2, RefreshCw, ChevronRight, Clock, AlertCircle } from 'lucide-react';
-import { format } from 'date-fns';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
+import api from '@/lib/api';
+import { Users, CheckCircle, Clock, Activity } from 'lucide-react';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+export default function NursePage() {
+  const router = useRouter();
+  const { data: queue, refetch } = useQuery({
+    queryKey: ['nurse-queue'],
+    queryFn: () => api.get('/queue?date=today&limit=50').then(r => r.data).catch(() => []),
+    refetchInterval: 15000,
+  });
 
-const patientName = (p: any) => p?.full_name || `${p?.first_name || ''} ${p?.last_name || ''}`.trim() || 'Unknown';
-
-const STATUS_COLOR: Record<string, string> = {
-  waiting:          'bg-amber-100 text-amber-700',
-  in_precheck:      'bg-blue-100 text-blue-700',
-  precheck_done:    'bg-indigo-100 text-indigo-700',
-  in_consultation:  'bg-purple-100 text-purple-700',
-  consultation_done:'bg-teal-100 text-teal-700',
-  completed:        'bg-green-100 text-green-700',
-};
-
-const STATUS_LABEL: Record<string, string> = {
-  waiting:          'Waiting',
-  in_precheck:      'Pre-check In Progress',
-  precheck_done:    'Pre-check Done',
-  in_consultation:  'With Doctor',
-  consultation_done:'Consult Done',
-  completed:        'Completed',
-};
-
-export default function NurseDashboard() {
-  const [queue, setQueue] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [lastUpdated, setLastUpdated] = useState(new Date());
-
-  const headers = () => ({ Authorization: `Bearer ${getToken()}` });
-
-  const load = async () => {
-    try {
-      const r = await axios.get(`${API}/queue/today`, { headers: headers() });
-      setQueue(r.data || []);
-      setLastUpdated(new Date());
-    } catch {}
-    finally { setLoading(false); }
-  };
-
-  useEffect(() => { load(); const t = setInterval(load, 20000); return () => clearInterval(t); }, []);
-
-  // Nurse sees: waiting + in_precheck (needs attention)
-  const pending = queue.filter(q => ['waiting', 'in_precheck'].includes(q.status));
-  const done = queue.filter(q => ['precheck_done', 'in_consultation', 'consultation_done', 'completed'].includes(q.status));
+  const needsPrecheck = Array.isArray(queue) ? queue.filter((q: any) => q.status === 'waiting' && !q.precheck_done) : [];
+  const precheckDone  = Array.isArray(queue) ? queue.filter((q: any) => q.status === 'precheck_done' || q.precheck_done).length : 0;
+  const completed     = Array.isArray(queue) ? queue.filter((q: any) => q.status === 'completed').length : 0;
+  const total         = Array.isArray(queue) ? queue.length : 0;
 
   return (
-    <div className="p-6 max-w-3xl">
-      <div className="flex items-center justify-between mb-6">
+    <div style={{ padding: '24px', background: '#f8f9fa', minHeight: '100%', fontFamily: 'var(--font-sans)' }}>
+
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
-          <h1 className="text-xl font-bold text-slate-800">Nurse Station</h1>
-          <p className="text-xs text-slate-400 mt-0.5">{format(new Date(), 'EEEE, d MMMM yyyy')} · Updated {format(lastUpdated, 'hh:mm a')}</p>
+          <h1 style={{ fontSize: 22, fontWeight: 600, color: '#1a1a2e', margin: 0 }}>Nurse Station</h1>
+          <p style={{ fontSize: 13, color: '#6b7280', margin: '4px 0 0' }}>
+            {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            {' · Updated '}{new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+          </p>
         </div>
-        <button onClick={load} className="flex items-center gap-2 text-sm text-slate-500 border border-slate-200 px-3 py-1.5 rounded-lg hover:border-pink-400 hover:text-pink-600 transition-colors">
-          <RefreshCw className="w-4 h-4" />Refresh
+        <button onClick={() => refetch()}
+          style={{ background: 'white', color: '#374151', border: '0.5px solid #e5e7eb', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+          ↻ Refresh
         </button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4">
-          <p className="text-2xl font-bold text-amber-600">{pending.length}</p>
-          <p className="text-xs text-slate-400 mt-0.5">Pending Pre-check</p>
+      {/* Stat Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 20 }}>
+        <div style={{ background: 'linear-gradient(135deg,#007a6e,#00b8a0)', borderRadius: 16, padding: '20px', color: 'white', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
+          <div style={{ width: 36, height: 36, background: 'rgba(255,255,255,0.2)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, fontSize: 18 }}>🏥</div>
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', marginBottom: 6 }}>Total Today</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: 'white', marginBottom: 6 }}>{total}</div>
+          <span style={{ background: 'rgba(255,255,255,0.2)', color: 'white', fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 8 }}>Patients</span>
         </div>
-        <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4">
-          <p className="text-2xl font-bold text-green-600">{done.length}</p>
-          <p className="text-xs text-slate-400 mt-0.5">Pre-check Done</p>
+
+        <div style={{ background: 'white', borderRadius: 16, padding: '20px', border: '1.5px solid #00b8a0' }}>
+          <div style={{ width: 36, height: 36, background: '#fee2e2', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, fontSize: 18 }}>💉</div>
+          <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>Pending Pre-check</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: '#dc2626' }}>{needsPrecheck.length}</div>
+          <span style={{ fontSize: 10, color: '#dc2626', fontWeight: 500 }}>Need vitals</span>
         </div>
-        <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4">
-          <p className="text-2xl font-bold text-slate-600">{queue.length}</p>
-          <p className="text-xs text-slate-400 mt-0.5">Total Today</p>
+
+        <div style={{ background: 'white', borderRadius: 16, padding: '20px', border: '1.5px solid #00b8a0' }}>
+          <div style={{ width: 36, height: 36, background: '#dbeafe', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, fontSize: 18 }}>📋</div>
+          <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>Pre-check Done</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: '#2563eb' }}>{precheckDone}</div>
+          <span style={{ fontSize: 10, color: '#2563eb', fontWeight: 500 }}>Vitals recorded</span>
+        </div>
+
+        <div style={{ background: 'white', borderRadius: 16, padding: '20px', border: '1.5px solid #00b8a0' }}>
+          <div style={{ width: 36, height: 36, background: '#dcfce7', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, fontSize: 18 }}>✅</div>
+          <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>Completed</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: '#16a34a' }}>{completed}</div>
+          <span style={{ fontSize: 10, color: '#16a34a', fontWeight: 500 }}>Done today</span>
         </div>
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-12 text-slate-400">
-          <Loader2 className="w-5 h-5 animate-spin mr-2" /><span className="text-sm">Loading queue...</span>
+      {/* Pre-check Queue Table */}
+      <div style={{ background: 'white', borderRadius: 16, border: '0.5px solid #e5e7eb', overflow: 'hidden', marginBottom: 16 }}>
+        <div style={{ padding: '16px 20px 12px', borderBottom: '0.5px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: 15, fontWeight: 600, color: '#1a1a2e' }}>Needs Pre-check</span>
+          {needsPrecheck.length > 0 && (
+            <span style={{ background: '#fee2e2', color: '#dc2626', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 8 }}>
+              {needsPrecheck.length} patients
+            </span>
+          )}
         </div>
-      ) : (
-        <>
-          {/* Pending pre-check */}
-          <h2 className="text-sm font-semibold text-slate-600 uppercase tracking-wide mb-3 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-amber-500" />Needs Pre-check · {pending.length}
-          </h2>
-          {pending.length === 0 ? (
-            <div className="bg-white rounded-xl border border-slate-100 p-6 text-center text-slate-400 text-sm mb-6">All pre-checks done!</div>
-          ) : (
-            <div className="space-y-2 mb-6">
-              {pending.map(q => (
-                <Link key={q.id} href={`/nurse/precheck/${q.id}`}
-                  className="bg-white rounded-xl border border-slate-100 shadow-sm px-5 py-4 flex items-center gap-4 hover:border-pink-300 hover:shadow-md transition-all group">
-                  <div className="w-12 h-12 rounded-xl bg-pink-50 flex items-center justify-center flex-shrink-0">
-                    <span className="text-lg font-black text-pink-600">#{q.token_number}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-slate-800">{patientName(q.patient)}</p>
-                    <p className="text-xs text-slate-400">{q.patient?.mobile} · {q.chief_complaint || 'No complaint noted'}</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[q.status]}`}>
-                      {STATUS_LABEL[q.status]}
+        {needsPrecheck.length > 0 ? (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#f9fafb' }}>
+                <th style={{ padding: '8px 16px', textAlign: 'left', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>#</th>
+                <th style={{ padding: '8px 16px', textAlign: 'left', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>Patient</th>
+                <th style={{ padding: '8px 16px', textAlign: 'left', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>Complaint</th>
+                <th style={{ padding: '8px 16px', textAlign: 'left', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>Time</th>
+                <th style={{ padding: '8px 16px', textAlign: 'center', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {needsPrecheck.map((q: any, i: number) => (
+                <tr key={q.id} style={{ borderTop: '0.5px solid #f3f4f6', cursor: 'pointer' }}
+                  onClick={() => router.push(`/nurse/precheck/${q.id}`)}>
+                  <td style={{ padding: '10px 16px', color: '#6b7280', fontSize: 12 }}>{i + 1}</td>
+                  <td style={{ padding: '10px 16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626', fontSize: 11, fontWeight: 700 }}>
+                        {(q.patient_name || q.patient?.first_name || '?')[0].toUpperCase()}
+                      </div>
+                      <span style={{ fontSize: 13, fontWeight: 500, color: '#1a1a2e' }}>
+                        {q.patient_name || `${q.patient?.first_name || ''} ${q.patient?.last_name || ''}`.trim()}
+                      </span>
+                    </div>
+                  </td>
+                  <td style={{ padding: '10px 16px', color: '#6b7280', fontSize: 12 }}>{q.chief_complaint || 'Consultation'}</td>
+                  <td style={{ padding: '10px 16px', color: '#6b7280', fontSize: 12 }}>
+                    {q.created_at ? new Date(q.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'Walk-in'}
+                  </td>
+                  <td style={{ padding: '10px 16px', textAlign: 'center' }}>
+                    <span style={{ background: '#fee2e2', color: '#dc2626', fontSize: 11, fontWeight: 600, padding: '4px 12px', borderRadius: 20 }}>
+                      Record vitals →
                     </span>
-                    <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-pink-500 transition-colors" />
-                  </div>
-                </Link>
+                  </td>
+                </tr>
               ))}
-            </div>
-          )}
+            </tbody>
+          </table>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9ca3af' }}>
+            <div style={{ fontSize: 36, marginBottom: 8 }}>✅</div>
+            <p style={{ fontSize: 14, fontWeight: 600, color: '#16a34a' }}>All pre-checks done!</p>
+            <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 4 }}>No vitals pending</p>
+          </div>
+        )}
+      </div>
 
-          {/* Done — still clickable to edit vitals */}
-          {done.length > 0 && (
-            <>
-              <h2 className="text-sm font-semibold text-slate-600 uppercase tracking-wide mb-3 flex items-center gap-2">
-                <Clock className="w-4 h-4 text-green-500" />Pre-check Completed · {done.length}
-              </h2>
-              <div className="space-y-2">
-                {done.map(q => (
-                  <Link key={q.id} href={`/nurse/precheck/${q.id}`}
-                    className="bg-white rounded-xl border border-slate-50 px-5 py-3 flex items-center gap-4 hover:border-pink-200 hover:opacity-100 transition-all group opacity-70">
-                    <span className="text-sm font-bold text-slate-400">#{q.token_number}</span>
-                    <span className="text-sm text-slate-500 flex-1">{patientName(q.patient)}</span>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[q.status] || 'bg-slate-100 text-slate-500'}`}>
-                      {STATUS_LABEL[q.status] || q.status}
-                    </span>
-                    <span className="text-xs text-slate-300 group-hover:text-pink-400 transition-colors">Edit vitals</span>
-                    <ChevronRight className="w-4 h-4 text-slate-200 group-hover:text-pink-400 transition-colors" />
-                  </Link>
-                ))}
-              </div>
-            </>
-          )}
-        </>
-      )}
+      {/* Quick Actions */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        {[
+          { label: 'AI Care Plans', emoji: '🤖', href: '/ai-care', bg: '#ede9fe', color: '#7c3aed' },
+          { label: 'Patient History', emoji: '👥', href: '/patients', bg: '#dbeafe', color: '#2563eb' },
+        ].map(({ label, emoji, href, bg, color }) => (
+          <button key={label} onClick={() => router.push(href)}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px', background: 'white', border: '0.5px solid #e5e7eb', borderRadius: 16, cursor: 'pointer' }}>
+            <div style={{ width: 36, height: 36, background: bg, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>{emoji}</div>
+            <span style={{ fontSize: 13, fontWeight: 600, color }}>{label}</span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
