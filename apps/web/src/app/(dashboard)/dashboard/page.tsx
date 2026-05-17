@@ -461,57 +461,95 @@ function DoctorDashboard() {
   const { data: queue } = useQuery({ queryKey: ['my-queue'], queryFn: () => api.get('/queue?date=today&limit=20').then(r => r.data).catch(() => []), refetchInterval: 15000 });
 
   const waiting = Array.isArray(queue) ? queue.filter((q: any) => q.status === 'waiting') : [];
+  const inConsult = Array.isArray(queue) ? queue.filter((q: any) => q.status === 'in_consultation').length : 0;
   const done = Array.isArray(queue) ? queue.filter((q: any) => q.status === 'completed').length : 0;
+  const total = Array.isArray(queue) ? queue.length : 0;
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-bold text-gray-900">My Queue</h1>
-        <p className="text-sm text-gray-500">{new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'})}</p>
+    <div style={{ padding: '24px', background: '#f8f9fa', minHeight: '100%', fontFamily: 'var(--font-sans)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 600, color: '#1a1a2e', margin: 0 }}>My Queue</h1>
+          <p style={{ fontSize: 13, color: '#6b7280', margin: '4px 0 0' }}>{new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'})}</p>
+        </div>
+        <button onClick={() => router.push('/doctor')}
+          style={{ background: '#00b8a0', color: 'white', border: 'none', borderRadius: 8, padding: '9px 20px', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
+          Start Consultation
+        </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-center">
-          <p className="text-3xl font-bold text-amber-700">{waiting.length}</p>
-          <p className="text-xs text-amber-600 mt-1 font-medium">Waiting</p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 20 }}>
+        <div style={{ background: 'linear-gradient(135deg,#007a6e,#00b8a0)', borderRadius: 16, padding: '20px', color: 'white', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
+          <div style={{ width: 36, height: 36, background: 'rgba(255,255,255,0.2)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, fontSize: 18 }}>👨‍⚕️</div>
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', marginBottom: 6 }}>Total Today</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: 'white', marginBottom: 6 }}>{total}</div>
+          <span style={{ background: 'rgba(255,255,255,0.2)', color: 'white', fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 8 }}>Patients</span>
         </div>
-        <div className="bg-green-50 border border-green-200 rounded-2xl p-4 text-center">
-          <p className="text-3xl font-bold text-green-700">{done}</p>
-          <p className="text-xs text-green-600 mt-1 font-medium">Seen Today</p>
+        <div style={{ background: 'white', borderRadius: 16, padding: '20px', border: '1.5px solid #00b8a0' }}>
+          <div style={{ width: 36, height: 36, background: '#fef3c7', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, fontSize: 18 }}>⏳</div>
+          <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>Waiting</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: '#d97706' }}>{waiting.length}</div>
+          <span style={{ fontSize: 10, color: '#d97706', fontWeight: 500 }}>In queue</span>
+        </div>
+        <div style={{ background: 'white', borderRadius: 16, padding: '20px', border: '1.5px solid #00b8a0' }}>
+          <div style={{ width: 36, height: 36, background: '#dbeafe', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, fontSize: 18 }}>🩺</div>
+          <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>In Consult</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: '#2563eb' }}>{inConsult}</div>
+          <span style={{ fontSize: 10, color: '#2563eb', fontWeight: 500 }}>With doctor</span>
+        </div>
+        <div style={{ background: 'white', borderRadius: 16, padding: '20px', border: '1.5px solid #00b8a0' }}>
+          <div style={{ width: 36, height: 36, background: '#dcfce7', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, fontSize: 18 }}>✅</div>
+          <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>Seen Today</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: '#16a34a' }}>{done}</div>
+          <span style={{ fontSize: 10, color: '#16a34a', fontWeight: 500 }}>Completed</span>
         </div>
       </div>
 
-      {waiting.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-4">
-          <h3 className="font-semibold text-gray-900 mb-3">Waiting Patients</h3>
-          <div className="space-y-2">
-            {waiting.map((q: any, i: number) => (
-              <div key={q.id} onClick={() => router.push(`/doctor/consult/${q.id}`)}
-                className="flex items-center justify-between p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-teal-50 transition-colors border border-slate-100 hover:border-teal-200">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-[#00b8a0]/10 rounded-full flex items-center justify-center text-[#00475a] text-xs font-bold">{i+1}</div>
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">{q.patient_name || `${q.patient?.first_name} ${q.patient?.last_name||''}`}</p>
-                    <p className="text-xs text-gray-500">{q.chief_complaint || 'Consultation'}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-400">{q.scheduled_time ? new Date(q.scheduled_time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) : 'Walk-in'}</span>
-                  <ArrowRight className="w-4 h-4 text-[#00475a]" />
-                </div>
-              </div>
-            ))}
+      <div style={{ background: 'white', borderRadius: 16, border: '0.5px solid #e5e7eb', overflow: 'hidden' }}>
+        <div style={{ padding: '16px 20px 12px', borderBottom: '0.5px solid #f3f4f6' }}>
+          <span style={{ fontSize: 15, fontWeight: 600, color: '#1a1a2e' }}>Waiting Patients</span>
+        </div>
+        {waiting.length > 0 ? (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#f9fafb' }}>
+                <th style={{ padding: '8px 16px', textAlign: 'left', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>#</th>
+                <th style={{ padding: '8px 16px', textAlign: 'left', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>Patient</th>
+                <th style={{ padding: '8px 16px', textAlign: 'left', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>Complaint</th>
+                <th style={{ padding: '8px 16px', textAlign: 'left', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>Time</th>
+                <th style={{ padding: '8px 16px', textAlign: 'center', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {waiting.map((q: any, i: number) => (
+                <tr key={q.id} style={{ borderTop: '0.5px solid #f3f4f6', cursor: 'pointer' }} onClick={() => router.push(`/doctor/consult/${q.id}`)}>
+                  <td style={{ padding: '10px 16px', color: '#6b7280', fontSize: 12 }}>{i+1}</td>
+                  <td style={{ padding: '10px 16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#e1f5ee', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00b8a0', fontSize: 11, fontWeight: 700 }}>
+                        {(q.patient_name||q.patient?.first_name||'?')[0].toUpperCase()}
+                      </div>
+                      <span style={{ fontSize: 13, fontWeight: 500, color: '#1a1a2e' }}>{q.patient_name || `${q.patient?.first_name} ${q.patient?.last_name||''}`}</span>
+                    </div>
+                  </td>
+                  <td style={{ padding: '10px 16px', color: '#6b7280', fontSize: 12 }}>{q.chief_complaint || 'Consultation'}</td>
+                  <td style={{ padding: '10px 16px', color: '#6b7280', fontSize: 12 }}>{q.scheduled_time ? new Date(q.scheduled_time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) : 'Walk-in'}</td>
+                  <td style={{ padding: '10px 16px', textAlign: 'center' }}>
+                    <span style={{ background: '#e1f5ee', color: '#007a6e', fontSize: 11, fontWeight: 600, padding: '4px 12px', borderRadius: 20 }}>Start →</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9ca3af' }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
+            <p style={{ fontSize: 14, fontWeight: 600, color: '#16a34a' }}>Queue is clear!</p>
+            <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 4 }}>No patients waiting</p>
           </div>
-        </div>
-      )}
-
-      {waiting.length === 0 && (
-        <div className="bg-green-50 border border-green-200 rounded-2xl p-8 text-center">
-          <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto mb-3" />
-          <p className="font-semibold text-green-800">Queue is clear!</p>
-          <p className="text-sm text-green-600 mt-1">No patients waiting</p>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
@@ -522,39 +560,95 @@ function NurseDashboard() {
   const { data: queue } = useQuery({ queryKey: ['queue-precheck'], queryFn: () => api.get('/queue?date=today&limit=20').then(r => r.data).catch(() => []), refetchInterval: 15000 });
 
   const needsPrecheck = Array.isArray(queue) ? queue.filter((q: any) => q.status === 'waiting' && !q.precheck_done) : [];
+  const done = Array.isArray(queue) ? queue.filter((q: any) => q.status === 'completed').length : 0;
+  const total = Array.isArray(queue) ? queue.length : 0;
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-bold text-gray-900">Nurse Station</h1>
-        <p className="text-sm text-gray-500">{new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'})}</p>
+    <div style={{ padding: '24px', background: '#f8f9fa', minHeight: '100%', fontFamily: 'var(--font-sans)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 600, color: '#1a1a2e', margin: 0 }}>Nurse Station</h1>
+          <p style={{ fontSize: 13, color: '#6b7280', margin: '4px 0 0' }}>{new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'})}</p>
+        </div>
       </div>
 
-      <KpiCard label="Vitals Pending" value={needsPrecheck.length} icon={Activity} color="text-red-600" bg="bg-red-50" border="border-red-100" />
-
-      {needsPrecheck.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-4">
-          <h3 className="font-semibold text-gray-900 mb-3">Pre-check Pending</h3>
-          <div className="space-y-2">
-            {needsPrecheck.map((q: any) => (
-              <div key={q.id} onClick={() => router.push(`/nurse/precheck/${q.id}`)}
-                className="flex items-center justify-between p-3 bg-red-50 rounded-xl cursor-pointer hover:bg-red-100 border border-red-100">
-                <div>
-                  <p className="text-sm font-semibold text-gray-900">{q.patient_name || `${q.patient?.first_name}`}</p>
-                  <p className="text-xs text-gray-500">{q.chief_complaint || 'Consultation'}</p>
-                </div>
-                <div className="flex items-center gap-1 text-red-600 text-xs font-medium">
-                  Record vitals <ArrowRight className="w-3.5 h-3.5" />
-                </div>
-              </div>
-            ))}
-          </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16, marginBottom: 20 }}>
+        <div style={{ background: 'linear-gradient(135deg,#007a6e,#00b8a0)', borderRadius: 16, padding: '20px', color: 'white', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
+          <div style={{ width: 36, height: 36, background: 'rgba(255,255,255,0.2)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, fontSize: 18 }}>🏥</div>
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', marginBottom: 6 }}>Total Today</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: 'white' }}>{total}</div>
+          <span style={{ background: 'rgba(255,255,255,0.2)', color: 'white', fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 8, marginTop: 6, display: 'inline-block' }}>Patients</span>
         </div>
-      )}
+        <div style={{ background: 'white', borderRadius: 16, padding: '20px', border: '1.5px solid #00b8a0' }}>
+          <div style={{ width: 36, height: 36, background: '#fee2e2', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, fontSize: 18 }}>💉</div>
+          <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>Vitals Pending</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: '#dc2626' }}>{needsPrecheck.length}</div>
+          <span style={{ fontSize: 10, color: '#dc2626', fontWeight: 500 }}>Need pre-check</span>
+        </div>
+        <div style={{ background: 'white', borderRadius: 16, padding: '20px', border: '1.5px solid #00b8a0' }}>
+          <div style={{ width: 36, height: 36, background: '#dcfce7', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, fontSize: 18 }}>✅</div>
+          <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>Completed</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: '#16a34a' }}>{done}</div>
+          <span style={{ fontSize: 10, color: '#16a34a', fontWeight: 500 }}>Done today</span>
+        </div>
+      </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <QuickAction label="AI Care Plans" icon={Heart} href="/ai-care" color="bg-purple-50 text-purple-700 border-purple-200" />
-        <QuickAction label="Patients" icon={Users} href="/patients" color="bg-blue-50 text-blue-700 border-blue-200" />
+      <div style={{ background: 'white', borderRadius: 16, border: '0.5px solid #e5e7eb', overflow: 'hidden', marginBottom: 16 }}>
+        <div style={{ padding: '16px 20px 12px', borderBottom: '0.5px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: 15, fontWeight: 600, color: '#1a1a2e' }}>Pre-check Pending</span>
+          {needsPrecheck.length > 0 && <span style={{ background: '#fee2e2', color: '#dc2626', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 8 }}>{needsPrecheck.length} patients</span>}
+        </div>
+        {needsPrecheck.length > 0 ? (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#f9fafb' }}>
+                <th style={{ padding: '8px 16px', textAlign: 'left', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>#</th>
+                <th style={{ padding: '8px 16px', textAlign: 'left', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>Patient</th>
+                <th style={{ padding: '8px 16px', textAlign: 'left', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>Complaint</th>
+                <th style={{ padding: '8px 16px', textAlign: 'center', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {needsPrecheck.map((q: any, i: number) => (
+                <tr key={q.id} style={{ borderTop: '0.5px solid #f3f4f6', cursor: 'pointer' }} onClick={() => router.push(`/nurse/precheck/${q.id}`)}>
+                  <td style={{ padding: '10px 16px', color: '#6b7280', fontSize: 12 }}>{i+1}</td>
+                  <td style={{ padding: '10px 16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626', fontSize: 11, fontWeight: 700 }}>
+                        {(q.patient_name||q.patient?.first_name||'?')[0].toUpperCase()}
+                      </div>
+                      <span style={{ fontSize: 13, fontWeight: 500, color: '#1a1a2e' }}>{q.patient_name || `${q.patient?.first_name}`}</span>
+                    </div>
+                  </td>
+                  <td style={{ padding: '10px 16px', color: '#6b7280', fontSize: 12 }}>{q.chief_complaint || 'Consultation'}</td>
+                  <td style={{ padding: '10px 16px', textAlign: 'center' }}>
+                    <span style={{ background: '#fee2e2', color: '#dc2626', fontSize: 11, fontWeight: 600, padding: '4px 12px', borderRadius: 20 }}>Record vitals →</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9ca3af' }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
+            <p style={{ fontSize: 14, fontWeight: 600, color: '#16a34a' }}>All vitals recorded!</p>
+            <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 4 }}>No pre-checks pending</p>
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        {[
+          { label: 'AI Care Plans', emoji: '🤖', href: '/ai-care', bg: '#ede9fe', color: '#7c3aed' },
+          { label: 'Patients', emoji: '👥', href: '/patients', bg: '#dbeafe', color: '#2563eb' },
+        ].map(({ label, emoji, href, bg, color }) => (
+          <button key={label} onClick={() => router.push(href)}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px', background: 'white', border: '0.5px solid #e5e7eb', borderRadius: 16, cursor: 'pointer', textAlign: 'left' }}>
+            <div style={{ width: 36, height: 36, background: bg, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>{emoji}</div>
+            <span style={{ fontSize: 13, fontWeight: 600, color }}>{label}</span>
+          </button>
+        ))}
       </div>
     </div>
   );
