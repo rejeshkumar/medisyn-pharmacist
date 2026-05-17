@@ -274,13 +274,12 @@ export class SalesService {
     const tenant = await this.tenantRepo.findOne({ where: { id: tenantId } });
     return { ...sale, clinic: tenant ? {
       name:       tenant.name,
-      address:    tenant.address,
-      phone:      tenant.phone,
-      landline:   (tenant as any).landline,
+      address:    (tenant as any).clinic_address || tenant.address,
+      phone:      (tenant as any).clinic_phone || tenant.phone,
       email:      (tenant as any).email,
       gstin:      tenant.gstin,
       pan:        (tenant as any).pan,
-      dl_numbers: (tenant as any).dl_numbers,
+      dl_no:      (tenant as any).license_no,
       logo_url:   tenant.logo_url,
     } : null };
   }

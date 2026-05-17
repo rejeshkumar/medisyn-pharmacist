@@ -88,11 +88,14 @@ function ReceiptContent({ data }: { data: BillData }) {
       padding: '0',
       background: '#fff',
     }}>
-      {/* ── HEADER — exactly 3 lines ── */}
+      {/* ── HEADER ── */}
       <div style={{ textAlign: 'center', borderBottom: '1px dashed #000', paddingBottom: '6px', marginBottom: '6px' }}>
-        <div style={{ fontWeight: '900', fontSize: '13px', letterSpacing: '0.5px' }}>MEDISYN SPECIALITY CLINIC</div>
-        <div style={{ fontSize: '10px', marginTop: '2px' }}>Chirvakku, Taliparamba, Kannur - 670141</div>
-        <div style={{ fontSize: '10px' }}>Ph: {clinicPhone} | GST: {clinicGST}</div>
+        <div style={{ fontWeight: '900', fontSize: '13px', letterSpacing: '0.5px' }}>{clinicName}</div>
+        <div style={{ fontSize: '10px', marginTop: '2px' }}>{clinicAddr}</div>
+        <div style={{ fontSize: '10px' }}>Ph: {clinicPhone}</div>
+        {clinicGST && <div style={{ fontSize: '10px' }}>GST: {clinicGST}</div>}
+        {clinicPAN && <div style={{ fontSize: '10px' }}>PAN: {clinicPAN}</div>}
+        {clinicDL  && <div style={{ fontSize: '10px' }}>DL NO: {clinicDL}</div>}
       </div>
 
       {/* ── BILL META ── */}
@@ -101,10 +104,9 @@ function ReceiptContent({ data }: { data: BillData }) {
           {data.patientName && <div><b>Patient:</b> {data.patientName}</div>}
           {data.doctorName  && <div><b>Doctor:</b> Dr.{data.doctorName.replace(/^Dr\.?\s*/i,'')}</div>}
         </div>
-        <div style={{ textAlign: 'right' }}>
+        <div style={{ textAlign: 'right', flexShrink: 0 }}>
           <div><b>Bill No:</b> {data.billNumber || '—'}</div>
           <div><b>Date:</b> {fmtDate(data.date)}</div>
-          <div style={{ fontSize: '11px' }}>{fmtTime(data.date)}</div>
         </div>
       </div>
 
@@ -115,7 +117,8 @@ function ReceiptContent({ data }: { data: BillData }) {
             <th style={{ textAlign: 'left',  fontSize: '10px', fontWeight: 'bold', padding: '2px 1px', width: '14px' }}>No</th>
             <th style={{ textAlign: 'left',  fontSize: '10px', fontWeight: 'bold', padding: '2px 1px' }}>Particulars</th>
             <th style={{ textAlign: 'left',  fontSize: '10px', fontWeight: 'bold', padding: '2px 1px', width: '36px' }}>Mfg</th>
-            <th style={{ textAlign: 'left',  fontSize: '10px', fontWeight: 'bold', padding: '2px 1px', width: '44px' }}>Batch</th>
+            <th style={{ textAlign: 'left',  fontSize: '10px', fontWeight: 'bold', padding: '2px 1px', width: '40px' }}>Batch</th>
+            <th style={{ textAlign: 'left',  fontSize: '10px', fontWeight: 'bold', padding: '2px 1px', width: '28px' }}>Exp</th>
             <th style={{ textAlign: 'right', fontSize: '10px', fontWeight: 'bold', padding: '2px 1px', width: '20px' }}>Qty</th>
             <th style={{ textAlign: 'right', fontSize: '10px', fontWeight: 'bold', padding: '2px 1px', width: '44px' }}>Amt(₹)</th>
           </tr>
@@ -132,6 +135,7 @@ function ReceiptContent({ data }: { data: BillData }) {
                 {(item.manufacturer || '').substring(0, 6)}
               </td>
               <td style={{ padding: '2px 1px', verticalAlign: 'top', fontSize: '9px' }}>{item.batchNumber || ''}</td>
+              <td style={{ padding: '2px 1px', verticalAlign: 'top', fontSize: '9px' }}>{fmtExp(item.expiryDate)}</td>
               <td style={{ padding: '2px 1px', verticalAlign: 'top', fontSize: '10px', fontWeight: '600', textAlign: 'right' }}>{item.qty}</td>
               <td style={{ padding: '2px 1px', verticalAlign: 'top', fontSize: '10px', fontWeight: '600', textAlign: 'right', whiteSpace: 'nowrap' }}>
                 {n(item.itemTotal).toFixed(2)}
@@ -189,7 +193,12 @@ function ReceiptContent({ data }: { data: BillData }) {
         Medicines once dispensed cannot be returned. Verify before leaving.
       </div>
       <div style={{ fontSize: '10px', textAlign: 'center', marginTop: '3px', color: '#555' }}>
-        Thank you — SimpliRx Speciality Clinic
+        Thank you — {clinicName}
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px', paddingTop: '4px', borderTop: '1px dashed #000' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '10px', color: '#000', marginTop: '2px' }}>PHARMACIST SIGN</div>
+        </div>
       </div>
     </div>
   );
