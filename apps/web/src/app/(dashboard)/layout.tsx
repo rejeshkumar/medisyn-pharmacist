@@ -305,7 +305,16 @@ function SidebarLayout({
 
         {/* Nav — grouped sections */}
         <nav className="flex-1 overflow-y-auto py-3 px-2 scrollbar-thin">
-          {OWNER_NAV_SECTIONS.map((section, si) => (
+          {OWNER_NAV_SECTIONS.filter(section => {
+            // Filter sections by role
+            const role = user?.role;
+            if (role === 'owner' || role === 'office_manager') return true;
+            // Receptionist: only top-level and no Administration/HR/Financial
+            if (role === 'receptionist') return !['Administration', 'HR', 'Reports & Compliance'].includes(section.section || '');
+            // Doctor/Nurse: minimal access
+            if (role === 'doctor' || role === 'nurse') return section.section === null;
+            return true;
+          }).map((section, si) => (
             <div key={si} className={si > 0 ? 'mt-1' : ''}>
               {/* Section label */}
               {section.section && (
