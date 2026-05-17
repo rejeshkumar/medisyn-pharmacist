@@ -207,7 +207,7 @@ function ReceiptContent({ data }: { data: BillData }) {
 // ─── Print Styles (injected once) ─────────────────────────────────────────────
 const PRINT_CSS = `
 @media print {
-  @page { size: 80mm auto; margin: 4mm; }
+  @page { size: 100mm 155mm; margin: 3mm 4mm; }
   body > * { display: none !important; }
   #medisyn-print-root { display: block !important; }
   #medisyn-print-root * { visibility: visible; }
@@ -236,13 +236,13 @@ export default function BillDocument({ data, mode, onClose, onConfirm, isLoading
           body {
             width: 100%;
             margin: 0;
-            padding: 6px 8px;
+            padding: 3px 4px;
             font-family: 'Courier New', Courier, monospace;
             font-size: 11px;
           }
           @page {
-            size: 150mm 280mm;
-            margin: 4mm 6mm;
+            size: 100mm 155mm;
+            margin: 3mm 4mm;
           }
           body > div {
             width: 100% !important;
