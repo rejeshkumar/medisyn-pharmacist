@@ -43,7 +43,7 @@ export class ReportsController {
     const todayEnd   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
     const d90 = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
 
-    const [todaySales, todayCount, lowStock, nearExpiry, topMeds] = await Promise.all([
+    const [todaySales, todayCount, lowStock, nearExpiry, topMeds, dailySales, recentBills] = await Promise.all([
       this.ds.query(
         `SELECT
            COALESCE(SUM(total_amount),0) AS total,
@@ -82,6 +82,25 @@ export class ReportsController {
          ORDER BY total_qty DESC LIMIT 10`,
         [tenantId]
       ),
+      this.ds.query(
+        `SELECT
+           TO_CHAR(DATE(created_at + INTERVAL '5 hours 30 minutes'), 'DD') AS day,
+           COALESCE(SUM(total_amount),0)::float AS total,
+           COUNT(*)::int AS bill_count
+         FROM sales
+         WHERE tenant_id=$1 AND is_voided=false
+           AND DATE(created_at + INTERVAL '5 hours 30 minutes') >= DATE_TRUNC('month', CURRENT_DATE)
+         GROUP BY DATE(created_at + INTERVAL '5 hours 30 minutes')
+         ORDER BY DATE(created_at + INTERVAL '5 hours 30 minutes') ASC`,
+        [tenantId]
+      ),
+      this.ds.query(
+        `SELECT bill_number, customer_name, total_amount, payment_mode, created_at
+         FROM sales
+         WHERE tenant_id=$1 AND is_voided=false
+         ORDER BY created_at DESC LIMIT 5`,
+        [tenantId]
+      ),
     ]);
 
     return {
@@ -92,6 +111,8 @@ export class ReportsController {
       low_stock_count:   lowStock[0]?.cnt || 0,
       near_expiry_count: nearExpiry[0]?.cnt || 0,
       top_medicines:     topMeds,
+      daily_sales:       dailySales.map((d: any) => ({ day: d.day, total: parseFloat(d.total), bills: d.bill_count })),
+      recent_bills:      recentBills,
     };
   }
 

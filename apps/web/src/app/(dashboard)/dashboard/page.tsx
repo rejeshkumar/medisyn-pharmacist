@@ -6,6 +6,7 @@ import api from '@/lib/api';
 import { getUser } from '@/lib/auth';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import {
   TrendingUp, FileText, AlertTriangle, Clock, Package,
   Users, Calendar, ShoppingCart, DollarSign, Heart,
@@ -50,92 +51,196 @@ function OwnerDashboard() {
   const { data: lowStock } = useQuery({ queryKey: ['low-stock'], queryFn: () => api.get('/stock/alerts/low-stock').then(r => r.data) });
   const { data: nearExpiry } = useQuery({ queryKey: ['near-expiry'], queryFn: () => api.get('/stock/alerts/near-expiry?days=30').then(r => r.data) });
 
+  const fmt = (v: number) => `₹${Number(v || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  const totalSales = dash?.today_sales || 0;
   const cashTotal = dash?.today_cash || 0;
   const upiTotal = dash?.today_upi || 0;
-  const totalSales = dash?.today_sales || 0;
+  const billCount = dash?.today_bill_count || 0;
+  const dailyData = dash?.daily_sales || [];
+  const recentBills = dash?.recent_bills || [];
+  const topMeds = dash?.top_medicines || [];
+  const maxQty = Math.max(...topMeds.map((m: any) => m.total_qty || 0), 1);
+  const today = new Date().getDate().toString().padStart(2, '0');
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between">
+    <div style={{ padding: '24px', background: '#f8f9fa', minHeight: '100%', fontFamily: 'var(--font-sans)' }}>
+
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Owner Dashboard</h1>
-          <p className="text-sm text-gray-500">{new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p>
+          <h1 style={{ fontSize: 22, fontWeight: 600, color: '#1a1a2e', margin: 0 }}>Order Details</h1>
+          <p style={{ fontSize: 13, color: '#6b7280', margin: '4px 0 0', display: 'flex', alignItems: 'center', gap: 4 }}>
+            Overview › <span style={{ color: '#00b8a0' }}>Dashboard</span>
+          </p>
         </div>
-        <div className="flex gap-2">
-          <QuickAction label="Day Close" icon={CheckCircle2} href="/day-close" color="bg-[#00b8a0] text-white border-[#00475a] hover:bg-[#009688]" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button onClick={() => router.push('/day-close')}
+            style={{ background: '#00b8a0', color: 'white', border: 'none', borderRadius: 8, padding: '9px 20px', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
+            ✓ Day Close
+          </button>
         </div>
       </div>
 
-      {/* URGENT ALERTS FIRST */}
-      {((lowStock?.length > 0) || (nearExpiry?.length > 0)) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {lowStock?.length > 0 && (
-            <div className="bg-red-50 border border-red-200 rounded-2xl p-4 cursor-pointer hover:shadow-md" onClick={() => router.push('/procurement')}>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-red-600" />
-                  <h3 className="font-bold text-red-900">Low Stock Alert</h3>
-                </div>
-                <span className="bg-red-600 text-white text-xs font-bold px-2.5 py-1 rounded-full">{lowStock.length} items</span>
-              </div>
-              {lowStock.slice(0,4).map((b: any) => (
-                <div key={b.id} className="flex justify-between py-1 border-b border-red-100 last:border-0">
-                  <span className="text-sm text-red-800 truncate">{b.medicine?.brand_name}</span>
-                  <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded font-bold ml-2 shrink-0">{b.quantity} left</span>
-                </div>
-              ))}
-              {lowStock.length > 4 && <p className="text-xs text-red-600 mt-2 font-medium">+{lowStock.length-4} more → View in Procurement</p>}
-            </div>
-          )}
-          {nearExpiry?.length > 0 && (
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 cursor-pointer hover:shadow-md" onClick={() => router.push('/reports')}>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-amber-600" />
-                  <h3 className="font-bold text-amber-900">Expiring Soon (30d)</h3>
-                </div>
-                <span className="bg-amber-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">{nearExpiry.length} batches</span>
-              </div>
-              {nearExpiry.slice(0,4).map((b: any) => (
-                <div key={b.id} className="flex justify-between py-1 border-b border-amber-100 last:border-0">
-                  <span className="text-sm text-amber-900 truncate">{b.medicine?.brand_name}</span>
-                  <span className="text-xs text-amber-700 font-medium ml-2 shrink-0">{formatDate(b.expiry_date)}</span>
-                </div>
-              ))}
-              {nearExpiry.length > 4 && <p className="text-xs text-amber-600 mt-2 font-medium">+{nearExpiry.length-4} more → View Expiry Report</p>}
-            </div>
-          )}
+      {/* Stat Cards Row */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 20 }}>
+        {/* Card 1 - Dark */}
+        <div style={{ background: 'linear-gradient(135deg, #1a2e1a 0%, #0d4a2a 100%)', borderRadius: 16, padding: '20px', color: 'white', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.05)' }} />
+          <div style={{ width: 36, height: 36, background: 'rgba(255,255,255,0.15)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, fontSize: 16 }}>₹</div>
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', marginBottom: 6 }}>Total Revenue</div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: 'white', marginBottom: 6 }}>{fmt(totalSales)}</div>
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ background: '#00b8a0', color: 'white', fontSize: 10, padding: '1px 6px', borderRadius: 6, fontWeight: 600 }}>{billCount} bills</span>
+            <span>Since today</span>
+          </div>
         </div>
-      )}
 
-      {/* Today KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KpiCard label="Today's Revenue" value={fmt(totalSales)} icon={TrendingUp} color="text-green-600" bg="bg-green-50" border="border-green-100" sub={`${dash?.today_bill_count||0} bills`} />
-        <KpiCard label="Cash Collected" value={fmt(cashTotal)} icon={Banknote} color="text-blue-600" bg="bg-blue-50" border="border-blue-100" />
-        <KpiCard label="UPI Received" value={fmt(upiTotal)} icon={Smartphone} color="text-purple-600" bg="bg-purple-50" border="border-purple-100" />
-        <KpiCard label="Total Bills" value={dash?.today_bill_count||0} icon={FileText} color="text-teal-600" bg="bg-teal-50" border="border-teal-100" onClick={() => router.push('/billing')} />
+        {/* Card 2 */}
+        <div style={{ background: 'white', borderRadius: 16, padding: '20px', border: '0.5px solid #e5e7eb', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: -15, right: -15, width: 60, height: 60, borderRadius: '50%', background: '#f0fdf4' }} />
+          <div style={{ width: 36, height: 36, background: '#dcfce7', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, color: '#16a34a', fontSize: 16 }}>👥</div>
+          <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>Total Patients</div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: '#1a1a2e', marginBottom: 6 }}>{billCount}</div>
+          <div style={{ fontSize: 11, color: '#6b7280', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ color: '#16a34a', fontSize: 11, fontWeight: 600 }}>↑ Since today</span>
+          </div>
+        </div>
+
+        {/* Card 3 */}
+        <div style={{ background: 'white', borderRadius: 16, padding: '20px', border: '0.5px solid #e5e7eb', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: -15, right: -15, width: 60, height: 60, borderRadius: '50%', background: '#fef3c7' }} />
+          <div style={{ width: 36, height: 36, background: '#fef3c7', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, color: '#d97706', fontSize: 16 }}>🛒</div>
+          <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>Total Orders</div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: '#1a1a2e', marginBottom: 6 }}>{billCount}</div>
+          <div style={{ fontSize: 11, color: '#6b7280', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ color: '#d97706', fontSize: 11, fontWeight: 600 }}>↑ Since today</span>
+          </div>
+        </div>
+
+        {/* Card 4 - Alerts */}
+        <div style={{ background: 'white', borderRadius: 16, padding: '20px', border: '0.5px solid #e5e7eb', cursor: 'pointer' }} onClick={() => router.push('/procurement')}>
+          <div style={{ width: 36, height: 36, background: '#fee2e2', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, color: '#dc2626', fontSize: 16 }}>⚠</div>
+          <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>Low Stock Items</div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: '#dc2626', marginBottom: 6 }}>{lowStock?.length || 0}</div>
+          <div style={{ fontSize: 11, color: '#dc2626', fontWeight: 500 }}>View in Procurement →</div>
+        </div>
       </div>
 
-      {/* Top medicines */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold text-gray-900">Top Selling Medicines</h2>
-          <button onClick={() => router.push('/reports')} className="text-xs text-[#00475a] hover:underline flex items-center gap-1">View report <ArrowRight className="w-3 h-3" /></button>
+      {/* Main Content Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 16, marginBottom: 16 }}>
+
+        {/* Sales Analytics Chart */}
+        <div style={{ background: 'white', borderRadius: 16, border: '0.5px solid #e5e7eb', overflow: 'hidden' }}>
+          <div style={{ padding: '16px 20px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 15, fontWeight: 600, color: '#1a1a2e' }}>Sales Analytics</span>
+            <span style={{ fontSize: 12, color: '#6b7280', background: '#f3f4f6', padding: '4px 10px', borderRadius: 6 }}>This Month</span>
+          </div>
+          <div style={{ padding: '0 16px 16px', height: 200 }}>
+            {dailyData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={dailyData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
+                  <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${(v/1000).toFixed(0)}k`} />
+                  <Tooltip formatter={(v: any) => [`₹${Number(v).toLocaleString('en-IN')}`, 'Revenue']} labelFormatter={(l) => `Day ${l}`} contentStyle={{ fontSize: 12, borderRadius: 8, border: '0.5px solid #e5e7eb' }} />
+                  <Bar dataKey="total" radius={[4, 4, 0, 0]}>
+                    {dailyData.map((entry: any, index: number) => (
+                      <Cell key={index} fill={entry.day === today ? '#00b8a0' : '#e1f5ee'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#9ca3af', fontSize: 13 }}>
+                No sales data this month
+              </div>
+            )}
+          </div>
         </div>
-        {dash?.top_medicines?.length > 0 ? (
-          <div className="space-y-2">
-            {dash.top_medicines.slice(0,8).map((med: any, i: number) => (
-              <div key={med.medicine_id} className="flex items-center gap-3 py-1.5 border-b border-gray-50 last:border-0">
-                <span className="text-xs text-gray-400 w-5 font-mono">{i+1}</span>
-                <p className="text-sm font-medium text-gray-800 flex-1 truncate">{med.medicine_name}</p>
-                <div className="text-right">
-                  <p className="text-sm font-semibold text-gray-900">{med.total_qty} units</p>
-                  <p className="text-xs text-gray-400">{fmt(med.total_revenue)}</p>
-                </div>
+
+        {/* Expiring Soon */}
+        <div style={{ background: 'white', borderRadius: 16, border: '0.5px solid #e5e7eb', overflow: 'hidden', cursor: 'pointer' }} onClick={() => router.push('/reports')}>
+          <div style={{ padding: '16px 20px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '0.5px solid #f3f4f6' }}>
+            <span style={{ fontSize: 15, fontWeight: 600, color: '#1a1a2e' }}>Expiring Soon</span>
+            <span style={{ background: '#fef3c7', color: '#d97706', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 8 }}>{nearExpiry?.length || 0} batches</span>
+          </div>
+          <div style={{ padding: '8px 0' }}>
+            {(nearExpiry || []).slice(0, 6).map((b: any, i: number) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 20px', borderBottom: '0.5px solid #f9fafb' }}>
+                <span style={{ fontSize: 12, color: '#374151', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginRight: 8 }}>{b.medicine?.brand_name}</span>
+                <span style={{ fontSize: 11, color: '#d97706', fontWeight: 500, flexShrink: 0 }}>
+                  {b.expiry_date ? new Date(b.expiry_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : ''}
+                </span>
               </div>
             ))}
+            {(nearExpiry?.length || 0) === 0 && (
+              <p style={{ fontSize: 13, color: '#9ca3af', textAlign: 'center', padding: '20px 0' }}>No expiring batches</p>
+            )}
           </div>
-        ) : <p className="text-sm text-gray-400 text-center py-8">No sales data yet</p>}
+        </div>
+      </div>
+
+      {/* Bottom Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+
+        {/* Latest Orders Table */}
+        <div style={{ background: 'white', borderRadius: 16, border: '0.5px solid #e5e7eb', overflow: 'hidden' }}>
+          <div style={{ padding: '16px 20px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '0.5px solid #f3f4f6' }}>
+            <span style={{ fontSize: 15, fontWeight: 600, color: '#1a1a2e' }}>Latest Orders</span>
+            <span onClick={() => router.push('/billing')} style={{ fontSize: 12, color: '#00b8a0', cursor: 'pointer', fontWeight: 500 }}>View All</span>
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <thead>
+              <tr style={{ background: '#f9fafb' }}>
+                <th style={{ padding: '8px 16px', textAlign: 'left', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>Bill No</th>
+                <th style={{ padding: '8px 16px', textAlign: 'left', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>Patient</th>
+                <th style={{ padding: '8px 16px', textAlign: 'right', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>Amount</th>
+                <th style={{ padding: '8px 16px', textAlign: 'center', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentBills.length > 0 ? recentBills.map((bill: any, i: number) => (
+                <tr key={i} style={{ borderTop: '0.5px solid #f3f4f6' }}>
+                  <td style={{ padding: '10px 16px', color: '#6b7280', fontSize: 11 }}>#{bill.bill_number?.split('-').pop()}</td>
+                  <td style={{ padding: '10px 16px', color: '#1a1a2e', fontWeight: 500 }}>{bill.customer_name || 'Walk-in'}</td>
+                  <td style={{ padding: '10px 16px', textAlign: 'right', color: '#1a1a2e', fontWeight: 600 }}>{fmt(bill.total_amount)}</td>
+                  <td style={{ padding: '10px 16px', textAlign: 'center' }}>
+                    <span style={{ background: '#dcfce7', color: '#16a34a', fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 20 }}>Paid</span>
+                  </td>
+                </tr>
+              )) : (
+                <tr><td colSpan={4} style={{ padding: '20px', textAlign: 'center', color: '#9ca3af', fontSize: 12 }}>No bills today</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Top Selling Medicines */}
+        <div style={{ background: 'white', borderRadius: 16, border: '0.5px solid #e5e7eb', overflow: 'hidden' }}>
+          <div style={{ padding: '16px 20px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '0.5px solid #f3f4f6' }}>
+            <span style={{ fontSize: 15, fontWeight: 600, color: '#1a1a2e' }}>Top Selling Medicine</span>
+            <span style={{ fontSize: 12, color: '#6b7280', background: '#f3f4f6', padding: '4px 10px', borderRadius: 6 }}>This Month</span>
+          </div>
+          <div style={{ padding: '12px 16px' }}>
+            {topMeds.length > 0 ? topMeds.slice(0, 5).map((med: any, i: number) => {
+              const colors = ['#00b8a0', '#1a2e1a', '#16a34a', '#0891b2', '#7c3aed'];
+              const pct = Math.round((med.total_qty / maxQty) * 100);
+              return (
+                <div key={i} style={{ marginBottom: 14 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <span style={{ fontSize: 12, color: '#374151', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '70%' }}>{med.medicine_name}</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: colors[i] }}>{fmt(med.total_revenue)}</span>
+                  </div>
+                  <div style={{ height: 8, background: '#f3f4f6', borderRadius: 4 }}>
+                    <div style={{ height: 8, background: colors[i], borderRadius: 4, width: `${pct}%`, transition: 'width 0.5s ease' }} />
+                  </div>
+                  <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 2 }}>{med.total_qty} units sold</div>
+                </div>
+              );
+            }) : (
+              <p style={{ fontSize: 13, color: '#9ca3af', textAlign: 'center', padding: '20px 0' }}>No sales data yet</p>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
