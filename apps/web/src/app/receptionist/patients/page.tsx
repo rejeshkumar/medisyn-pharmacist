@@ -6,8 +6,10 @@ import axios from 'axios';
 import { getToken } from '@/lib/auth';
 import {
   Search, User, Phone, Calendar, Droplets, AlertCircle,
-  ChevronRight, ClipboardList, Pill, X, Loader2, FileText
+  ChevronRight, ClipboardList, Pill, X, Loader2, FileText, Plus, Shield, MapPin
 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import api from '@/lib/api';
 import { format } from 'date-fns';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -53,6 +55,28 @@ export default function ReceptionistPatientsPage() {
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [expandedConsult, setExpandedConsult] = useState<string | null>(null);
+  const [showRegister, setShowRegister] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const EMPTY = { salutation:'Mr', first_name:'', last_name:'', gender:'male', dob:'', age:'', mobile:'', email:'', area:'', address:'', category:'general', ref_by:'', consent_given: false };
+  const [form, setForm] = useState<any>({ ...EMPTY });
+  const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
+
+  const registerPatient = async () => {
+    if (!form.first_name || !form.mobile) { toast.error('Name and mobile are required'); return; }
+    if (!form.consent_given) { toast.error('Patient consent is required'); return; }
+    setSaving(true);
+    try {
+      await api.post('/patients', { ...form, age: form.age ? Number(form.age) : undefined, dob: form.dob || undefined });
+      toast.success('Patient registered successfully');
+      setShowRegister(false);
+      setForm({ ...EMPTY });
+      setSearch(form.mobile);
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Registration failed');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const headers = () => ({ Authorization: `Bearer ${getToken()}` });
 
@@ -102,7 +126,13 @@ export default function ReceptionistPatientsPage() {
       {/* Left panel */}
       <div className="w-80 flex-shrink-0 border-r border-slate-100 flex flex-col bg-white">
         <div className="p-4 border-b border-slate-100">
-          <h2 className="font-semibold text-slate-800 mb-3">Patient Search</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold text-slate-800">Patient Search</h2>
+            <button onClick={() => setShowRegister(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#00b8a0] text-white text-xs font-semibold rounded-lg hover:bg-[#009688]">
+              <Plus className="w-3.5 h-3.5" /> New Patient
+            </button>
+          </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
@@ -293,6 +323,82 @@ export default function ReceptionistPatientsPage() {
           </div>
         )}
       </div>
+    </div>
+
+      {/* Registration Modal */}
+      {showRegister && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <h2 className="font-bold text-slate-800">Register New Patient</h2>
+              <button onClick={() => { setShowRegister(false); setForm({ ...EMPTY }); }} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="p-5 space-y-3">
+              <div className="flex gap-2">
+                <div className="w-24">
+                  <label className="text-xs font-medium text-slate-500 mb-1 block">Title</label>
+                  <select className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#00b8a0]" value={form.salutation} onChange={e => set('salutation', e.target.value)}>
+                    {['Mr','Mrs','Ms','Dr','Master','Baby'].map(s => <option key={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div className="flex-1">
+                  <label className="text-xs font-medium text-slate-500 mb-1 block">First Name *</label>
+                  <input className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#00b8a0]" value={form.first_name} onChange={e => set('first_name', e.target.value)} placeholder="First name" />
+                </div>
+                <div className="flex-1">
+                  <label className="text-xs font-medium text-slate-500 mb-1 block">Last Name</label>
+                  <input className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#00b8a0]" value={form.last_name} onChange={e => set('last_name', e.target.value)} placeholder="Last name" />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-500 mb-1 block">Gender</label>
+                <div className="flex gap-4 mt-1">{['male','female','other'].map(g => <label key={g} className="flex items-center gap-1.5 text-sm cursor-pointer capitalize"><input type="radio" name="reg_gender" value={g} checked={form.gender===g} onChange={() => set('gender',g)} />{g}</label>)}</div>
+              </div>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="text-xs font-medium text-slate-500 mb-1 block">Date of Birth</label>
+                  <input type="date" className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#00b8a0]" value={form.dob} onChange={e => set('dob', e.target.value)} />
+                </div>
+                <div className="w-24">
+                  <label className="text-xs font-medium text-slate-500 mb-1 block">Age (yrs)</label>
+                  <input type="number" className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#00b8a0]" value={form.age} onChange={e => set('age', e.target.value)} placeholder="Age" min={0} />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-500 mb-1 block">Mobile *</label>
+                <input className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#00b8a0]" value={form.mobile} onChange={e => set('mobile', e.target.value)} placeholder="Mobile number" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-500 mb-1 block">Area / Locality</label>
+                <input className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#00b8a0]" value={form.area} onChange={e => set('area', e.target.value)} placeholder="Area or locality" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-500 mb-1 block">Referred By</label>
+                <input className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#00b8a0]" value={form.ref_by} onChange={e => set('ref_by', e.target.value)} placeholder="Doctor or person name" />
+              </div>
+              {/* Consent */}
+              <div className={`rounded-xl border-2 p-4 ${form.consent_given ? 'border-[#00b8a0] bg-teal-50/50' : 'border-amber-300 bg-amber-50'}`}>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input type="checkbox" checked={form.consent_given} onChange={e => set('consent_given', e.target.checked)} className="mt-0.5 w-4 h-4 accent-[#00b8a0]" />
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-1"><Shield className="w-3.5 h-3.5 text-[#00b8a0]" /><span className="text-xs font-semibold text-slate-700">Patient Consent *</span></div>
+                    <p className="text-xs text-slate-600">I consent to MediSyn Speciality Clinic collecting and processing my personal and health data for pharmacy and medical services.</p>
+                  </div>
+                </label>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => { setShowRegister(false); setForm({ ...EMPTY }); }}
+                  className="flex-1 py-2.5 border border-slate-200 text-slate-600 text-sm rounded-xl hover:bg-slate-50">Cancel</button>
+                <button onClick={registerPatient} disabled={saving}
+                  className="flex-1 py-2.5 bg-[#00b8a0] text-white text-sm font-bold rounded-xl hover:bg-[#009688] disabled:opacity-50 flex items-center justify-center gap-2">
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                  {saving ? 'Registering...' : 'Register Patient'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
