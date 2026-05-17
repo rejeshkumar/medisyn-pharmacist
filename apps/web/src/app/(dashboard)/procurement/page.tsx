@@ -240,13 +240,6 @@ function ReorderTab() {
           onCreated={() => { setShowPOForm(false); setSelected(new Set()); load(); }}
         />
       )}
-      {showLabelScanner && (
-        <MedicineLabelScanner
-          mode="procurement"
-          onScanComplete={handleLabelScan}
-          onClose={() => setShowLabelScanner(false)}
-        />
-      )}
     </div>
   );
 }
