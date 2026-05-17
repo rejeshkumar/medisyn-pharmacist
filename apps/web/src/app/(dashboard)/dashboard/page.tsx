@@ -96,7 +96,7 @@ function OwnerDashboard() {
         </div>
 
         {/* Card 2 */}
-        <div style={{ background: 'white', borderRadius: 16, padding: '20px', border: '0.5px solid #e5e7eb', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ background: 'white', borderRadius: 16, padding: '20px', border: '1.5px solid #00b8a0', position: 'relative', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', top: -15, right: -15, width: 60, height: 60, borderRadius: '50%', background: '#f0fdf4' }} />
           <div style={{ width: 36, height: 36, background: '#dcfce7', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, color: '#16a34a', fontSize: 16 }}>👥</div>
           <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>Total Patients</div>
@@ -107,7 +107,7 @@ function OwnerDashboard() {
         </div>
 
         {/* Card 3 */}
-        <div style={{ background: 'white', borderRadius: 16, padding: '20px', border: '0.5px solid #e5e7eb', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ background: 'white', borderRadius: 16, padding: '20px', border: '1.5px solid #00b8a0', position: 'relative', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', top: -15, right: -15, width: 60, height: 60, borderRadius: '50%', background: '#fef3c7' }} />
           <div style={{ width: 36, height: 36, background: '#fef3c7', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, color: '#d97706', fontSize: 16 }}>🛒</div>
           <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>Total Orders</div>
@@ -118,7 +118,7 @@ function OwnerDashboard() {
         </div>
 
         {/* Card 4 - Alerts */}
-        <div style={{ background: 'white', borderRadius: 16, padding: '20px', border: '0.5px solid #e5e7eb', cursor: 'pointer' }} onClick={() => router.push('/procurement')}>
+        <div style={{ background: 'white', borderRadius: 16, padding: '20px', border: '1.5px solid #00b8a0', cursor: 'pointer' }} onClick={() => router.push('/procurement')}>
           <div style={{ width: 36, height: 36, background: '#fee2e2', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, color: '#dc2626', fontSize: 16 }}>⚠</div>
           <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>Low Stock Items</div>
           <div style={{ fontSize: 26, fontWeight: 700, color: '#dc2626', marginBottom: 6 }}>{lowStock?.length || 0}</div>
