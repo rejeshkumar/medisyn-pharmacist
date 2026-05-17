@@ -240,13 +240,36 @@ export class FinancialController {
 
   @Patch('expenses/:id')
   async updateExpense(@Param('id') id: string, @Body() body: any, @Req() req: any) {
+    // Fetch original for audit
+    const original = await this.ds.query(
+      `SELECT * FROM expenses WHERE id=$1 AND tenant_id=$2`,
+      [id, req.user.tenant_id]
+    );
+
     await this.ds.query(
       `UPDATE expenses SET category=$1, description=$2, amount=$3, payment_mode=$4,
-       reference_no=$5, vendor_name=$6, updated_at=NOW()
+       reference_no=$5, vendor_name=$6, updated_at=NOW(), updated_by=$9
        WHERE id=$7 AND tenant_id=$8`,
       [body.category, body.description, body.amount, body.payment_mode,
-       body.reference_no, body.vendor_name, id, req.user.tenant_id]
+       body.reference_no, body.vendor_name, id, req.user.tenant_id, req.user.sub]
     );
+
+    // Write audit log
+    if (original[0]) {
+      await this.ds.query(
+        `INSERT INTO audit_logs (tenant_id, user_id, action, entity_type, entity_id, old_values, new_values, notes, created_at)
+         VALUES ($1,$2,'UPDATE','expense',$3,$4,$5,$6,NOW())`,
+        [
+          req.user.tenant_id,
+          req.user.sub,
+          id,
+          JSON.stringify({ category: original[0].category, description: original[0].description, amount: original[0].amount, payment_mode: original[0].payment_mode }),
+          JSON.stringify({ category: body.category, description: body.description, amount: body.amount, payment_mode: body.payment_mode }),
+          body.edit_reason || 'No reason provided',
+        ]
+      ).catch(() => {}); // Don't fail if audit log table structure differs
+    }
+
     return { updated: true };
   }
 

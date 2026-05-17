@@ -197,6 +197,7 @@ function VendorTermsModal({ onClose }: { onClose: () => void }) {
 function ExpensesTab() {
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<any>(null);
   const [dateRange, setDateRange] = useState({
     from: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
     to: new Date().toISOString().split('T')[0],
@@ -238,6 +239,12 @@ function ExpensesTab() {
     onError: () => toast.error('Failed to save'),
   });
 
+  const editMut = useMutation({
+    mutationFn: (data: any) => api.patch(`/financial/expenses/${data.id}`, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['expenses'] }); setEditingExpense(null); toast.success('Expense updated'); },
+    onError: () => toast.error('Failed to update expense'),
+  });
+
   const deleteMut = useMutation({
     mutationFn: (id: string) => api.delete(`/financial/expenses/${id}`),
     onSuccess: () => {
@@ -274,13 +281,82 @@ function ExpensesTab() {
 
   return (
     <div className="space-y-4">
+
+      {/* Edit Modal */}
+      {editingExpense && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-slate-800 flex items-center gap-2"><Pencil size={16} className="text-[#00b8a0]" /> Edit Expense</h3>
+              <button onClick={() => setEditingExpense(null)}><X size={18} className="text-slate-400" /></button>
+            </div>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500 font-medium block mb-1">Date</label>
+                  <input type="date" value={editingExpense.expense_date?.slice(0,10)}
+                    onChange={e => setEditingExpense((p: any) => ({ ...p, expense_date: e.target.value }))}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#00b8a0] outline-none" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 font-medium block mb-1">Amount (₹)</label>
+                  <input type="number" value={editingExpense.amount}
+                    onChange={e => setEditingExpense((p: any) => ({ ...p, amount: e.target.value }))}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#00b8a0] outline-none" />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 font-medium block mb-1">Description</label>
+                <input value={editingExpense.description}
+                  onChange={e => setEditingExpense((p: any) => ({ ...p, description: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#00b8a0] outline-none" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500 font-medium block mb-1">Category</label>
+                  <select value={editingExpense.category}
+                    onChange={e => setEditingExpense((p: any) => ({ ...p, category: e.target.value }))}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#00b8a0] outline-none">
+                    {EXPENSE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 font-medium block mb-1">Payment Mode</label>
+                  <select value={editingExpense.payment_mode}
+                    onChange={e => setEditingExpense((p: any) => ({ ...p, payment_mode: e.target.value }))}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#00b8a0] outline-none">
+                    {['CASH','UPI','CARD','BANK_TRANSFER','CHEQUE'].map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 font-medium block mb-1">Edit reason (for audit)</label>
+                <input value={editingExpense.edit_reason || ''}
+                  onChange={e => setEditingExpense((p: any) => ({ ...p, edit_reason: e.target.value }))}
+                  placeholder="Why are you editing this expense?"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#00b8a0] outline-none" />
+              </div>
+              <div className="flex gap-3 pt-1">
+                <button onClick={() => setEditingExpense(null)}
+                  className="flex-1 py-2.5 border border-gray-200 text-gray-600 text-sm rounded-xl hover:bg-gray-50">Cancel</button>
+                <button onClick={() => editMut.mutate(editingExpense)}
+                  disabled={editMut.isPending}
+                  className="flex-1 py-2.5 bg-[#00b8a0] text-white text-sm font-bold rounded-xl hover:bg-[#009688] disabled:opacity-50">
+                  {editMut.isPending ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Expenses</h3>
           <p className="text-xs text-gray-500 mt-0.5">Track all operating expenses</p>
         </div>
         <button onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-1.5 px-3 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700">
+          className="flex items-center gap-1.5 px-3 py-2 bg-[#00b8a0] text-white text-sm rounded-lg hover:bg-[#009688]">
           <Plus size={14} /> Add Expense
         </button>
       </div>
@@ -398,9 +474,9 @@ function ExpensesTab() {
 
       {/* Category Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="bg-white border rounded-xl p-4 border-red-200">
+        <div className="bg-white border-2 border-[#00b8a0] rounded-xl p-4">
           <p className="text-xs text-gray-500">Total Expenses</p>
-          <p className="text-xl font-bold text-red-600 mt-1">₹{totalExpenses.toLocaleString('en-IN')}</p>
+          <p className="text-xl font-bold text-[#00b8a0] mt-1">₹{totalExpenses.toLocaleString('en-IN')}</p>
           <p className="text-xs text-gray-400 mt-1">{expenses.length} entries</p>
         </div>
         {Object.entries(categorySummary).sort((a: any, b: any) => b[1].total - a[1].total).slice(0, 3).map(([cat, data]: any) => (
@@ -413,11 +489,11 @@ function ExpensesTab() {
       </div>
 
       {/* Expenses Table */}
-      <div className="bg-white border rounded-xl overflow-hidden">
+      <div className="bg-white border border-[#e5e7eb] rounded-xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-gray-50 text-left">
+              <tr className="bg-[#f9fafb] text-left border-b border-[#e5e7eb]">
                 <th className="px-4 py-2.5 text-xs font-medium text-gray-500">Date</th>
                 <th className="px-4 py-2.5 text-xs font-medium text-gray-500">Description</th>
                 <th className="px-4 py-2.5 text-xs font-medium text-gray-500">Category</th>
@@ -433,7 +509,7 @@ function ExpensesTab() {
               ) : expenses.length === 0 ? (
                 <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">No expenses found</td></tr>
               ) : expenses.map((e: any) => (
-                <tr key={e.id} className="border-t hover:bg-gray-50">
+                <tr key={e.id} className="border-t border-[#f9fafb] hover:bg-[#f0fdf4] transition-colors">
                   <td className="px-4 py-2.5 text-gray-600">{new Date(e.expense_date).toLocaleDateString('en-IN')}</td>
                   <td className="px-4 py-2.5 font-medium text-gray-900">{e.description}</td>
                   <td className="px-4 py-2.5">
@@ -443,10 +519,16 @@ function ExpensesTab() {
                   <td className="px-4 py-2.5"><ModeBadge mode={e.payment_mode} /></td>
                   <td className="px-4 py-2.5 text-xs text-gray-500">{e.paid_by || '—'}</td>
                   <td className="px-4 py-2.5">
-                    <button onClick={() => { if (confirm('Delete this expense?')) deleteMut.mutate(e.id); }}
-                      className="text-gray-400 hover:text-red-500">
-                      <X size={14} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setEditingExpense(e)}
+                        className="text-gray-400 hover:text-[#00b8a0] p-1 rounded hover:bg-[#e1f5ee] transition-colors" title="Edit">
+                        <Pencil size={13} />
+                      </button>
+                      <button onClick={() => { if (confirm('Delete this expense?')) deleteMut.mutate(e.id); }}
+                        className="text-gray-400 hover:text-red-500 p-1 rounded hover:bg-red-50 transition-colors" title="Delete">
+                        <X size={13} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -474,6 +556,7 @@ function ExpensesTab() {
 function PharmacyPurchasesTab() {
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<any>(null);
   const [dateRange, setDateRange] = useState({
     from: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
     to: new Date().toISOString().split('T')[0],
@@ -513,6 +596,12 @@ function PharmacyPurchasesTab() {
       setForm({ purchase_date: new Date().toISOString().split('T')[0], vendor_name: '', invoice_no: '', amount: '', payment_mode: 'CASH', paid_by: '', credit_period: '', is_paid: false, cheque_no: '', reference_no: '', notes: '' });
     },
     onError: () => toast.error('Failed to save'),
+  });
+
+  const editMut = useMutation({
+    mutationFn: (data: any) => api.patch(`/financial/expenses/${data.id}`, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['expenses'] }); setEditingExpense(null); toast.success('Expense updated'); },
+    onError: () => toast.error('Failed to update expense'),
   });
 
   const deleteMut = useMutation({
@@ -694,14 +783,14 @@ function PharmacyPurchasesTab() {
 
       {/* Summary View — Vendor-wise spend table */}
       {viewMode === 'summary' && summary?.vendor_summary && (
-        <div className="bg-white border rounded-xl overflow-hidden">
+        <div className="bg-white border border-[#e5e7eb] rounded-xl overflow-hidden shadow-sm">
           <div className="px-4 py-3 border-b bg-gray-50">
             <h4 className="text-sm font-semibold text-gray-800">Vendor-wise Spend Analysis</h4>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-gray-50 text-left">
+                <tr className="bg-[#f9fafb] text-left border-b border-[#e5e7eb]">
                   <th className="px-4 py-2.5 text-xs font-medium text-gray-500">#</th>
                   <th className="px-4 py-2.5 text-xs font-medium text-gray-500">Vendor</th>
                   <th className="px-4 py-2.5 text-xs font-medium text-gray-500 text-right">Total Spend</th>
@@ -713,7 +802,7 @@ function PharmacyPurchasesTab() {
               </thead>
               <tbody>
                 {summary.vendor_summary.map((v: any, i: number) => (
-                  <tr key={v.vendor_name} className="border-t hover:bg-gray-50">
+                  <tr key={v.vendor_name} className="border-t border-[#f9fafb] hover:bg-[#f0fdf4] transition-colors">
                     <td className="px-4 py-2.5 text-gray-400">{i + 1}</td>
                     <td className="px-4 py-2.5 font-medium text-gray-900">{v.vendor_name}</td>
                     <td className="px-4 py-2.5 text-right font-semibold">₹{Number(v.total_spend).toLocaleString('en-IN')}</td>
@@ -763,11 +852,11 @@ function PharmacyPurchasesTab() {
 
       {/* List View — All entries */}
       {viewMode === 'list' && (
-        <div className="bg-white border rounded-xl overflow-hidden">
+        <div className="bg-white border border-[#e5e7eb] rounded-xl overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-gray-50 text-left">
+                <tr className="bg-[#f9fafb] text-left border-b border-[#e5e7eb]">
                   <th className="px-4 py-2.5 text-xs font-medium text-gray-500">Date</th>
                   <th className="px-4 py-2.5 text-xs font-medium text-gray-500">Vendor</th>
                   <th className="px-4 py-2.5 text-xs font-medium text-gray-500">Invoice</th>
@@ -784,7 +873,7 @@ function PharmacyPurchasesTab() {
                 ) : purchases.length === 0 ? (
                   <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">No purchases found</td></tr>
                 ) : purchases.map((p: any) => (
-                  <tr key={p.id} className="border-t hover:bg-gray-50">
+                  <tr key={p.id} className="border-t border-[#f9fafb] hover:bg-[#f0fdf4] transition-colors">
                     <td className="px-4 py-2.5 text-gray-600">{new Date(p.purchase_date).toLocaleDateString('en-IN')}</td>
                     <td className="px-4 py-2.5 font-medium text-gray-900">{p.vendor_name}</td>
                     <td className="px-4 py-2.5 text-gray-500">{p.invoice_no || '—'}</td>
@@ -827,6 +916,7 @@ function PharmacyPurchasesTab() {
 function UpcomingPaymentsTab() {
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<any>(null);
   const [showPaid, setShowPaid] = useState(false);
   const [showBalanceForm, setShowBalanceForm] = useState(false);
   const [form, setForm] = useState({
@@ -855,6 +945,12 @@ function UpcomingPaymentsTab() {
       qc.invalidateQueries({ queryKey: ['upcoming-payments'] });
       qc.invalidateQueries({ queryKey: ['pharmacy-purchases'] });
     },
+  });
+
+  const editMut = useMutation({
+    mutationFn: (data: any) => api.patch(`/financial/expenses/${data.id}`, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['expenses'] }); setEditingExpense(null); toast.success('Expense updated'); },
+    onError: () => toast.error('Failed to update expense'),
   });
 
   const deleteMut = useMutation({
@@ -901,7 +997,7 @@ function UpcomingPaymentsTab() {
           <p className="text-xs text-gray-500">Total Available</p>
           <p className="text-lg font-bold text-[#00475a] mt-1">₹{Number(balance.total_available || 0).toLocaleString('en-IN')}</p>
         </div>
-        <div className="bg-white border rounded-xl p-4 border-red-200">
+        <div className="bg-white border-2 border-[#00b8a0] rounded-xl p-4">
           <p className="text-xs text-gray-500">Total Due</p>
           <p className="text-lg font-bold text-red-600 mt-1">₹{Number(balance.total_due || 0).toLocaleString('en-IN')}</p>
         </div>
@@ -1003,7 +1099,7 @@ function UpcomingPaymentsTab() {
       )}
 
       {/* Payments Table */}
-      <div className="bg-white border rounded-xl overflow-hidden">
+      <div className="bg-white border border-[#e5e7eb] rounded-xl overflow-hidden shadow-sm">
         <div className="px-4 py-3 border-b bg-gray-50">
           <h4 className="text-sm font-semibold text-gray-800">
             Upcoming Opex & Vendor Payments
@@ -1012,7 +1108,7 @@ function UpcomingPaymentsTab() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-gray-50 text-left">
+              <tr className="bg-[#f9fafb] text-left border-b border-[#e5e7eb]">
                 <th className="px-4 py-2.5 text-xs font-medium text-gray-500">Payment</th>
                 <th className="px-4 py-2.5 text-xs font-medium text-gray-500 text-right">Amount</th>
                 <th className="px-4 py-2.5 text-xs font-medium text-gray-500">Due Date</th>
