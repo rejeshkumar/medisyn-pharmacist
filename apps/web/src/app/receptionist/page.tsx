@@ -1,179 +1,97 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import axios from 'axios';
-import { getToken } from '@/lib/auth';
-import { Loader2, RefreshCw } from 'lucide-react';
-import { format } from 'date-fns';
+import { useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
+import api from '@/lib/api';
+import { Calendar, UserPlus, Bell, FileText, Users } from 'lucide-react';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+function QuickAction({ label, icon: Icon, href, color }: any) {
+  const router = useRouter();
+  return (
+    <button onClick={() => router.push(href)}
+      className={`flex items-center gap-2.5 px-4 py-3.5 rounded-2xl border text-sm font-semibold transition-all hover:shadow-sm ${color}`}>
+      <Icon className="w-4 h-4" />{label}
+    </button>
+  );
+}
 
-const STATUS_LABEL: Record<string, string> = {
-  waiting: 'Waiting',
-  in_precheck: 'Pre-check',
-  precheck_done: 'Pre-check Done',
-  in_consultation: 'With Doctor',
-  consultation_done: 'Consult Done',
-  dispensing: 'Dispensing',
-  completed: 'Completed',
-  cancelled: 'Cancelled',
-  no_show: 'No Show',
-};
+export default function ReceptionistDashboardPage() {
+  const router = useRouter();
+  const { data: queue } = useQuery({ queryKey: ['queue-today'], queryFn: () => api.get('/queue?date=today&limit=20').then(r => r.data).catch(() => []), refetchInterval: 30000 });
 
-const STATUS_COLOR: Record<string, string> = {
-  waiting: 'bg-amber-100 text-amber-700',
-  in_precheck: 'bg-blue-100 text-blue-700',
-  precheck_done: 'bg-indigo-100 text-indigo-700',
-  in_consultation: 'bg-purple-100 text-purple-700',
-  consultation_done: 'bg-teal-100 text-teal-700',
-  dispensing: 'bg-orange-100 text-orange-700',
-  completed: 'bg-green-100 text-green-700',
-  cancelled: 'bg-red-100 text-red-700',
-  no_show: 'bg-slate-100 text-slate-500',
-};
-
-export default function QueueMonitorPage() {
-  const [queue, setQueue] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
-  const [updating, setUpdating] = useState<string | null>(null);
-
-  const headers = () => ({ Authorization: `Bearer ${getToken()}` });
-
-  const load = async () => {
-    try {
-      const r = await axios.get(`${API}/queue/today`, { headers: headers() });
-      setQueue(r.data || []);
-      setLastUpdated(new Date());
-    } catch { }
-    finally { setLoading(false); }
-  };
-
-  useEffect(() => { load(); const t = setInterval(load, 20000); return () => clearInterval(t); }, []);
-
-  const markNoShow = async (id: string) => {
-    setUpdating(id);
-    try {
-      await axios.patch(`${API}/queue/${id}/status`, { status: 'no_show' }, { headers: headers() });
-      await load();
-    } catch { }
-    finally { setUpdating(null); }
-  };
-
-  const markCancelled = async (id: string) => {
-    setUpdating(id);
-    try {
-      await axios.patch(`${API}/queue/${id}/status`, { status: 'cancelled' }, { headers: headers() });
-      await load();
-    } catch { }
-    finally { setUpdating(null); }
-  };
-
-  const active = queue.filter(q => !['completed', 'cancelled', 'no_show'].includes(q.status));
-  const done = queue.filter(q => ['completed', 'cancelled', 'no_show'].includes(q.status));
+  const waiting  = Array.isArray(queue) ? queue.filter((q: any) => q.status === 'waiting').length : 0;
+  const inConsult = Array.isArray(queue) ? queue.filter((q: any) => q.status === 'in_consultation').length : 0;
+  const done     = Array.isArray(queue) ? queue.filter((q: any) => q.status === 'completed').length : 0;
 
   return (
-    <div className="p-6 max-w-5xl">
-      <div className="flex items-center justify-between mb-6">
+    <div className="space-y-5 p-4">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-800">Queue Monitor</h1>
-          <p className="text-xs text-slate-400 mt-0.5">Last updated: {format(lastUpdated, 'hh:mm:ss a')} · Auto-refreshes every 20s</p>
+          <h1 className="text-xl font-bold text-gray-900">Reception</h1>
+          <p className="text-sm text-gray-500">{new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'})}</p>
         </div>
-        <button onClick={load} className="flex items-center gap-2 text-sm text-slate-500 hover:text-[#00475a] border border-slate-200 px-3 py-1.5 rounded-lg hover:border-[#00475a] transition-colors">
-          <RefreshCw className="w-4 h-4" /> Refresh
+        <button onClick={() => router.push('/receptionist/book-appointment')}
+          className="flex items-center gap-2 px-4 py-2 bg-[#00b8a0] text-white text-sm font-semibold rounded-xl hover:bg-[#009688]">
+          <Calendar className="w-4 h-4" /> Book Appointment
         </button>
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-12 text-slate-400">
-          <Loader2 className="w-5 h-5 animate-spin mr-2" /><span className="text-sm">Loading queue...</span>
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-center">
+          <p className="text-3xl font-bold text-amber-700">{waiting}</p>
+          <p className="text-xs text-amber-600 mt-1 font-medium">Waiting</p>
         </div>
-      ) : (
-        <>
-          <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden mb-6">
-            <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-700">Active · {active.length} patients</h2>
-            </div>
-            {active.length === 0 ? (
-              <div className="text-center py-8 text-slate-400 text-sm">No active patients</div>
-            ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-100 text-xs text-slate-500 uppercase tracking-wide bg-slate-50">
-                    <th className="text-left px-5 py-3">Token</th>
-                    <th className="text-left px-5 py-3">Patient</th>
-                    <th className="text-left px-5 py-3 hidden md:table-cell">Complaint</th>
-                    <th className="text-left px-5 py-3 hidden lg:table-cell">Doctor</th>
-                    <th className="text-left px-5 py-3">Status</th>
-                    <th className="text-right px-5 py-3">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {active.map(q => (
-                    <tr key={q.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50">
-                      <td className="px-5 py-3 font-black text-[#00475a] text-base">#{q.token_number}</td>
-                      <td className="px-5 py-3">
-                        <p className="font-medium text-slate-800">{q.patient?.full_name || '—'}</p>
-                        <p className="text-xs text-slate-400">{q.patient?.mobile}</p>
-                      </td>
-                      <td className="px-5 py-3 text-slate-500 hidden md:table-cell max-w-[150px] truncate">{q.chief_complaint || '—'}</td>
-                      <td className="px-5 py-3 text-slate-500 hidden lg:table-cell">{q.doctor?.full_name ? `Dr. ${q.doctor.full_name}` : '—'}</td>
-                      <td className="px-5 py-3">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[q.status] || 'bg-slate-100 text-slate-500'}`}>
-                          {STATUS_LABEL[q.status] || q.status}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3 text-right">
-                        {['waiting'].includes(q.status) && (
-                          <div className="flex gap-2 justify-end">
-                            <button
-                              onClick={() => markNoShow(q.id)}
-                              disabled={updating === q.id}
-                              className="text-xs text-slate-500 hover:text-amber-600 border border-slate-200 hover:border-amber-300 px-2 py-1 rounded-lg transition-colors disabled:opacity-50"
-                            >
-                              No Show
-                            </button>
-                            <button
-                              onClick={() => markCancelled(q.id)}
-                              disabled={updating === q.id}
-                              className="text-xs text-slate-500 hover:text-red-600 border border-slate-200 hover:border-red-300 px-2 py-1 rounded-lg transition-colors disabled:opacity-50"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-center">
+          <p className="text-3xl font-bold text-blue-700">{inConsult}</p>
+          <p className="text-xs text-blue-600 mt-1 font-medium">In Consult</p>
+        </div>
+        <div className="bg-green-50 border border-green-200 rounded-2xl p-4 text-center">
+          <p className="text-3xl font-bold text-green-700">{done}</p>
+          <p className="text-xs text-green-600 mt-1 font-medium">Done</p>
+        </div>
+      </div>
 
-          {done.length > 0 && (
-            <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-              <div className="px-5 py-3 border-b border-slate-100">
-                <h2 className="text-sm font-semibold text-slate-500">Completed / Cancelled · {done.length}</h2>
+      <div className="bg-white rounded-2xl border border-gray-100 p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold text-gray-900">Today's Queue</h3>
+          <button onClick={() => router.push('/receptionist/book-appointment')} className="text-xs text-[#00b8a0] hover:underline">+ Add patient</button>
+        </div>
+        {Array.isArray(queue) && queue.length > 0 ? (
+          <div className="space-y-2">
+            {queue.slice(0,8).map((q: any) => (
+              <div key={q.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center text-[#00b8a0] text-xs font-bold">
+                    {(q.patient_name||q.patient?.first_name||'?')[0].toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">{q.patient_name || `${q.patient?.first_name} ${q.patient?.last_name||''}`}</p>
+                    <p className="text-xs text-gray-400">{q.chief_complaint || q.visit_type || 'Consultation'}</p>
+                  </div>
+                </div>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                  q.status === 'waiting' ? 'bg-amber-100 text-amber-700' :
+                  q.status === 'in_consultation' ? 'bg-blue-100 text-blue-700' :
+                  q.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+                }`}>{q.status?.replace('_',' ')}</span>
               </div>
-              <table className="w-full text-sm">
-                <tbody>
-                  {done.map(q => (
-                    <tr key={q.id} className="border-b border-slate-50 last:border-0">
-                      <td className="px-5 py-2.5 font-bold text-slate-300">#{q.token_number}</td>
-                      <td className="px-5 py-2.5 text-slate-400">{q.patient?.full_name || '—'}</td>
-                      <td className="px-5 py-2.5">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[q.status] || 'bg-slate-100 text-slate-500'}`}>
-                          {STATUS_LABEL[q.status] || q.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </>
-      )}
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 text-gray-400">
+            <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
+            <p className="text-sm">No patients in queue</p>
+            <button onClick={() => router.push('/receptionist/book-appointment')} className="mt-3 text-xs text-[#00b8a0] hover:underline">Book first appointment →</button>
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <QuickAction label="Book Appointment" icon={Calendar} href="/receptionist/book-appointment" color="bg-teal-50 text-teal-700 border-teal-200" />
+        <QuickAction label="New Patient"      icon={UserPlus} href="/receptionist/patients"         color="bg-blue-50 text-blue-700 border-blue-200" />
+        <QuickAction label="Follow-ups"       icon={Bell}     href="/receptionist/followups"        color="bg-purple-50 text-purple-700 border-purple-200" />
+        <QuickAction label="Bills"            icon={FileText} href="/receptionist/bill-history"     color="bg-amber-50 text-amber-700 border-amber-200" />
+      </div>
     </div>
   );
 }
