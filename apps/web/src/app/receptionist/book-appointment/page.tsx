@@ -339,6 +339,15 @@ export default function BookAppointmentPage() {
                 </div>
               )}
 
+              {/* Quick register button - always visible */}
+              {!showNewPatient && !selectedPatient && (
+                <button
+                  onClick={() => { setShowNewPatient(true); setPatients([]); }}
+                  className="mt-2 w-full flex items-center justify-center gap-2 py-2.5 border border-dashed border-[#00b8a0] text-[#00b8a0] rounded-xl text-sm font-medium hover:bg-teal-50 transition-colors">
+                  <span className="text-lg leading-none">+</span> Register new patient
+                </button>
+              )}
+
               {/* New patient registration form */}
               {showNewPatient && (
                 <div className="mt-2 p-4 bg-teal-50 border border-teal-200 rounded-xl space-y-3">
