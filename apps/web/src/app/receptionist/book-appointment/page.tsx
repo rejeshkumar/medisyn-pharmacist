@@ -89,7 +89,7 @@ export default function BookAppointmentPage() {
   const [searchingPatients, setSearchingPatients] = useState(false);
   const [selectedPatient, setSelectedPatient]     = useState<any>(null);
   const [showNewPatient, setShowNewPatient]         = useState(false);
-  const [newPatientForm, setNewPatientForm]         = useState({ name: '', mobile: '', age: '', gender: 'Male' });
+  const [newPatientForm, setNewPatientForm]         = useState({ salutation: 'Mr', first_name: '', last_name: '', mobile: '', age: '', gender: 'male', area: '', ref_by: '', consent_given: false, is_vip: false });
   const [savingPatient, setSavingPatient]           = useState(false);
 
   // Doctors
@@ -348,38 +348,73 @@ export default function BookAppointmentPage() {
                 </button>
               )}
 
-              {/* New patient registration form */}
+              {/* New patient registration form - Full */}
               {showNewPatient && (
-                <div className="mt-2 p-4 bg-teal-50 border border-teal-200 rounded-xl space-y-3">
-                  <p className="text-sm font-semibold text-teal-800">New Patient Registration</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="col-span-2">
-                      <input className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00475a]"
-                        placeholder="Full name *" value={newPatientForm.name}
-                        onChange={e => setNewPatientForm(f => ({ ...f, name: e.target.value }))} />
-                    </div>
-                    <input className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00475a]"
-                      placeholder="Mobile *" value={newPatientForm.mobile}
-                      onChange={e => setNewPatientForm(f => ({ ...f, mobile: e.target.value }))} />
-                    <input className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00475a]"
-                      placeholder="Age" value={newPatientForm.age}
-                      onChange={e => setNewPatientForm(f => ({ ...f, age: e.target.value }))} />
-                    <select className="col-span-2 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00475a]"
-                      value={newPatientForm.gender} onChange={e => setNewPatientForm(f => ({ ...f, gender: e.target.value }))}>
-                      <option>Male</option><option>Female</option><option>Other</option>
+                <div className="mt-2 p-4 bg-white border border-teal-200 rounded-xl space-y-3 shadow-sm">
+                  <p className="text-sm font-bold text-slate-800">Register New Patient</p>
+                  <div className="flex gap-2">
+                    <select className="w-24 px-2 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#00b8a0]"
+                      value={newPatientForm.salutation} onChange={e => setNewPatientForm(f => ({ ...f, salutation: e.target.value }))}>
+                      {['Mr','Mrs','Ms','Dr','Master','Baby'].map(s => <option key={s}>{s}</option>)}
                     </select>
+                    <input className="flex-1 px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#00b8a0]"
+                      placeholder="First name *" value={newPatientForm.first_name}
+                      onChange={e => setNewPatientForm(f => ({ ...f, first_name: e.target.value }))} />
+                    <input className="flex-1 px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#00b8a0]"
+                      placeholder="Last name" value={newPatientForm.last_name}
+                      onChange={e => setNewPatientForm(f => ({ ...f, last_name: e.target.value }))} />
+                  </div>
+                  <div className="flex gap-4 text-sm">
+                    {['male','female','other'].map(g => (
+                      <label key={g} className="flex items-center gap-1.5 cursor-pointer capitalize">
+                        <input type="radio" name="appt_gender" value={g} checked={newPatientForm.gender===g} onChange={() => setNewPatientForm(f => ({ ...f, gender: g }))} />
+                        {g}
+                      </label>
+                    ))}
                   </div>
                   <div className="flex gap-2">
-                    <button disabled={savingPatient || !newPatientForm.name || !newPatientForm.mobile}
+                    <input className="flex-1 px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#00b8a0]"
+                      placeholder="Age (yrs)" type="number" value={newPatientForm.age}
+                      onChange={e => setNewPatientForm(f => ({ ...f, age: e.target.value }))} />
+                    <input className="flex-1 px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#00b8a0]"
+                      placeholder="Mobile *" value={newPatientForm.mobile}
+                      onChange={e => setNewPatientForm(f => ({ ...f, mobile: e.target.value }))} />
+                  </div>
+                  <input className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#00b8a0]"
+                    placeholder="Area / Locality" value={newPatientForm.area}
+                    onChange={e => setNewPatientForm(f => ({ ...f, area: e.target.value }))} />
+                  <input className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#00b8a0]"
+                    placeholder="Referred by (doctor / person)" value={newPatientForm.ref_by}
+                    onChange={e => setNewPatientForm(f => ({ ...f, ref_by: e.target.value }))} />
+                  {/* VIP Pass */}
+                  <label className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${newPatientForm.is_vip ? 'bg-amber-50 border-amber-300' : 'bg-slate-50 border-slate-200'}`}>
+                    <input type="checkbox" checked={newPatientForm.is_vip} onChange={e => setNewPatientForm(f => ({ ...f, is_vip: e.target.checked }))} className="w-4 h-4 accent-amber-500" />
+                    <div>
+                      <p className="text-sm font-semibold text-amber-700">👑 Interested in VIP Pass?</p>
+                      <p className="text-xs text-amber-600">Enroll patient for exclusive VIP membership benefits</p>
+                    </div>
+                  </label>
+                  {/* Consent */}
+                  <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer ${newPatientForm.consent_given ? 'bg-teal-50 border-teal-300' : 'bg-amber-50 border-amber-300'}`}>
+                    <input type="checkbox" checked={newPatientForm.consent_given} onChange={e => setNewPatientForm(f => ({ ...f, consent_given: e.target.checked }))} className="mt-0.5 w-4 h-4 accent-[#00b8a0]" />
+                    <p className="text-xs text-slate-600"><span className="font-semibold">Patient Consent *</span> — I consent to MediSyn Speciality Clinic collecting and processing my personal and health data for pharmacy and medical services.</p>
+                  </label>
+                  <div className="flex gap-2">
+                    <button disabled={savingPatient || !newPatientForm.first_name || !newPatientForm.mobile || !newPatientForm.consent_given}
                       onClick={async () => {
                         setSavingPatient(true);
                         try {
                           const { data } = await api.post('/patients', {
-                            first_name: newPatientForm.name.split(' ')[0],
-                            last_name: newPatientForm.name.split(' ').slice(1).join(' ') || '',
+                            salutation: newPatientForm.salutation,
+                            first_name: newPatientForm.first_name,
+                            last_name: newPatientForm.last_name,
                             mobile: newPatientForm.mobile,
                             age: newPatientForm.age ? Number(newPatientForm.age) : undefined,
-                            gender: newPatientForm.gender.toLowerCase(),
+                            gender: newPatientForm.gender,
+                            area: newPatientForm.area,
+                            ref_by: newPatientForm.ref_by,
+                            consent_given: newPatientForm.consent_given,
+                            is_vip: newPatientForm.is_vip,
                           });
                           setSelectedPatient(data);
                           setShowNewPatient(false);
