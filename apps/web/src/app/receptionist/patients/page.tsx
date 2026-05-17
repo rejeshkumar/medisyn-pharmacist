@@ -323,7 +323,6 @@ export default function ReceptionistPatientsPage() {
           </div>
         )}
       </div>
-    </div>
 
       {/* Registration Modal */}
       {showRegister && (
