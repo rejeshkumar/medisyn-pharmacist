@@ -171,142 +171,150 @@ export default function DoctorQueuePage() {
   ];
 
   return (
-    <div className="p-4 max-w-3xl mx-auto">
+    <div style={{ padding: '24px', background: '#f8f9fa', minHeight: '100%', fontFamily: 'var(--font-sans)' }}>
       {urgentModal && <MarkUrgentModal entry={urgentModal} onConfirm={handleMarkUrgent} onClose={() => setUrgentModal(null)} />}
       {noShowModal && <NoShowModal entry={noShowModal} onConfirm={handleNoShow} onClose={() => setNoShowModal(null)} />}
 
-      <div className="flex items-center justify-between mb-5">
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Good morning, Dr. {firstName} 👋</h1>
-          <p className="text-slate-500 text-sm">{new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p>
+          <h1 style={{ fontSize: 22, fontWeight: 600, color: '#1a1a2e', margin: 0 }}>Good morning, Dr. {firstName} 👋</h1>
+          <p style={{ fontSize: 13, color: '#6b7280', margin: '4px 0 0' }}>{new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p>
         </div>
-        <button onClick={loadData} className="p-2 border border-slate-200 rounded-lg text-slate-400 hover:text-[#00475a]">
-          <RefreshCw className="w-4 h-4" />
+        <button onClick={loadData} style={{ background: 'white', color: '#374151', border: '0.5px solid #e5e7eb', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <RefreshCw className="w-4 h-4" /> Refresh
         </button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-        {statCards.map(s => {
-          const Icon = s.icon;
-          return (
-            <div key={s.label} className="bg-white rounded-xl border border-slate-100 p-3 flex items-center gap-3">
-              <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0', s.bg)}>
-                <Icon className={cn('w-4 h-4', s.color)} />
-              </div>
-              <div>
-                <p className="text-xl font-bold text-slate-900">{s.value}</p>
-                <p className="text-xs text-slate-500">{s.label}</p>
-              </div>
-            </div>
-          );
-        })}
+      {/* Stat Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 20 }}>
+        <div style={{ background: 'linear-gradient(135deg,#007a6e,#00b8a0)', borderRadius: 16, padding: '20px', color: 'white', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
+          <div style={{ width: 36, height: 36, background: 'rgba(255,255,255,0.2)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, fontSize: 18 }}>👨‍⚕️</div>
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', marginBottom: 6 }}>Waiting</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: 'white', marginBottom: 6 }}>{stats.waiting||0}</div>
+          <span style={{ background: 'rgba(255,255,255,0.2)', color: 'white', fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 8 }}>In queue</span>
+        </div>
+        <div style={{ background: 'white', borderRadius: 16, padding: '20px', border: '1.5px solid #00b8a0' }}>
+          <div style={{ width: 36, height: 36, background: '#e1f5ee', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, fontSize: 18 }}>✅</div>
+          <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>Ready</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: '#00b8a0' }}>{stats.precheck_done||0}</div>
+          <span style={{ fontSize: 10, color: '#00b8a0', fontWeight: 500 }}>Pre-check done</span>
+        </div>
+        <div style={{ background: 'white', borderRadius: 16, padding: '20px', border: '1.5px solid #00b8a0' }}>
+          <div style={{ width: 36, height: 36, background: '#ede9fe', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, fontSize: 18 }}>🩺</div>
+          <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>In Progress</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: '#7c3aed' }}>{stats.in_consultation||0}</div>
+          <span style={{ fontSize: 10, color: '#7c3aed', fontWeight: 500 }}>Consulting</span>
+        </div>
+        <div style={{ background: 'white', borderRadius: 16, padding: '20px', border: '1.5px solid #00b8a0' }}>
+          <div style={{ width: 36, height: 36, background: '#dcfce7', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, fontSize: 18 }}>🎉</div>
+          <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>Completed</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: '#16a34a' }}>{(stats.completed||0)+(stats.consultation_done||0)}</div>
+          <span style={{ fontSize: 10, color: '#16a34a', fontWeight: 500 }}>Seen today</span>
+        </div>
       </div>
 
-      {/* Active Queue — ALL patients visible to doctor */}
-      <div className="mb-5">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide flex items-center gap-2">
-            <Users className="w-4 h-4" /> Today's Queue
-          </h2>
-          <p className="text-xs text-slate-400">Tap 🚨 to prioritise · 👻 to mark no-show</p>
+      {/* Queue Table */}
+      <div style={{ background: 'white', borderRadius: 16, border: '0.5px solid #e5e7eb', overflow: 'hidden', marginBottom: 16 }}>
+        <div style={{ padding: '16px 20px 12px', borderBottom: '0.5px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: 15, fontWeight: 600, color: '#1a1a2e' }}>Today's Queue</span>
+          <span style={{ fontSize: 11, color: '#9ca3af' }}>🚨 prioritise · 👻 no-show</span>
         </div>
-
         {loading ? (
-          <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-20 bg-slate-100 rounded-xl animate-pulse" />)}</div>
+          <div style={{ padding: 20 }}>{[1,2,3].map(i => <div key={i} style={{ height: 60, background: '#f3f4f6', borderRadius: 8, marginBottom: 8 }} />)}</div>
         ) : actionable.length === 0 ? (
-          <div className="bg-white rounded-xl border border-slate-100 p-8 text-center text-slate-400">
-            <Stethoscope className="w-10 h-10 mx-auto mb-2 opacity-30" />
-            <p className="text-sm">No patients in queue yet</p>
+          <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9ca3af' }}>
+            <div style={{ fontSize: 36, marginBottom: 8 }}>🩺</div>
+            <p style={{ fontSize: 14, fontWeight: 600, color: '#374151' }}>No patients in queue yet</p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {actionable.map((entry, idx) => {
-              const isReady  = entry.status === 'precheck_done';
-              const isActive = entry.status === 'in_consultation';
-              const patientName = entry.patient?.full_name || `${entry.patient?.first_name||''} ${entry.patient?.last_name||''}`.trim() || 'Unknown';
-              return (
-                <div key={entry.id} className={cn(
-                  'bg-white rounded-xl border p-4 flex items-center gap-3 transition-all',
-                  isActive ? 'border-purple-200 shadow-sm bg-purple-50/30' : isReady ? 'border-teal-200' : 'border-slate-100',
-                )}>
-                  {/* Position number */}
-                  <div className="text-xs text-slate-300 font-bold w-4 text-center">{idx+1}</div>
-
-                  {/* Token */}
-                  <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center font-bold text-base flex-shrink-0',
-                    isActive ? 'bg-purple-100 text-purple-700' : isReady ? 'bg-teal-100 text-teal-700' : 'bg-slate-100 text-slate-600')}>
-                    {entry.token_number}
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-slate-900 truncate text-sm">
-                      {patientName}
-                      {entry.is_urgent && <span className="ml-1 text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full">URGENT</span>}
-                    </p>
-                    <p className="text-xs text-slate-500 truncate">{entry.chief_complaint||'No complaint noted'} · {entry.visit_type||'consultation'}</p>
-                  </div>
-
-                  {/* Status badge */}
-                  <span className={cn('hidden sm:inline-flex text-xs px-2 py-0.5 rounded-full border font-medium flex-shrink-0', STATUS_STYLE[entry.status]||STATUS_STYLE['waiting'])}>
-                    {STATUS_LABEL[entry.status]||entry.status}
-                  </span>
-
-                  {/* Doctor override actions */}
-                  <div className="flex gap-1 flex-shrink-0">
-                    {entry.status === 'waiting' && (
-                      <button onClick={() => setUrgentModal(entry)}
-                        className="text-lg leading-none px-1 py-0.5 rounded hover:bg-red-50" title="Mark urgent">
-                        🚨
-                      </button>
-                    )}
-                    {['waiting','precheck_done'].includes(entry.status) && (
-                      <button onClick={() => setNoShowModal(entry)}
-                        className="p-1.5 rounded border border-slate-200 text-slate-400 hover:border-amber-300 hover:text-amber-600"
-                        title="Mark no show">
-                        <UserX className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Call button */}
-                  {(isReady || isActive) && (
-                    <button onClick={() => handleCall(entry)} disabled={calling === entry.id}
-                      className={cn('flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all flex-shrink-0',
-                        isActive ? 'bg-purple-600 text-white hover:bg-purple-700' : 'bg-[#00b8a0] text-white hover:bg-[#009688]',
-                        calling===entry.id ? 'opacity-50' : '')}>
-                      {calling===entry.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-                      {isActive ? 'Resume' : 'Call'} <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#f9fafb' }}>
+                <th style={{ padding: '8px 16px', textAlign: 'left', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>#</th>
+                <th style={{ padding: '8px 16px', textAlign: 'left', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>Patient</th>
+                <th style={{ padding: '8px 16px', textAlign: 'left', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>Complaint</th>
+                <th style={{ padding: '8px 16px', textAlign: 'center', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>Status</th>
+                <th style={{ padding: '8px 16px', textAlign: 'center', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {actionable.map((entry, idx) => {
+                const isReady  = entry.status === 'precheck_done';
+                const isActive = entry.status === 'in_consultation';
+                const patientName = entry.patient?.full_name || `${entry.patient?.first_name||''} ${entry.patient?.last_name||''}`.trim() || 'Unknown';
+                return (
+                  <tr key={entry.id} style={{ borderTop: '0.5px solid #f3f4f6', background: isActive ? '#faf5ff' : 'white' }}>
+                    <td style={{ padding: '10px 16px', color: '#9ca3af', fontSize: 12 }}>{idx+1}</td>
+                    <td style={{ padding: '10px 16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ width: 32, height: 32, borderRadius: 8, background: isActive ? '#ede9fe' : isReady ? '#e1f5ee' : '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, color: isActive ? '#7c3aed' : isReady ? '#00b8a0' : '#6b7280', flexShrink: 0 }}>
+                          {entry.token_number}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 500, color: '#1a1a2e', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            {patientName}
+                            {entry.is_urgent && <span style={{ fontSize: 10, background: '#fee2e2', color: '#dc2626', padding: '1px 6px', borderRadius: 8, fontWeight: 600 }}>URGENT</span>}
+                          </div>
+                          <div style={{ fontSize: 11, color: '#9ca3af' }}>{entry.visit_type || 'consultation'}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{ padding: '10px 16px', color: '#6b7280', fontSize: 12 }}>{entry.chief_complaint || 'No complaint noted'}</td>
+                    <td style={{ padding: '10px 16px', textAlign: 'center' }}>
+                      <span style={{ fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 20, background: isActive ? '#ede9fe' : isReady ? '#e1f5ee' : '#fef3c7', color: isActive ? '#7c3aed' : isReady ? '#00b8a0' : '#d97706' }}>
+                        {STATUS_LABEL[entry.status] || entry.status}
+                      </span>
+                    </td>
+                    <td style={{ padding: '10px 16px', textAlign: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                        {entry.status === 'waiting' && (
+                          <button onClick={() => setUrgentModal(entry)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16 }} title="Mark urgent">🚨</button>
+                        )}
+                        {['waiting','precheck_done'].includes(entry.status) && (
+                          <button onClick={() => setNoShowModal(entry)} style={{ background: 'none', border: '0.5px solid #e5e7eb', borderRadius: 6, padding: '3px 6px', cursor: 'pointer', fontSize: 13 }} title="No show">👻</button>
+                        )}
+                        {(isReady || isActive) && (
+                          <button onClick={() => handleCall(entry)} disabled={calling === entry.id}
+                            style={{ background: isActive ? '#7c3aed' : '#00b8a0', color: 'white', border: 'none', borderRadius: 8, padding: '5px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, opacity: calling === entry.id ? 0.5 : 1 }}>
+                            {calling === entry.id ? '...' : isActive ? 'Resume' : 'Call →'}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         )}
       </div>
 
       {/* Completed */}
       {done.length > 0 && (
-        <div>
-          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4" /> Completed Today
-          </h2>
-          <div className="space-y-2">
-            {done.map(entry => {
-              const patientName = entry.patient?.full_name || `${entry.patient?.first_name||''} ${entry.patient?.last_name||''}`.trim() || 'Unknown';
-              return (
-                <div key={entry.id} className="bg-white rounded-xl border border-slate-100 p-3 flex items-center gap-3 opacity-50">
-                  <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-400">{entry.token_number}</div>
-                  <p className="flex-1 text-sm text-slate-600 truncate">{patientName}</p>
-                  <span className={cn('text-xs px-2 py-0.5 rounded-full border font-medium', STATUS_STYLE[entry.status]||STATUS_STYLE['completed'])}>
-                    {STATUS_LABEL[entry.status]||entry.status}
-                  </span>
-                </div>
-              );
-            })}
+        <div style={{ background: 'white', borderRadius: 16, border: '0.5px solid #e5e7eb', overflow: 'hidden' }}>
+          <div style={{ padding: '12px 20px', borderBottom: '0.5px solid #f3f4f6' }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#6b7280' }}>✅ Completed Today</span>
           </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', opacity: 0.7 }}>
+            <tbody>
+              {done.map(entry => {
+                const patientName = entry.patient?.full_name || `${entry.patient?.first_name||''} ${entry.patient?.last_name||''}`.trim() || 'Unknown';
+                return (
+                  <tr key={entry.id} style={{ borderTop: '0.5px solid #f3f4f6' }}>
+                    <td style={{ padding: '8px 16px', width: 40 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: 6, background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#9ca3af' }}>{entry.token_number}</div>
+                    </td>
+                    <td style={{ padding: '8px 16px', fontSize: 13, color: '#374151' }}>{patientName}</td>
+                    <td style={{ padding: '8px 16px', textAlign: 'right' }}>
+                      <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: '#f3f4f6', color: '#6b7280' }}>{STATUS_LABEL[entry.status]||entry.status}</span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
