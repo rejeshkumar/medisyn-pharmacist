@@ -324,6 +324,14 @@ export class ProcurementController {
         const lineTotal = (item.ordered_qty || 0) * (item.unit_price || 0);
         totalAmount += lineTotal;
 
+        // Update preferred supplier on medicine for future reorder grouping
+        if (body.supplier_id) {
+          await qr.query(
+            `UPDATE medicines SET preferred_supplier_id = $1 WHERE id = $2 AND tenant_id = $3`,
+            [body.supplier_id, item.medicine_id, tenantId]
+          );
+        }
+
         await qr.query(
           `INSERT INTO purchase_order_items (
              tenant_id, po_id, medicine_id, medicine_name,
