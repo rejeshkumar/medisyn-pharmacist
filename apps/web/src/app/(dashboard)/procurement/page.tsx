@@ -48,6 +48,10 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
 // ── Reorder List Tab ───────────────────────────────────────────────────────
 function ReorderTab() {
   const [flags, setFlags]         = useState<ReorderFlag[]>([]);
+  const [reorderSearch, setReorderSearch] = useState('');
+  const [reorderCategory, setReorderCategory] = useState('all');
+  const [reorderGroupBy, setReorderGroupBy] = useState<'none'|'supplier'>('none');
+  const [velocityMap, setVelocityMap] = useState<Record<string, number>>({});
   const [loading, setLoading]     = useState(true);
   const [refreshing, setRefresh]  = useState(false);
   const [selected, setSelected]   = useState<Set<string>>(new Set());
@@ -136,7 +140,72 @@ function ReorderTab() {
         </span>
       </div>
 
-      {flags.length === 0 ? (
+      {/* Search + Filter Bar */}
+      <div className="bg-white rounded-2xl border border-slate-100 p-3 mb-3 flex flex-wrap gap-2 items-center">
+        <div className="relative flex-1 min-w-48">
+          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input type="text" value={reorderSearch} onChange={e => setReorderSearch(e.target.value)}
+            placeholder="Search medicine or molecule..."
+            className="w-full pl-8 pr-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[#00b8a0]" />
+        </div>
+        <div className="flex gap-1.5 flex-wrap">
+          {[['all','All'],['TAB','Tablets'],['CAP','Capsules'],['SYP','Syrups'],['INJ','Injectables'],['DRO','Drops'],['CRM','Creams']].map(([cat,label]) => (
+            <button key={cat} onClick={() => setReorderCategory(cat)}
+              className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors ${reorderCategory === cat ? 'bg-[#00b8a0] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <button onClick={() => setReorderGroupBy(g => g === 'none' ? 'supplier' : 'none')}
+          className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors flex items-center gap-1.5 ${reorderGroupBy === 'supplier' ? 'bg-purple-50 border-purple-200 text-purple-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+          <Building2 className="w-3.5 h-3.5" />
+          {reorderGroupBy === 'supplier' ? 'Grouped by supplier' : 'Group by supplier'}
+        </button>
+      </div>
+
+      {(() => {
+        const filtered = flags.filter(f => {
+          const matchSearch = !reorderSearch ||
+            f.brand_name.toLowerCase().includes(reorderSearch.toLowerCase()) ||
+            (f.molecule || '').toLowerCase().includes(reorderSearch.toLowerCase());
+          const form = (f.dosage_form || '').toUpperCase();
+          const matchCat = reorderCategory === 'all' ||
+            (reorderCategory === 'TAB' && (form.includes('TAB'))) ||
+            (reorderCategory === 'CAP' && (form.includes('CAP'))) ||
+            (reorderCategory === 'SYP' && (form.includes('SYP') || form.includes('SYRUP') || form.includes('LIQ'))) ||
+            (reorderCategory === 'INJ' && (form.includes('INJ') || form.includes('VIAL'))) ||
+            (reorderCategory === 'DRO' && (form.includes('DROP') || form.includes('EYE') || form.includes('EAR'))) ||
+            (reorderCategory === 'CRM' && (form.includes('CREAM') || form.includes('GEL') || form.includes('OINT')));
+          return matchSearch && matchCat;
+        });
+
+        const groups = reorderGroupBy === 'supplier'
+          ? Array.from(new Set(filtered.map(f => f.supplier_name || 'No Supplier'))).map(sup => ({
+              supplier: sup, items: filtered.filter(f => (f.supplier_name || 'No Supplier') === sup)
+            }))
+          : [{ supplier: null, items: filtered }];
+
+        return (
+          <>
+            {filtered.length === 0 && flags.length > 0 && (
+              <div className="text-center py-8 text-sm text-slate-400">No medicines match your search</div>
+            )}
+            {groups.map((group, gi) => (
+              <div key={gi} className="mb-3">
+                {reorderGroupBy === 'supplier' && (
+                  <div className="flex items-center justify-between mb-2 px-1">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="w-4 h-4 text-purple-500" />
+                      <span className="text-sm font-bold text-slate-700">{group.supplier}</span>
+                      <span className="text-xs bg-purple-50 text-purple-600 px-2 py-0.5 rounded-full">{group.items.length} items</span>
+                    </div>
+                    <button onClick={() => { const s = new Set(selected); group.items.forEach(f => s.add(f.id)); setSelected(s); }}
+                      className="text-xs px-3 py-1 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium">
+                      Select all
+                    </button>
+                  </div>
+                )}
+      {group.items.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-2xl border border-slate-100">
           <Package className="w-12 h-12 mx-auto mb-3 text-slate-200" />
           <p className="text-sm font-semibold text-slate-500">All stock levels are healthy</p>
@@ -172,6 +241,7 @@ function ReorderTab() {
                     <td className="px-3 py-3">
                       <p className="text-sm font-semibold text-slate-800">{f.brand_name}</p>
                       <p className="text-xs text-slate-400">{f.molecule} · {f.strength} · {f.dosage_form}</p>
+                      {f.current_stock === 0 && <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-red-100 text-red-700">⚠ OUT OF STOCK</span>}
                       {f.manufacturer && <p className="text-[10px] text-slate-400 italic">{f.manufacturer}</p>}
                       {f.rack_location && <p className="text-[10px] text-blue-600">📍 {f.rack_location}</p>}
                     </td>
@@ -211,7 +281,7 @@ function ReorderTab() {
                       )}
                     </td>
                     <td className="px-3 py-3">
-                      <span className="text-sm font-bold text-[#00475a]">{f.suggested_qty} units</span>
+                      <span className="text-sm font-bold text-[#00b8a0]">{f.suggested_qty} units</span>
                       <p className="text-[10px] text-slate-400">(reorder × 2)</p>
                     </td>
                     <td className="px-3 py-3 text-xs text-slate-500">
@@ -232,6 +302,13 @@ function ReorderTab() {
       )}
 
       {/* PO Creation Modal */}
+              ))}
+            </div>
+          ))}
+          </>
+        );
+      })()}
+
       {showPOForm && (
         <POCreateModal
           flags={selectedFlags}
