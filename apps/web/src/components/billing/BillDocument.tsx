@@ -258,7 +258,7 @@ export default function BillDocument({ data, mode, onClose, onConfirm, isLoading
             margin: 0 !important;
             padding: 0 !important;
           }
-          table { width: 100% !important; border-collapse: collapse; }
+          table { width: 100% !important; border-collapse: collapse; table-layout: fixed; } td, th { overflow: hidden; word-break: break-word; }
         </style>
       </head>
       <body>
