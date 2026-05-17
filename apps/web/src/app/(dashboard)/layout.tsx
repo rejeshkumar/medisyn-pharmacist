@@ -326,9 +326,10 @@ function SidebarLayout({
               <div className="space-y-1 px-2">
                 {section.items.map(item => {
                   const Icon = item.icon;
-                  const active = isActive(item.href);
+                  const resolvedHref = (item as any).roleOverride?.[user?.role] || item.href;
+                  const active = isActive(resolvedHref);
                   return (
-                    <Link key={item.href} href={item.href}
+                    <Link key={item.href} href={resolvedHref}
                       onClick={() => setSidebarOpen(false)}
                       className={cn(
                         'flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all',
