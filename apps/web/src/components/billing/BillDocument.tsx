@@ -219,55 +219,28 @@ export default function BillDocument({ data, mode, onClose, onConfirm, isLoading
   const printRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = () => {
-    const receiptEl = printRef.current?.querySelector('div') || printRef.current;
-    const printContent = receiptEl?.outerHTML || printRef.current?.innerHTML || '';
+    const styleEl = document.createElement('style');
+    styleEl.innerHTML = `
+      @media print {
+        @page { size: 100mm 155mm; margin: 3mm; }
+        body > *:not(#bill-print-area) { display: none !important; }
+        #bill-print-area { display: block !important; width: 94mm !important; margin: 0 !important; padding: 0 !important; }
+      }
+    `;
+    document.head.appendChild(styleEl);
 
-    const win = window.open('', '_blank', 'width=400,height=600');
-    if (!win) return;
-    win.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Bill – ${data.billNumber || ''}</title>
-        <style>
-          * { box-sizing: border-box; margin: 0; padding: 0; }
-          html, body { background: #fff; }
-          body {
-            width: 100%;
-            margin: 0;
-            padding: 0;
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 11px;
-          }
-          @page {
-            size: 100mm 155mm;
-            margin: 3mm 3mm;
-            -webkit-print-color-adjust: exact;
-          }
-          @media print {
-            html, body { 
-              width: 100mm;
-              margin: 0;
-              padding: 0;
-            }
-          }
-          body > div {
-            width: 100% !important;
-            max-width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-          }
-          table { width: 100% !important; border-collapse: collapse; table-layout: fixed; } td, th { overflow: hidden; word-break: break-word; }
-        </style>
-      </head>
-      <body>
-        ${printContent}
-        <script>window.onload = () => { window.print(); setTimeout(() => window.close(), 500); }<\/script>
-      </body>
-      </html>
-    `);
-    win.document.close();
+    const printArea = document.createElement('div');
+    printArea.id = 'bill-print-area';
+    printArea.style.cssText = 'display:none;';
+    printArea.innerHTML = printRef.current?.innerHTML || '';
+    document.body.appendChild(printArea);
+
+    window.print();
+
+    setTimeout(() => {
+      printArea.remove();
+      styleEl.remove();
+    }, 1500);
   };
 
   return (
