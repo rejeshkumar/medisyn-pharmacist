@@ -7,7 +7,7 @@ import api from '@/lib/api';
 import {
   TrendingUp, TrendingDown, DollarSign, ShoppingCart,
   AlertTriangle, Clock, CreditCard, Banknote, ArrowUpRight,
-  Package, BarChart3, Users, ChevronRight, Plus, Edit2, X,
+  Package, BarChart3, Users, ChevronRight, Plus, Edit2, Pencil, X,
   Calendar, Truck, Filter,
 } from 'lucide-react';
 
