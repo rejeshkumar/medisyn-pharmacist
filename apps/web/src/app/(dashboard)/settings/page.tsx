@@ -1,6 +1,6 @@
 'use client';
 import { useRouter } from 'next/navigation';
-import { Star, Stethoscope, FlaskConical, ChevronRight, AlertTriangle, Settings, Shield } from 'lucide-react';
+import { Star, Stethoscope, FlaskConical, ChevronRight, AlertTriangle, Settings, Shield, Package } from 'lucide-react';
 
 const SETTINGS = [
   {
@@ -37,6 +37,13 @@ const SETTINGS = [
     label: 'Expiry warning threshold',
     desc: 'Days before expiry to show stock warnings',
     color: 'text-red-600 bg-red-50',
+  },
+  {
+    href: '/settings/reorder',
+    icon: Package,
+    label: 'Reorder settings',
+    desc: 'Configure reorder trigger thresholds, qty days and fallback values',
+    color: 'text-green-600 bg-green-50',
   },
 ];
 

@@ -105,8 +105,17 @@ export class ProcurementController {
     if (!ALLOWED.includes(req.user.role)) throw new ForbiddenException();
     const tid = req.user.tenant_id;
 
-    // Velocity-based reorder: use 30-day sales rate to calculate days of stock left.
-    // Falls back to stock <= 10 for medicines with no sales history.
+    // Load reorder settings from tenant config
+    const settingsRow = await this.ds.query(
+      `SELECT settings FROM tenants WHERE id = $1`, [tid]
+    );
+    const cfg = settingsRow[0]?.settings || {};
+    const coverDays     = cfg.reorder_cover_days     ?? 14;
+    const reorderDays   = cfg.reorder_qty_days       ?? 7;
+    const suggestedDays = cfg.suggested_qty_days     ?? 30;
+    const fallbackMin   = cfg.fallback_min_stock     ?? 10;
+    const fallbackSug   = cfg.fallback_suggested_qty ?? 20;
+
     await this.ds.query(
       `INSERT INTO reorder_flags (
          tenant_id, medicine_id, current_stock, reorder_qty,
@@ -118,17 +127,16 @@ export class ProcurementController {
          COALESCE(stock.total_qty, 0)::int                          AS current_stock,
          CASE
            WHEN COALESCE(sales.sold_30d, 0) > 0
-           THEN CEIL(sales.sold_30d / 30.0 * 7)::int   -- 7-day reorder point
-           ELSE 10
+           THEN CEIL(sales.sold_30d / 30.0 * $2)::int
+           ELSE $4
          END                                                         AS reorder_qty,
          CASE
            WHEN COALESCE(sales.sold_30d, 0) > 0
-           THEN CEIL(sales.sold_30d / 30.0 * 30)::int  -- 30-day suggested qty
-           ELSE 20
+           THEN CEIL(sales.sold_30d / 30.0 * $3)::int
+           ELSE $5
          END                                                         AS suggested_qty,
          'pending'                                                   AS status
        FROM medicines m
-       -- Current live stock
        LEFT JOIN (
          SELECT medicine_id, SUM(quantity)::int AS total_qty
          FROM stock_batches
@@ -136,7 +144,6 @@ export class ProcurementController {
            AND quantity > 0 AND expiry_date > CURRENT_DATE
          GROUP BY medicine_id
        ) stock ON stock.medicine_id = m.id
-       -- 30-day sales velocity
        LEFT JOIN (
          SELECT si.medicine_id, SUM(si.qty)::int AS sold_30d
          FROM sale_items si
@@ -148,16 +155,15 @@ export class ProcurementController {
        ) sales ON sales.medicine_id = m.id
        WHERE m.tenant_id = $1
          AND m.is_active = true
-         -- Only flag if: out of stock, OR stock covers < 14 days at current rate
          AND (
            COALESCE(stock.total_qty, 0) = 0
            OR (
              COALESCE(sales.sold_30d, 0) > 0
-             AND COALESCE(stock.total_qty, 0) < (sales.sold_30d / 30.0 * 14)
+             AND COALESCE(stock.total_qty, 0) < (sales.sold_30d / 30.0 * $6)
            )
            OR (
              COALESCE(sales.sold_30d, 0) = 0
-             AND COALESCE(stock.total_qty, 0) <= 10
+             AND COALESCE(stock.total_qty, 0) <= $4
            )
          )
        ON CONFLICT (tenant_id, medicine_id, status) DO UPDATE SET
@@ -165,7 +171,7 @@ export class ProcurementController {
          reorder_qty   = EXCLUDED.reorder_qty,
          suggested_qty = EXCLUDED.suggested_qty,
          updated_at    = NOW()`,
-      [tid],
+      [tid, reorderDays, suggestedDays, fallbackMin, fallbackSug, coverDays],
     );
 
     // Remove flags for medicines that are now healthy

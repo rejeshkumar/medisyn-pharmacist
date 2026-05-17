@@ -108,4 +108,35 @@ export class SettingsController {
     return { success: true };
   }
 
+
+
+  @Get('reorder-settings')
+  async getReorderSettings(@Req() req: any) {
+    const row = await this.ds.query(
+      `SELECT settings FROM tenants WHERE id = $1`,
+      [req.user.tenant_id]
+    );
+    const settings = row[0]?.settings || {};
+    return {
+      reorder_cover_days:      settings.reorder_cover_days      ?? 14,
+      reorder_qty_days:        settings.reorder_qty_days        ?? 7,
+      suggested_qty_days:      settings.suggested_qty_days      ?? 30,
+      fallback_min_stock:      settings.fallback_min_stock      ?? 10,
+      fallback_suggested_qty:  settings.fallback_suggested_qty  ?? 20,
+    };
+  }
+
+  @Patch('reorder-settings')
+  async updateReorderSettings(@Body() body: any, @Req() req: any) {
+    const allowed = ['reorder_cover_days','reorder_qty_days','suggested_qty_days','fallback_min_stock','fallback_suggested_qty'];
+    const update: any = {};
+    for (const key of allowed) {
+      if (body[key] !== undefined) update[key] = Number(body[key]);
+    }
+    await this.ds.query(
+      `UPDATE tenants SET settings = COALESCE(settings, '{}') || $1::jsonb WHERE id = $2`,
+      [JSON.stringify(update), req.user.tenant_id]
+    );
+    return { success: true };
+  }
 }
