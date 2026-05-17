@@ -222,7 +222,7 @@ export default function BillDocument({ data, mode, onClose, onConfirm, isLoading
     const receiptEl = printRef.current?.querySelector('div') || printRef.current;
     const printContent = receiptEl?.outerHTML || printRef.current?.innerHTML || '';
 
-    const win = window.open('', '_blank', 'width=800,height=900');
+    const win = window.open('', '_blank', 'width=400,height=600');
     if (!win) return;
     win.document.write(`
       <!DOCTYPE html>
@@ -236,13 +236,21 @@ export default function BillDocument({ data, mode, onClose, onConfirm, isLoading
           body {
             width: 100%;
             margin: 0;
-            padding: 3px 4px;
+            padding: 0;
             font-family: 'Courier New', Courier, monospace;
             font-size: 11px;
           }
           @page {
             size: 100mm 155mm;
-            margin: 3mm 4mm;
+            margin: 3mm 3mm;
+            -webkit-print-color-adjust: exact;
+          }
+          @media print {
+            html, body { 
+              width: 100mm;
+              margin: 0;
+              padding: 0;
+            }
           }
           body > div {
             width: 100% !important;
