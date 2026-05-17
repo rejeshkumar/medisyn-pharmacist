@@ -134,7 +134,7 @@ function ColPicker({ allCols, activeCols, onChange, onClose }: {
         ))}
       </div>
       <button onClick={() => { onChange(cols); onClose(); }}
-        className="w-full py-1.5 bg-[#00475a] text-white text-xs font-semibold rounded-lg">
+        className="w-full py-1.5 bg-[#00b8a0] text-white text-xs font-semibold rounded-lg">
         Apply
       </button>
     </div>
@@ -336,7 +336,7 @@ export default function ReportsPage() {
                   <button key={r.report_id} onClick={() => { handleReportSwitch(r.report_id); if (window.innerWidth < 768) setShowSidebar(false); }}
                     className={`w-full text-left px-4 py-2 text-xs transition-colors ${
                       activeReport === r.report_id
-                        ? 'bg-teal-50 text-[#00475a] font-semibold border-r-2 border-[#00475a]'
+                        ? 'bg-[#e1f5ee] text-[#007a6e] font-semibold border-l-2 border-[#00b8a0] pl-2'
                         : 'text-slate-600 hover:bg-slate-50'
                     }`}>
                     {r.name}
@@ -384,7 +384,7 @@ export default function ReportsPage() {
             <div className="ml-auto flex items-center gap-2 flex-wrap">
               {/* Date range */}
               <select value={range} onChange={e => setRange(e.target.value)}
-                className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:border-[#00475a]">
+                className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:border-[#00b8a0]">
                 {RANGE_OPTIONS.map(o => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
@@ -394,10 +394,10 @@ export default function ReportsPage() {
               {range === 'custom' && (
                 <>
                   <input type="date" value={fromDate} onChange={e => setFrom(e.target.value)}
-                    className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#00475a]" />
+                    className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#00b8a0]" />
                   <span className="text-xs text-slate-400">to</span>
                   <input type="date" value={toDate} onChange={e => setTo(e.target.value)}
-                    className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#00475a]" />
+                    className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#00b8a0]" />
                 </>
               )}
 
@@ -476,7 +476,7 @@ export default function ReportsPage() {
                   <input type="text" value={filters.doctor || ''}
                     onChange={e => setFilters(p => ({ ...p, doctor: e.target.value }))}
                     placeholder="Filter by doctor..."
-                    className="text-xs border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:border-[#00475a] w-36" />
+                    className="text-xs border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:border-[#00b8a0] w-36" />
                 </div>
               )}
               {currentReport.params.includes('expiry_within_days') && (
@@ -528,7 +528,7 @@ export default function ReportsPage() {
         <div className="flex-1 overflow-auto px-5 pb-5">
           {loading ? (
             <div className="flex items-center justify-center h-48">
-              <Loader2 className="w-5 h-5 animate-spin text-[#00475a]" />
+              <Loader2 className="w-5 h-5 animate-spin text-[#00b8a0]" />
             </div>
           ) : rows.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-48 text-slate-400">
@@ -592,7 +592,7 @@ export default function ReportsPage() {
                   </div>
                   <button onClick={() => toggleReportVisibility(r.report_id, !r.is_visible)}
                     className={`p-1.5 rounded-lg transition-colors ${
-                      r.is_visible ? 'bg-teal-50 text-[#00475a]' : 'bg-slate-100 text-slate-400'
+                      r.is_visible ? 'bg-[#e1f5ee] text-[#00b8a0]' : 'bg-slate-100 text-slate-400'
                     }`}>
                     {r.is_visible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                   </button>
