@@ -772,7 +772,7 @@ function POTab({ initialMedicine }: { initialMedicine?: string }) {
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-[#00b8a0] text-white text-xs font-semibold rounded-lg hover:bg-[#009688]">
                     <Send className="w-3.5 h-3.5" /> Mark as sent
                   </button>
-                  <a href={`/api/purchase-orders/${poDetail.id}/export`} target="_blank"
+                  <a href={`https://successful-playfulness-production-873f.up.railway.app/purchase-orders/${poDetail.id}/export`} target="_blank"
                     className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50">
                     <Download className="w-3.5 h-3.5" /> Export CSV
                   </a>
