@@ -405,7 +405,7 @@ export default function ReportsPage() {
               <button onClick={() => setShowFilters(v => !v)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-xs transition-all ${
                   Object.keys(filters).length > 0
-                    ? 'border-[#00475a] bg-teal-50 text-[#00475a]'
+                    ? 'border-[#00b8a0] bg-[#e1f5ee] text-[#007a6e]'
                     : 'border-slate-200 text-slate-500 hover:border-slate-300'
                 }`}>
                 <Filter className="w-3.5 h-3.5" />
@@ -438,7 +438,7 @@ export default function ReportsPage() {
 
               {/* Export CSV */}
               <button onClick={exportCSV} disabled={exporting || !rows.length}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#00475a] text-white rounded-lg text-xs font-semibold hover:bg-[#003d4d] disabled:opacity-40">
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#00b8a0] text-white rounded-lg text-xs font-semibold hover:bg-[#009688] disabled:opacity-40">
                 {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
                 Export CSV
               </button>
@@ -510,7 +510,7 @@ export default function ReportsPage() {
                   className="text-xs text-red-500 hover:underline">Clear filters</button>
               )}
               <button onClick={loadReport}
-                className="ml-auto px-3 py-1 bg-[#00475a] text-white text-xs rounded-lg font-semibold">
+                className="ml-auto px-3 py-1 bg-[#00b8a0] text-white text-xs rounded-lg font-semibold">
                 Apply
               </button>
             </div>
@@ -519,7 +519,7 @@ export default function ReportsPage() {
 
         {/* Summary cards */}
         {reportData && (
-          <div className="px-5 pt-4">
+          <div className="px-5 pt-4 pb-2">
             <SummaryCards data={reportData} reportId={activeReport} />
           </div>
         )}
@@ -535,17 +535,17 @@ export default function ReportsPage() {
               <BarChart3 className="w-10 h-10 mb-2 opacity-20" />
               <p className="text-sm">No data for this period</p>
               <button onClick={loadReport}
-                className="mt-3 text-xs text-[#00475a] hover:underline">Run report</button>
+                className="mt-3 text-xs text-[#00b8a0] hover:underline">Run report</button>
             </div>
           ) : (
-            <div className="bg-white border border-slate-100 rounded-xl overflow-hidden">
+            <div className="bg-white border border-[#e5e7eb] rounded-xl overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="bg-slate-50 border-b border-slate-100">
+                    <tr className="bg-[#f8f9fa] border-b border-[#e5e7eb]">
                       {activeCols.map(col => (
                         <th key={col}
-                          className="px-4 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wide whitespace-nowrap">
+                          className="px-4 py-3 text-left text-[11px] font-600 text-[#6b7280] uppercase tracking-wide whitespace-nowrap">
                           {COL_LABELS[col] ?? col}
                         </th>
                       ))}
@@ -553,7 +553,7 @@ export default function ReportsPage() {
                   </thead>
                   <tbody>
                     {rows.map((row: any, i: number) => (
-                      <tr key={i} className="border-b border-slate-50 hover:bg-slate-50/50">
+                      <tr key={i} className="border-b border-[#f9fafb] hover:bg-[#f0fdf4] transition-colors">
                         {activeCols.map(col => (
                           <td key={col}
                             className={`px-4 py-2.5 text-xs whitespace-nowrap ${cellClass(col, row[col])}`}>
@@ -565,8 +565,8 @@ export default function ReportsPage() {
                   </tbody>
                 </table>
               </div>
-              <div className="px-4 py-2 border-t border-slate-100 bg-slate-50/50">
-                <p className="text-xs text-slate-400">{rows.length} rows</p>
+              <div className="px-4 py-2.5 border-t border-[#e5e7eb] bg-[#f9fafb]">
+                <p className="text-xs text-[#9ca3af] font-medium">{rows.length} rows</p>
               </div>
             </div>
           )}
