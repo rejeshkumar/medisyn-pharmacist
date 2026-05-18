@@ -1,3 +1,4 @@
+import { FinanceModule } from './finance/finance.module';
 import { OwnerDashboardModule } from "./owner-dashboard/owner-dashboard.module";
 import { DispensingModule } from "./dispensing/dispensing.module";
 
@@ -106,6 +107,7 @@ import { InventoryIntelligenceService } from './inventory/services/inventory-int
     QueueModule,
     AiModule,
     AvailabilityModule,
+    FinanceModule,
     ConsultationModule,
     AnalyticsModule,
     FinancialModule,
