@@ -63,7 +63,7 @@ function OwnerDashboard() {
   const today = new Date().getDate().toString().padStart(2, '0');
 
   return (
-    <div style={{ padding: '16px', background: '#f8f9fa', minHeight: '100%', fontFamily: 'var(--font-sans)' }} className="lg:p-6">
+    <div className="p-3 lg:p-6" style={{ background: '#f8f9fa', minHeight: '100%', fontFamily: 'var(--font-sans)' }}>
 
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
@@ -127,7 +127,7 @@ function OwnerDashboard() {
       </div>
 
       {/* Main Content Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12, marginBottom: 12 }} className="lg:grid-cols-[1.5fr_1fr]">
+      <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-3 mb-3">
 
         {/* Sales Analytics Chart */}
         <div style={{ background: 'white', borderRadius: 16, border: '0.5px solid #e5e7eb', overflow: 'hidden' }}>
@@ -180,7 +180,7 @@ function OwnerDashboard() {
       </div>
 
       {/* Bottom Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }} className="lg:grid-cols-2">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
 
         {/* Latest Orders Table */}
         <div style={{ background: 'white', borderRadius: 16, border: '0.5px solid #e5e7eb', overflow: 'hidden' }}>
@@ -466,7 +466,7 @@ function DoctorDashboard() {
   const total = Array.isArray(queue) ? queue.length : 0;
 
   return (
-    <div style={{ padding: '16px', background: '#f8f9fa', minHeight: '100%', fontFamily: 'var(--font-sans)' }} className="lg:p-6">
+    <div className="p-3 lg:p-6" style={{ background: '#f8f9fa', minHeight: '100%', fontFamily: 'var(--font-sans)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 600, color: '#1a1a2e', margin: 0 }}>My Queue</h1>
@@ -478,7 +478,7 @@ function DoctorDashboard() {
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12, marginBottom: 16 }} className="lg:grid-cols-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         <div style={{ background: 'linear-gradient(135deg,#007a6e,#00b8a0)', borderRadius: 16, padding: '20px', color: 'white', position: 'relative', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
           <div style={{ width: 36, height: 36, background: 'rgba(255,255,255,0.2)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, fontSize: 18 }}>👨‍⚕️</div>
@@ -564,7 +564,7 @@ function NurseDashboard() {
   const total = Array.isArray(queue) ? queue.length : 0;
 
   return (
-    <div style={{ padding: '16px', background: '#f8f9fa', minHeight: '100%', fontFamily: 'var(--font-sans)' }} className="lg:p-6">
+    <div className="p-3 lg:p-6" style={{ background: '#f8f9fa', minHeight: '100%', fontFamily: 'var(--font-sans)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 600, color: '#1a1a2e', margin: 0 }}>Nurse Station</h1>
