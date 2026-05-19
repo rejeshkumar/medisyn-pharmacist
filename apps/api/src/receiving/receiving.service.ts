@@ -183,7 +183,7 @@ export class ReceivingService {
           UPDATE purchase_orders 
           SET 
             status = 'received',
-            receiving_status = 'completed',
+            receiving_status = 'complete',
             items_received_count = total_items_count,
             updated_at = NOW()
           WHERE id = $1
