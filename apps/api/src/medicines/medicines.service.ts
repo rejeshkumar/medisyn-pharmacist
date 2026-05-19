@@ -318,6 +318,8 @@ export class MedicinesService {
            FROM stock_batches sb
            WHERE sb.medicine_id = m.id AND sb.tenant_id = $1
              AND sb.quantity > 0 AND sb.expiry_date > CURRENT_DATE
+             AND sb.verification_status IN ('verified', 'partial')
+             AND sb.verification_status IN ('verified', 'partial')
          ), 0) AS total_stock,
          (SELECT row_to_json(fb)
           FROM (
@@ -326,6 +328,8 @@ export class MedicinesService {
             FROM stock_batches b
             WHERE b.medicine_id = m.id AND b.tenant_id = $1
               AND b.quantity > 0 AND b.expiry_date > CURRENT_DATE
+              AND b.verification_status IN ('verified', 'partial')
+              AND b.verification_status IN ('verified', 'partial')
             ORDER BY b.expiry_date ASC LIMIT 1
           ) fb) AS fefo_batch,
          (SELECT json_agg(ab ORDER BY ab.expiry_date ASC)
@@ -336,6 +340,8 @@ export class MedicinesService {
             FROM stock_batches b
             WHERE b.medicine_id = m.id AND b.tenant_id = $1
               AND b.quantity > 0 AND b.expiry_date > CURRENT_DATE
+              AND b.verification_status IN ('verified', 'partial')
+              AND b.verification_status IN ('verified', 'partial')
             ORDER BY b.expiry_date ASC
           ) ab) AS all_batches,
          COALESCE((
@@ -348,6 +354,8 @@ export class MedicinesService {
                SELECT 1 FROM stock_batches sb2
                WHERE sb2.medicine_id = m2.id AND sb2.tenant_id = $1
                  AND sb2.quantity > 0 AND sb2.expiry_date > CURRENT_DATE
+                 AND sb2.verification_status IN ('verified', 'partial')
+                 AND sb2.verification_status IN ('verified', 'partial')
              )
          ), 0) AS substitute_count
        FROM medicines m
@@ -369,6 +377,10 @@ export class MedicinesService {
            SELECT SUM(sb.quantity) FROM stock_batches sb
            WHERE sb.medicine_id = m.id AND sb.tenant_id = $1
              AND sb.quantity > 0 AND sb.expiry_date > CURRENT_DATE
+             AND sb.verification_status IN ('verified', 'partial')
+             AND sb.verification_status IN ('verified', 'partial')
+             AND sb.verification_status IN ('verified', 'partial')
+             AND sb.verification_status IN ('verified', 'partial')
          ), 0) > 0 THEN 0 ELSE 1 END,
          m.brand_name ASC
        LIMIT $4`,
