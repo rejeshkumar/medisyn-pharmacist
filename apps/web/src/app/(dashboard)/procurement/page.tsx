@@ -1145,8 +1145,10 @@ function ReceivingTab() {
 
   const fetchPendingBatches = async () => {
     try {
+      console.log("Fetching from /receiving/pending...");
       const response = await api.get('/receiving/pending');
       setBatches(response.data?.batches || []);
+      console.log("Batches received:", response.data);
     } catch (error) {
       console.error('Failed to fetch batches:', error);
     } finally {
