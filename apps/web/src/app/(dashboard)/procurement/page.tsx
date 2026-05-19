@@ -1197,49 +1197,64 @@ function ReceivingTab() {
         {batches.length} batch{batches.length !== 1 ? 'es' : ''} awaiting verification
       </div>
       
-      {batches.map((batch) => (
-        <div key={batch.id} className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold text-gray-900">{batch.medicine_name}</h3>
-              <div className="mt-2 text-sm text-gray-600 space-y-1">
-                <div>Batch: {batch.batch_no} | Expiry: {new Date(batch.expiry_date).toLocaleDateString('en-IN')}</div>
-                <div>Quantity: {batch.received_qty} | MRP: ₹{batch.mrp}</div>
-                {batch.po_number && <div>PO: {batch.po_number} | Supplier: {batch.supplier_name}</div>}
-              </div>
-            </div>
-            
-            {verifying === batch.id ? (
-              <Loader2 className="animate-spin text-[#00475a]" size={24} />
-            ) : (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleVerify(batch.id, batch.received_qty, 0, 'Verified - all good')}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 text-sm"
-                >
-                  <Check size={16} />
-                  Verify All
-                </button>
-                <button
-                  onClick={() => {
-                    const verified = prompt(`Verified quantity (out of ${batch.received_qty}):`);
-                    if (verified) {
-                      const verifiedQty = parseFloat(verified);
-                      const rejectedQty = batch.received_qty - verifiedQty;
-                      const notes = prompt('Reason for discrepancy:') || '';
-                      handleVerify(batch.id, verifiedQty, rejectedQty, notes);
-                    }
-                  }}
-                  className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 flex items-center gap-2 text-sm"
-                >
-                  <AlertTriangle size={16} />
-                  Partial
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      ))}
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th className="px-4 py-3 text-left font-medium text-gray-700">Medicine</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-700">Batch</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-700">Expiry</th>
+              <th className="px-4 py-3 text-right font-medium text-gray-700">Qty</th>
+              <th className="px-4 py-3 text-right font-medium text-gray-700">MRP</th>
+              <th className="px-4 py-3 text-right font-medium text-gray-700">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {batches.map((batch) => (
+              <tr key={batch.id} className="hover:bg-gray-50">
+                <td className="px-4 py-3">
+                  <div className="font-medium text-gray-900">{batch.medicine_name}</div>
+                  {batch.po_number && <div className="text-xs text-gray-500">PO: {batch.po_number}</div>}
+                </td>
+                <td className="px-4 py-3 text-gray-600">{batch.batch_no}</td>
+                <td className="px-4 py-3 text-gray-600">{new Date(batch.expiry_date).toLocaleDateString('en-IN')}</td>
+                <td className="px-4 py-3 text-right font-medium">{batch.received_qty}</td>
+                <td className="px-4 py-3 text-right">₹{batch.mrp}</td>
+                <td className="px-4 py-3 text-right">
+                  {verifying === batch.id ? (
+                    <Loader2 className="animate-spin text-[#00475a] inline-block" size={16} />
+                  ) : (
+                    <div className="flex gap-2 justify-end">
+                      <button
+                        onClick={() => handleVerify(batch.id, parseFloat(batch.received_qty) || 0, 0, 'Verified - all good')}
+                        className="px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-1 text-xs font-medium"
+                      >
+                        <Check size={14} />
+                        Verify All
+                      </button>
+                      <button
+                        onClick={() => {
+                          const verified = prompt(`Verified quantity (out of ${batch.received_qty}):`);
+                          if (verified) {
+                            const verifiedQty = parseFloat(verified);
+                            const rejectedQty = parseFloat(batch.received_qty) - verifiedQty;
+                            const notes = prompt('Reason for discrepancy:') || '';
+                            handleVerify(batch.id, verifiedQty, rejectedQty, notes);
+                          }
+                        }}
+                        className="px-3 py-1.5 bg-orange-600 text-white rounded hover:bg-orange-700 flex items-center gap-1 text-xs font-medium"
+                      >
+                        <AlertTriangle size={14} />
+                        Partial
+                      </button>
+                    </div>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
