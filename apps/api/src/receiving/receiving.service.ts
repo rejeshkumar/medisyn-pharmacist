@@ -69,7 +69,9 @@ export class ReceivingService {
     const receivedQty = batchData.received_qty || batchData.quantity;
     const rejectedQty = rejected_qty || 0;
 
-    if (verified_qty + rejectedQty !== receivedQty) {
+    // Allow for small floating point differences (0.01 tolerance)
+    const totalQty = verified_qty + rejectedQty;
+    if (Math.abs(totalQty - receivedQty) > 0.01) {
       throw new BadRequestException(
         `Verified (${verified_qty}) + Rejected (${rejectedQty}) must equal Received (${receivedQty})`
       );
