@@ -1146,11 +1146,16 @@ function ReceivingTab() {
   const fetchPendingBatches = async () => {
     try {
       console.log("Fetching from /receiving/pending...");
+      const token = typeof window !== 'undefined' ? localStorage.getItem('medisyn_token') : null;
+      console.log("Token exists:", !!token);
       const response = await api.get('/receiving/pending');
-      setBatches(response.data?.batches || []);
       console.log("Batches received:", response.data);
-    } catch (error) {
+      setBatches(response.data?.batches || []);
+    } catch (error: any) {
       console.error('Failed to fetch batches:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      toast.error(error.response?.data?.message || 'Failed to load pending batches');
     } finally {
       setLoading(false);
     }
