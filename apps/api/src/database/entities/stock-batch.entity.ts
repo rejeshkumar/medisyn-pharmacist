@@ -62,6 +62,37 @@ export class StockBatch {
   is_active: boolean;
 
 
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  ordered_qty: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  received_qty: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  verified_qty: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  rejected_qty: number;
+
+  @Column({ type: 'varchar', length: 20, default: 'pending' })
+  verification_status: string;
+
+  @Column({ type: 'uuid', nullable: true })
+  verified_by: string;
+
+  @Column({ type: 'timestamp', nullable: true })
+  verified_at: Date;
+
+  @Column({ type: 'text', nullable: true })
+  discrepancy_notes: string;
+
+  @Column({ type: 'uuid', nullable: true })
+  po_id: string;
+
+  @Column({ type: 'uuid', nullable: true })
+  po_item_id: string;
+
   @Column({ default: '00000000-0000-0000-0000-000000000001' })
   tenant_id: string;
 
