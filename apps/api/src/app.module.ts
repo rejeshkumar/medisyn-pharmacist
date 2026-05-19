@@ -1,3 +1,4 @@
+import { ReceivingModule } from './receiving/receiving.module';
 import { OwnerDashboardModule } from "./owner-dashboard/owner-dashboard.module";
 import { DispensingModule } from "./dispensing/dispensing.module";
 
@@ -107,6 +108,7 @@ import { InventoryIntelligenceService } from './inventory/services/inventory-int
     AiModule,
     AvailabilityModule,
     ConsultationModule,
+    ReceivingModule,
     AnalyticsModule,
     FinancialModule,
     SuperAdminModule,
