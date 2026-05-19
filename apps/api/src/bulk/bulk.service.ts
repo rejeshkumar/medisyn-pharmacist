@@ -311,6 +311,16 @@ export class BulkService {
     items: Array<{ medicineName: string; batchNo: string; expiry: string; qty: number; purchasePrice: number; mrp: number; gstPercent: number }>,
     supplierName: string, invoiceNo: string, userId: string, poId?: string,
   ) {
+    // Check for duplicate invoice
+    if (invoiceNo) {
+      const existingInvoice = await this.batchRepo.findOne({ 
+        where: { purchase_invoice_no: invoiceNo } 
+      });
+      if (existingInvoice) {
+        throw new Error(`Invoice ${invoiceNo} has already been imported. Please check your stock records.`);
+      }
+    }
+
     let successCount = 0;
     const errors: string[] = [];
 
