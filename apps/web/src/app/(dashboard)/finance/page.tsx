@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { 
   DollarSign, 
   TrendingUp, 
@@ -23,54 +23,52 @@ interface VendorPayment {
   is_overdue: boolean;
 }
 
+// Mock data - will be replaced with API calls later
+const mockSummary = {
+  total_purchases: 450000,
+  total_paid: 320000,
+  total_pending: 130000,
+  overdue_count: 3,
+};
+
+const mockVendors: VendorPayment[] = [
+  {
+    vendor_id: '1',
+    vendor_name: 'KAIRALI PHARMA',
+    pending_po_count: 2,
+    total_pending: 45000,
+    oldest_due_date: '2026-05-10',
+    is_overdue: true,
+  },
+  {
+    vendor_id: '2',
+    vendor_name: 'MEDICO DISTRIBUTORS',
+    pending_po_count: 1,
+    total_pending: 32000,
+    oldest_due_date: '2026-05-15',
+    is_overdue: true,
+  },
+  {
+    vendor_id: '3',
+    vendor_name: 'HEALTHCARE SUPPLIES',
+    pending_po_count: 1,
+    total_pending: 28000,
+    oldest_due_date: '2026-05-20',
+    is_overdue: false,
+  },
+  {
+    vendor_id: '4',
+    vendor_name: 'PHARMA SOLUTIONS',
+    pending_po_count: 1,
+    total_pending: 25000,
+    oldest_due_date: '2026-05-25',
+    is_overdue: false,
+  },
+];
+
 export default function FinanceDashboard() {
   const [period, setPeriod] = useState<PeriodFilter>('month');
   const [isRecordingPayment, setIsRecordingPayment] = useState(false);
-  const [vendors, setVendors] = useState<VendorPayment[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Fetch vendors with pending payments from API
-  useEffect(() => {
-    const fetchVendors = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const response = await fetch('https://successful-playfulness-production-873f.up.railway.app/finance/vendors-with-pending-payments', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          console.log('API Response:', data);
-          setVendors(data.map((v: any) => ({
-            vendor_id: v.supplier_id,
-            vendor_name: v.supplier_name,
-            pending_po_count: parseInt(v.pending_po_count),
-            total_pending: parseFloat(v.total_pending),
-            oldest_due_date: v.oldest_due_date,
-            is_overdue: v.is_overdue,
-          })));
-        } else {
-          console.error('API Error:', response.status);
-        }
-      } catch (error) {
-        console.error('Error fetching vendors:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchVendors();
-  }, []);
-
-  // Calculate summary from real vendors data
-  const mockSummary = {
-    total_purchases: vendors.reduce((sum, v) => sum + v.total_pending, 0) * 1.2,
-    total_paid: vendors.reduce((sum, v) => sum + v.total_pending, 0) * 0.2,
-    total_pending: vendors.reduce((sum, v) => sum + v.total_pending, 0),
-    overdue_count: vendors.filter(v => v.is_overdue).length,
-  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -96,22 +94,13 @@ export default function FinanceDashboard() {
     return diffDays;
   };
 
-  if (loading) {
-    return (
-      <div className="p-6 max-w-7xl mx-auto">
-        <div className="flex items-center justify-center h-64">
-          <p className="text-gray-500">Loading finance data...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="p-6 max-w-7xl mx-auto">
+      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Finance Dashboard</h1>
-          <p className="text-sm text-gray-500 mt-1">Payment tracking - Real Data from API</p>
+          <p className="text-sm text-gray-500 mt-1">Payment tracking and expense management</p>
         </div>
         <div className="flex gap-3">
           <button
@@ -121,16 +110,23 @@ export default function FinanceDashboard() {
             <Plus size={18} />
             Record Payment
           </button>
+          <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2">
+            <FileText size={18} />
+            Reports
+          </button>
         </div>
       </div>
 
+      {/* Period Filter */}
       <div className="flex gap-2 mb-6">
         {(['today', 'week', 'month', 'year'] as PeriodFilter[]).map((p) => (
           <button
             key={p}
             onClick={() => setPeriod(p)}
             className={`px-4 py-2 rounded-lg capitalize ${
-              period === p ? 'bg-[#00475a] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              period === p
+                ? 'bg-[#00475a] text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
             {p}
@@ -138,6 +134,7 @@ export default function FinanceDashboard() {
         ))}
       </div>
 
+      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-white p-5 rounded-lg border border-gray-200">
           <div className="flex items-center justify-between mb-2">
@@ -158,6 +155,9 @@ export default function FinanceDashboard() {
           <p className="text-2xl font-semibold text-green-600">
             {formatCurrency(mockSummary.total_paid)}
           </p>
+          <p className="text-xs text-gray-500 mt-1">
+            {((mockSummary.total_paid / mockSummary.total_purchases) * 100).toFixed(0)}% of total
+          </p>
         </div>
 
         <div className="bg-white p-5 rounded-lg border border-gray-200">
@@ -167,6 +167,9 @@ export default function FinanceDashboard() {
           </div>
           <p className="text-2xl font-semibold text-orange-600">
             {formatCurrency(mockSummary.total_pending)}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            {((mockSummary.total_pending / mockSummary.total_purchases) * 100).toFixed(0)}% pending
           </p>
         </div>
 
@@ -182,14 +185,15 @@ export default function FinanceDashboard() {
         </div>
       </div>
 
+      {/* Pending Payments by Vendor */}
       <div className="bg-white rounded-lg border border-gray-200">
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">Pending Payments by Vendor</h2>
-          <p className="text-sm text-gray-500 mt-1">Live data from database</p>
+          <p className="text-sm text-gray-500 mt-1">Vendors with outstanding payments</p>
         </div>
 
         <div className="divide-y divide-gray-200">
-          {vendors.map((vendor) => (
+          {mockVendors.map((vendor) => (
             <div
               key={vendor.vendor_id}
               className="px-6 py-4 hover:bg-gray-50 cursor-pointer transition-colors"
@@ -232,13 +236,30 @@ export default function FinanceDashboard() {
           ))}
         </div>
 
-        {vendors.length === 0 && (
+        {mockVendors.length === 0 && (
           <div className="px-6 py-12 text-center">
             <Calendar size={48} className="mx-auto text-gray-300 mb-3" />
             <p className="text-gray-500">No pending payments</p>
+            <p className="text-sm text-gray-400 mt-1">All payments are up to date</p>
           </div>
         )}
       </div>
+
+      {/* Record Payment Modal - Placeholder */}
+      {isRecordingPayment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Record Payment</h3>
+            <p className="text-gray-600 mb-4">Payment recording form will go here</p>
+            <button
+              onClick={() => setIsRecordingPayment(false)}
+              className="w-full px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
