@@ -81,8 +81,8 @@ export class BulkController {
   @Roles(UserRole.OWNER, UserRole.PHARMACIST)
   @ApiOperation({ summary: 'Import reviewed invoice items into stock' })
   importInvoice(@Body() body: any, @Request() req) {
-    const { items, supplier, invoiceNo } = body;
-    return this.bulkService.importInvoiceItems(items, supplier, invoiceNo, req.user.id);
+    const { items, supplier, invoiceNo, po_id } = body;
+    return this.bulkService.importInvoiceItems(items, supplier, invoiceNo, req.user.id, po_id);
   }
 
   @Post('vendor-csv/normalize')
