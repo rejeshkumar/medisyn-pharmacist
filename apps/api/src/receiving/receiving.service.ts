@@ -128,15 +128,6 @@ export class ReceivingService {
       await this.checkAndUpdatePOStatus(batchData.po_id, tenantId);
     }
 
-    // After verification, check if all batches for this PO are verified
-    if (batchData.po_id) {
-      await this.checkAndUpdatePOStatus(batchData.po_id, tenantId);
-    }
-
-    // After verification, check if all batches for this PO are verified
-    if (batchData.po_id) {
-      await this.checkAndUpdatePOStatus(batchData.po_id, tenantId);
-    }
 
     return {
       success: true,
