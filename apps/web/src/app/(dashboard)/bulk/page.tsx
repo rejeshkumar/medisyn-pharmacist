@@ -37,10 +37,16 @@ export default function BulkPage() {
   } | null>(null);
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [editRow, setEditRow] = useState<InvoiceItem | null>(null);
+  const [selectedPoId, setSelectedPoId] = useState<string>('');
 
   const { data: logs, isLoading: logsLoading } = useQuery({
     queryKey: ['bulk-logs'],
     queryFn: () => api.get('/bulk/logs').then((r) => r.data),
+  });
+
+  const { data: purchaseOrders } = useQuery({
+    queryKey: ['purchase-orders-for-receiving'],
+    queryFn: () => api.get('/purchase-orders?status=sent').then((r) => r.data),
   });
 
   const importMutation = useMutation({
@@ -91,6 +97,7 @@ export default function BulkPage() {
           items: invoicePreview!.items,
           supplier: invoicePreview!.supplier,
           invoiceNo: invoicePreview!.invoiceNo,
+          po_id: selectedPoId || null,
         })
         .then((r) => r.data),
     onSuccess: (data) => {
@@ -428,6 +435,32 @@ export default function BulkPage() {
                     <p className="text-sm">All items removed. Upload the PDF again or go back.</p>
                   </div>
                 )}
+              </div>
+
+              {/* PO Selection */}
+              <div className="card bg-blue-50 border-blue-200">
+                <div className="flex items-start gap-3">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Link to Purchase Order (Optional)
+                    </label>
+                    <select
+                      value={selectedPoId}
+                      onChange={(e) => setSelectedPoId(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    >
+                      <option value="">No PO (Walk-in / Manual Purchase)</option>
+                      {purchaseOrders?.map((po: any) => (
+                        <option key={po.id} value={po.id}>
+                          {po.po_number} - {po.supplier_name || 'No supplier'} - ₹{po.total_amount?.toLocaleString('en-IN') || '0'} ({po.item_count} items)
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-600 mt-1">
+                      Select a PO if this invoice is for an existing purchase order. Leave blank for walk-in purchases.
+                    </p>
+                  </div>
+                </div>
               </div>
 
               <div className="flex items-center justify-between">

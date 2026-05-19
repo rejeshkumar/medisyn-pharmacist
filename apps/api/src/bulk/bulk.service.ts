@@ -309,7 +309,7 @@ export class BulkService {
 
   async importInvoiceItems(
     items: Array<{ medicineName: string; batchNo: string; expiry: string; qty: number; purchasePrice: number; mrp: number; gstPercent: number }>,
-    supplierName: string, invoiceNo: string, userId: string,
+    supplierName: string, invoiceNo: string, userId: string, poId?: string,
   ) {
     let successCount = 0;
     const errors: string[] = [];
@@ -348,6 +348,7 @@ export class BulkService {
             sale_rate: item.purchasePrice * 1.15,
             supplier_id: supplier?.id ?? null, 
             purchase_invoice_no: invoiceNo || null,
+            po_id: poId || null,  // Link to purchase order
           }));
         } else {
           // Existing batch - add to received_qty, keep pending
