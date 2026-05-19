@@ -1132,14 +1132,120 @@ function DemandTab({ onRaisePO }: { onRaisePO: (name: string) => void }) {
 }
 
 // ── Main page ──────────────────────────────────────────────────────────────
+
+// ── Receiving Tab ──────────────────────────────────────────────────────────
+function ReceivingTab() {
+  const [batches, setBatches] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [verifying, setVerifying] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchPendingBatches();
+  }, []);
+
+  const fetchPendingBatches = async () => {
+    try {
+      const response = await api.get('/receiving/pending');
+      setBatches(response.data?.batches || []);
+    } catch (error) {
+      console.error('Failed to fetch batches:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerify = async (batchId: string, verifiedQty: number, rejectedQty: number, notes: string) => {
+    setVerifying(batchId);
+    try {
+      await api.post('/receiving/verify', {
+        batch_id: batchId,
+        verified_qty: verifiedQty,
+        rejected_qty: rejectedQty,
+        discrepancy_notes: notes,
+      });
+      setBatches(prev => prev.filter(b => b.id !== batchId));
+      toast.success('Batch verified successfully');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Verification failed');
+    } finally {
+      setVerifying(null);
+    }
+  };
+
+  if (loading) return <div className="flex items-center justify-center py-16"><Loader2 className="w-5 h-5 animate-spin text-[#00475a]" /></div>;
+
+  if (batches.length === 0) {
+    return (
+      <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+        <Package className="mx-auto text-gray-300 mb-3" size={48} />
+        <p className="text-gray-600 font-medium">No pending batches</p>
+        <p className="text-sm text-gray-500 mt-1">All stock has been verified</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="text-sm text-gray-600 mb-4">
+        {batches.length} batch{batches.length !== 1 ? 'es' : ''} awaiting verification
+      </div>
+      
+      {batches.map((batch) => (
+        <div key={batch.id} className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-gray-900">{batch.medicine_name}</h3>
+              <div className="mt-2 text-sm text-gray-600 space-y-1">
+                <div>Batch: {batch.batch_no} | Expiry: {new Date(batch.expiry_date).toLocaleDateString('en-IN')}</div>
+                <div>Quantity: {batch.received_qty} | MRP: ₹{batch.mrp}</div>
+                {batch.po_number && <div>PO: {batch.po_number} | Supplier: {batch.supplier_name}</div>}
+              </div>
+            </div>
+            
+            {verifying === batch.id ? (
+              <Loader2 className="animate-spin text-[#00475a]" size={24} />
+            ) : (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleVerify(batch.id, batch.received_qty, 0, 'Verified - all good')}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 text-sm"
+                >
+                  <Check size={16} />
+                  Verify All
+                </button>
+                <button
+                  onClick={() => {
+                    const verified = prompt(`Verified quantity (out of ${batch.received_qty}):`);
+                    if (verified) {
+                      const verifiedQty = parseFloat(verified);
+                      const rejectedQty = batch.received_qty - verifiedQty;
+                      const notes = prompt('Reason for discrepancy:') || '';
+                      handleVerify(batch.id, verifiedQty, rejectedQty, notes);
+                    }
+                  }}
+                  className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 flex items-center gap-2 text-sm"
+                >
+                  <AlertTriangle size={16} />
+                  Partial
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function ProcurementPage() {
-  const [tab, setTab] = useState<'reorder' | 'orders' | 'suppliers' | 'demand'>('reorder');
+  const [tab, setTab] = useState<'reorder' | 'orders' | 'suppliers' | 'demand' | 'receiving'>('reorder');
   const [demandMedicine, setDemandMedicine] = useState<string | undefined>();
 
   const TABS = [
     { key: 'reorder',   label: 'Reorder list',     icon: AlertTriangle },
     { key: 'orders',    label: 'Purchase orders',   icon: ReceiptText   },
     { key: 'suppliers', label: 'Suppliers',         icon: Building2     },
+    { key: 'receiving', label: 'Receiving',         icon: Package       },
     { key: 'demand',    label: 'In Demand',         icon: Flame         },
   ];
 
@@ -1173,6 +1279,7 @@ export default function ProcurementPage() {
         {tab === 'reorder'   && <ReorderTab />}
         {tab === 'orders'    && <POTab initialMedicine={demandMedicine} key={demandMedicine} />}
         {tab === 'suppliers' && <SuppliersTab />}
+        {tab === 'receiving' && <ReceivingTab />}
         {tab === 'demand'    && <DemandTab onRaisePO={(name) => {
           setDemandMedicine(name);
           setTab('orders');
