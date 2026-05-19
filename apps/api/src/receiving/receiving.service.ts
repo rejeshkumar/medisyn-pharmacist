@@ -14,7 +14,7 @@ export class ReceivingService {
         po.po_number,
         sb.medicine_id,
         m.brand_name as medicine_name,
-        m.generic_name,
+        m.molecule,
         sb.batch_number as batch_no,
         sb.expiry_date,
         sb.ordered_qty,
