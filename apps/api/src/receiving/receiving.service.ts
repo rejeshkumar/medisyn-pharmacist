@@ -203,6 +203,37 @@ export class ReceivingService {
           );
 
           if (existingPayment.length === 0) {
+            // Create pharmacy_purchases entry
+            const purchaseId = await this.dataSource.query(
+              `
+              INSERT INTO pharmacy_purchases (
+                id, tenant_id, purchase_date, vendor_name, invoice_no,
+                amount, total_amount, payment_mode, credit_period, 
+                is_paid, paid_amount, pending_amount, payment_status,
+                po_id, supplier_id, notes, created_at, updated_at
+              ) VALUES (
+                gen_random_uuid(), $1, $2, $3, $4,
+                $5, $5, $6, $7,
+                false, 0, $5, 'unpaid',
+                $8, $9, $10, NOW(), NOW()
+              )
+              RETURNING id
+              `,
+              [
+                tenantId,
+                new Date().toISOString().split('T')[0], // purchase_date (today)
+                po.supplier_name || 'Unknown Supplier',
+                po.po_number, // Use PO number as invoice reference
+                po.total_amount || 0,
+                po.credit_days > 0 ? 'CREDIT' : 'CASH',
+                po.credit_days ? `${po.credit_days}DAYS` : null,
+                poId,
+                po.supplier_id,
+                `Auto-created from ${po.po_number} verification`
+              ]
+            );
+
+            // Create upcoming_payment linked to the purchase
             await this.dataSource.query(
               `
               INSERT INTO upcoming_payments (
@@ -210,7 +241,7 @@ export class ReceivingService {
                 due_date, is_urgent, is_paid, source_type, source_id, created_at, updated_at
               ) VALUES (
                 gen_random_uuid(), $1, 'purchase', $2, $3, 
-                $4, false, false, 'purchase_order', $5, NOW(), NOW()
+                $4, false, false, 'pharmacy_purchase', $5, NOW(), NOW()
               )
               `,
               [
@@ -218,7 +249,7 @@ export class ReceivingService {
                 `Payment for ${po.po_number} - ${po.supplier_name || 'Supplier'}`,
                 po.total_amount || 0,
                 dueDate.toISOString().split('T')[0],
-                poId
+                purchaseId[0].id  // Link to pharmacy_purchases, not PO
               ]
             );
           }
@@ -285,6 +316,37 @@ export class ReceivingService {
           );
 
           if (existingPayment.length === 0) {
+            // Create pharmacy_purchases entry
+            const purchaseId = await this.dataSource.query(
+              `
+              INSERT INTO pharmacy_purchases (
+                id, tenant_id, purchase_date, vendor_name, invoice_no,
+                amount, total_amount, payment_mode, credit_period, 
+                is_paid, paid_amount, pending_amount, payment_status,
+                po_id, supplier_id, notes, created_at, updated_at
+              ) VALUES (
+                gen_random_uuid(), $1, $2, $3, $4,
+                $5, $5, $6, $7,
+                false, 0, $5, 'unpaid',
+                $8, $9, $10, NOW(), NOW()
+              )
+              RETURNING id
+              `,
+              [
+                tenantId,
+                new Date().toISOString().split('T')[0], // purchase_date (today)
+                po.supplier_name || 'Unknown Supplier',
+                po.po_number, // Use PO number as invoice reference
+                po.total_amount || 0,
+                po.credit_days > 0 ? 'CREDIT' : 'CASH',
+                po.credit_days ? `${po.credit_days}DAYS` : null,
+                poId,
+                po.supplier_id,
+                `Auto-created from ${po.po_number} verification`
+              ]
+            );
+
+            // Create upcoming_payment linked to the purchase
             await this.dataSource.query(
               `
               INSERT INTO upcoming_payments (
@@ -292,7 +354,7 @@ export class ReceivingService {
                 due_date, is_urgent, is_paid, source_type, source_id, created_at, updated_at
               ) VALUES (
                 gen_random_uuid(), $1, 'purchase', $2, $3, 
-                $4, false, false, 'purchase_order', $5, NOW(), NOW()
+                $4, false, false, 'pharmacy_purchase', $5, NOW(), NOW()
               )
               `,
               [
@@ -300,7 +362,7 @@ export class ReceivingService {
                 `Payment for ${po.po_number} - ${po.supplier_name || 'Supplier'}`,
                 po.total_amount || 0,
                 dueDate.toISOString().split('T')[0],
-                poId
+                purchaseId[0].id  // Link to pharmacy_purchases, not PO
               ]
             );
           }
@@ -367,6 +429,37 @@ export class ReceivingService {
           );
 
           if (existingPayment.length === 0) {
+            // Create pharmacy_purchases entry
+            const purchaseId = await this.dataSource.query(
+              `
+              INSERT INTO pharmacy_purchases (
+                id, tenant_id, purchase_date, vendor_name, invoice_no,
+                amount, total_amount, payment_mode, credit_period, 
+                is_paid, paid_amount, pending_amount, payment_status,
+                po_id, supplier_id, notes, created_at, updated_at
+              ) VALUES (
+                gen_random_uuid(), $1, $2, $3, $4,
+                $5, $5, $6, $7,
+                false, 0, $5, 'unpaid',
+                $8, $9, $10, NOW(), NOW()
+              )
+              RETURNING id
+              `,
+              [
+                tenantId,
+                new Date().toISOString().split('T')[0], // purchase_date (today)
+                po.supplier_name || 'Unknown Supplier',
+                po.po_number, // Use PO number as invoice reference
+                po.total_amount || 0,
+                po.credit_days > 0 ? 'CREDIT' : 'CASH',
+                po.credit_days ? `${po.credit_days}DAYS` : null,
+                poId,
+                po.supplier_id,
+                `Auto-created from ${po.po_number} verification`
+              ]
+            );
+
+            // Create upcoming_payment linked to the purchase
             await this.dataSource.query(
               `
               INSERT INTO upcoming_payments (
@@ -374,7 +467,7 @@ export class ReceivingService {
                 due_date, is_urgent, is_paid, source_type, source_id, created_at, updated_at
               ) VALUES (
                 gen_random_uuid(), $1, 'purchase', $2, $3, 
-                $4, false, false, 'purchase_order', $5, NOW(), NOW()
+                $4, false, false, 'pharmacy_purchase', $5, NOW(), NOW()
               )
               `,
               [
@@ -382,7 +475,7 @@ export class ReceivingService {
                 `Payment for ${po.po_number} - ${po.supplier_name || 'Supplier'}`,
                 po.total_amount || 0,
                 dueDate.toISOString().split('T')[0],
-                poId
+                purchaseId[0].id  // Link to pharmacy_purchases, not PO
               ]
             );
           }
