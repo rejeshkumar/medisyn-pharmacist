@@ -6,9 +6,6 @@ import { VerifyBatchDto } from './dto/verify-batch.dto';
 export class ReceivingService {
   constructor(private dataSource: DataSource) {}
 
-  /**
-   * Get all pending verification batches
-   */
   async getPendingBatches(tenantId: string, poId?: string) {
     let query = `
       SELECT 
@@ -18,7 +15,7 @@ export class ReceivingService {
         sb.medicine_id,
         m.brand_name as medicine_name,
         m.generic_name,
-        sb.batch_no,
+        sb.batch_number as batch_no,
         sb.expiry_date,
         sb.ordered_qty,
         sb.received_qty,
@@ -52,9 +49,6 @@ export class ReceivingService {
     };
   }
 
-  /**
-   * Verify a single batch (supports partial verification)
-   */
   async verifyBatch(
     verifyDto: VerifyBatchDto,
     userId: string,
@@ -62,7 +56,6 @@ export class ReceivingService {
   ) {
     const { batch_id, verified_qty, rejected_qty, discrepancy_notes } = verifyDto;
 
-    // Get batch details
     const batch = await this.dataSource.query(
       `SELECT * FROM stock_batches WHERE id = $1 AND tenant_id = $2`,
       [batch_id, tenantId],
@@ -76,31 +69,28 @@ export class ReceivingService {
     const receivedQty = batchData.received_qty || batchData.quantity;
     const rejectedQty = rejected_qty || 0;
 
-    // Validation: verified + rejected must equal received
     if (verified_qty + rejectedQty !== receivedQty) {
       throw new BadRequestException(
         `Verified (${verified_qty}) + Rejected (${rejectedQty}) must equal Received (${receivedQty})`
       );
     }
 
-    // Determine verification status
     let verificationStatus: string;
     if (verified_qty === receivedQty) {
-      verificationStatus = 'verified'; // Full match
+      verificationStatus = 'verified';
     } else if (verified_qty === 0) {
-      verificationStatus = 'rejected'; // Complete rejection
+      verificationStatus = 'rejected';
     } else {
-      verificationStatus = 'partial'; // Partial acceptance
+      verificationStatus = 'partial';
     }
 
-    // Update stock batch
     await this.dataSource.query(
       `
       UPDATE stock_batches 
       SET 
         verified_qty = $1,
         rejected_qty = $2,
-        quantity = $3,  -- Sellable quantity = verified quantity
+        quantity = $3,
         verification_status = $4,
         verified_by = $5,
         verified_at = NOW(),
@@ -110,7 +100,7 @@ export class ReceivingService {
       [
         verified_qty,
         rejectedQty,
-        verified_qty, // Only verified quantity is sellable
+        verified_qty,
         verificationStatus,
         userId,
         discrepancy_notes || null,
@@ -118,7 +108,6 @@ export class ReceivingService {
       ],
     );
 
-    // If there's a discrepancy, log it
     if (rejectedQty > 0 || discrepancy_notes) {
       await this.logDiscrepancy(
         batch_id,
@@ -142,9 +131,6 @@ export class ReceivingService {
     };
   }
 
-  /**
-   * Bulk verify multiple batches
-   */
   async bulkVerifyBatches(
     batches: VerifyBatchDto[],
     userId: string,
@@ -176,9 +162,6 @@ export class ReceivingService {
     };
   }
 
-  /**
-   * Get all discrepancies
-   */
   async getDiscrepancies(
     tenantId: string,
     poId?: string,
@@ -196,7 +179,7 @@ export class ReceivingService {
         vd.notes,
         vd.reported_at,
         vd.resolution_status,
-        sb.batch_no,
+        sb.batch_number as batch_no,
         m.brand_name as medicine_name,
         po.po_number,
         s.name as supplier_name
@@ -239,9 +222,6 @@ export class ReceivingService {
     };
   }
 
-  /**
-   * Get verification summary for a PO
-   */
   async getVerificationSummary(poId: string, tenantId: string) {
     const summary = await this.dataSource.query(
       `
@@ -264,9 +244,6 @@ export class ReceivingService {
     return summary[0] || {};
   }
 
-  /**
-   * Log discrepancy to tracking table
-   */
   private async logDiscrepancy(
     batchId: string,
     tenantId: string,
@@ -277,7 +254,6 @@ export class ReceivingService {
     notes: string,
     userId: string,
   ) {
-    // Determine discrepancy type
     let discrepancyType = 'other';
     if (varianceQty > 0 && actualQty < expectedQty) {
       discrepancyType = 'short_supply';
