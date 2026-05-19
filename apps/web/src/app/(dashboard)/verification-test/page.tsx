@@ -7,6 +7,7 @@ export default function VerificationTestPage() {
   const [pendingBatches, setPendingBatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showToken, setShowToken] = useState(false);
 
   useEffect(() => {
     fetchPendingBatches();
@@ -78,11 +79,24 @@ export default function VerificationTestPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-gray-900">Stock Verification Test</h1>
         <p className="text-sm text-gray-500 mt-1">Testing the verification API</p>
+        <button 
+          onClick={() => setShowToken(!showToken)}
+          className="mt-2 text-xs text-blue-600 hover:underline"
+        >
+          {showToken ? 'Hide' : 'Show'} Debug Info
+        </button>
+        {showToken && (
+          <div className="mt-2 p-3 bg-gray-100 rounded text-xs font-mono">
+            <p><strong>Token:</strong> {localStorage.getItem('token')?.substring(0, 50)}...</p>
+            <p><strong>API URL:</strong> https://successful-playfulness-production-873f.up.railway.app/receiving/pending</p>
+          </div>
+        )}
       </div>
 
       {error && (
         <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
           <p className="text-red-700">{error}</p>
+          <p className="text-xs text-red-600 mt-1">Check "Show Debug Info" above for details</p>
         </div>
       )}
 
