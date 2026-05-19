@@ -340,13 +340,19 @@ export class BulkService {
         if (!existing) {
           await this.batchRepo.save(this.batchRepo.create({
             medicine_id: medicine.id, batch_number: item.batchNo,
-            expiry_date: expiryDate, quantity: item.qty,
+            expiry_date: expiryDate, 
+            quantity: 0,  // NOT sellable until verified
+            received_qty: item.qty,  // Track what was received
+            verification_status: 'pending',  // Requires verification
             purchase_price: item.purchasePrice, mrp: item.mrp,
             sale_rate: item.purchasePrice * 1.15,
-            supplier_id: supplier?.id ?? null, purchase_invoice_no: invoiceNo || null,
+            supplier_id: supplier?.id ?? null, 
+            purchase_invoice_no: invoiceNo || null,
           }));
         } else {
-          existing.quantity += item.qty;
+          // Existing batch - add to received_qty, keep pending
+          existing.received_qty = (existing.received_qty || 0) + item.qty;
+          existing.verification_status = 'pending';
           await this.batchRepo.save(existing);
         }
         successCount++;
