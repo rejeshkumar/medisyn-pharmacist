@@ -11,7 +11,7 @@ import {
   BarChart3, Users, DollarSign, Upload, Shield, LogOut, ChevronRight,
   Menu, X, HeartPulse, ClipboardList, Settings, Briefcase,
   RefreshCcw, ShoppingBag, Clock, Calendar, Bell,
-  Stethoscope, ReceiptText, ArrowLeftRight, ChevronUp, Cpu, Scan,
+  Stethoscope, ReceiptText, ArrowLeftRight, ChevronUp, Cpu, Scan, ClipboardCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
@@ -45,11 +45,13 @@ const ROLE_TABS: Record<string, Array<{ href: string; label: string; icon: any; 
     { href: '/dispensing',         label: 'Dispense',    icon: ShoppingCart },
     { href: '/billing',            label: 'Bills',       icon: ReceiptText  },
     { href: '/stock',              label: 'Stock',       icon: Package      },
+      { href: '/stock/receiving',  label: 'Receiving',   icon: ClipboardCheck },
   ],
   assistant: [
     { href: '/dispensing',         label: 'Dispense',    icon: ShoppingCart },
     { href: '/billing',            label: 'Bills',       icon: ReceiptText  },
     { href: '/stock',              label: 'Stock',       icon: Package      },
+      { href: '/stock/receiving',  label: 'Receiving',   icon: ClipboardCheck },
     { href: '/attendance',         label: 'Attendance',  icon: Clock        },
   ],
 };
@@ -73,6 +75,7 @@ const OWNER_NAV_SECTIONS = [
     items: [
       { href: '/medicines',         label: 'Medicines',    icon: Pill        },
       { href: '/stock',             label: 'Stock',        icon: Package     },
+      { href: '/stock/receiving',  label: 'Receiving',   icon: ClipboardCheck },
       { href: '/stock-adjustments', label: 'Adjustments',  icon: RefreshCcw  },
       { href: '/procurement',       label: 'Procurement',  icon: ShoppingBag },
       { href: '/inventory/intelligence', label: 'Intelligence', icon: Cpu },
