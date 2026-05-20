@@ -372,6 +372,86 @@ export class ProcurementController {
         [totalAmount, po[0].id],
       );
 
+      // ════════════════════════════════════════════════════════════
+      // WALK-IN PURCHASE: Auto-receive and create financial entries
+      // ════════════════════════════════════════════════════════════
+      if (body.purchase_type === 'walkin') {
+        // 1. Create verified stock batches immediately
+        for (const item of body.items) {
+          const batchNumber = `WI-${po[0].po_number}-${item.medicine_id.substring(0, 8)}`;
+          
+          await qr.query(
+            `INSERT INTO stock_batches (
+               tenant_id, medicine_id, batch_number, expiry_date,
+               quantity, received_qty, verification_status,
+               purchase_price, mrp, sale_rate, po_id,
+               supplier_id, purchase_invoice_no,
+               verified_at, verified_by, verified_by_name,
+               created_by, created_by_name
+             ) VALUES ($1,$2,$3,$4,$5,$6,'verified',$7,$8,$9,$10,$11,$12,NOW(),$13,$14,$13,$14)`,
+            [
+              tenantId,
+              item.medicine_id,
+              batchNumber,
+              body.expected_date || dayjs().add(2, 'year').format('YYYY-MM-DD'), // Default 2 year expiry
+              item.ordered_qty,  // quantity = immediately sellable
+              item.ordered_qty,  // received_qty
+              item.unit_price || 0,
+              item.unit_price ? (item.unit_price * 1.2) : 0,  // MRP = cost + 20%
+              item.unit_price || 0,  // sale_rate = cost for now
+              po[0].id,
+              body.supplier_id || null,
+              po[0].po_number,  // Use PO number as invoice
+              req.user.sub,
+              req.user.full_name || 'Unknown',
+            ],
+          );
+
+          // Update medicine total stock
+          await qr.query(
+            `UPDATE medicines SET total_stock = (
+               SELECT COALESCE(SUM(quantity), 0)
+               FROM stock_batches
+               WHERE medicine_id = $1 AND tenant_id = $2 AND is_active = true
+             ) WHERE id = $1 AND tenant_id = $2`,
+            [item.medicine_id, tenantId],
+          );
+        }
+
+        // 2. Update PO status to received
+        await qr.query(
+          `UPDATE purchase_orders 
+           SET status = 'received', 
+               receiving_status = 'complete',
+               items_received_count = total_items_count,
+               updated_at = NOW()
+           WHERE id = $1`,
+          [po[0].id],
+        );
+
+        // 3. Create pharmacy_purchases entry
+        const purchaseResult = await qr.query(
+          `INSERT INTO pharmacy_purchases (
+             tenant_id, purchase_date, vendor_name, invoice_no,
+             amount, payment_mode, credit_period, is_paid,
+             payment_status, po_id, created_by, created_at, updated_at
+           ) VALUES ($1, $2, $3, $4, $5, 'cash', 0, true, 'paid', $6, $7, NOW(), NOW())
+           RETURNING id`,
+          [
+            tenantId,
+            body.order_date || dayjs().format('YYYY-MM-DD'),
+            body.supplier_name || 'Walk-in Supplier',
+            po[0].po_number,
+            totalAmount,
+            po[0].id,
+            req.user.sub,
+          ],
+        );
+
+        // 4. No upcoming_payment needed (cash = paid immediately)
+        // Walk-in purchases are marked as paid, so no payment tracking needed
+      }
+
       await qr.commitTransaction();
       return { id: po[0].id, po_number: po[0].po_number, total_amount: totalAmount };
     } catch (e) {
