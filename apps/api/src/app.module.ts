@@ -142,3 +142,4 @@ export class AppModule implements OnModuleInit {
   }
 }
 // Trigger Railway redeploy: Fri May 16 09:30:00 IST 2026 - Inventory Intelligence with AI
+
