@@ -328,6 +328,7 @@ function POCreateModal({ flags, suppliers, onClose, onCreated, initialMedicineNa
   initialMedicineName?: string;
 }) {
   const [supplierId, setSupplierId]   = useState('');
+  const [purchaseType, setPurchaseType] = useState<"regular" | "walkin">("regular");
   const [supplierName, setSupplierName] = useState('');
   const [supplierPhone, setSupplierPhone] = useState('');
   const [supplierEmail, setSupplierEmail] = useState('');
@@ -1300,7 +1301,6 @@ function ReceivingTab() {
 
 export default function ProcurementPage() {
   const [tab, setTab] = useState<'reorder' | 'orders' | 'suppliers' | 'demand' | 'receiving'>('reorder');
-  const [purchaseType, setPurchaseType] = useState<'regular' | 'walkin'>('regular');
   const [demandMedicine, setDemandMedicine] = useState<string | undefined>();
 
   const TABS = [
