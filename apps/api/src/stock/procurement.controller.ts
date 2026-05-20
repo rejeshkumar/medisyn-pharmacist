@@ -299,7 +299,7 @@ export class ProcurementController {
         `INSERT INTO purchase_orders (
            tenant_id, po_number, supplier_id, supplier_name,
            supplier_phone, supplier_email, status, order_date,
-           expected_date, notes, created_by, created_by_name
+           expected_date, notes, created_by
          ) VALUES ($1,$2,$3,$4,$5,$6,'draft',$7,$8,$9,$10,$11)
          RETURNING id, po_number`,
         [
@@ -386,9 +386,9 @@ export class ProcurementController {
                quantity, received_qty, verification_status,
                purchase_price, mrp, sale_rate, po_id,
                supplier_id, purchase_invoice_no,
-               verified_at, verified_by, verified_by_name,
-               created_by, created_by_name
-             ) VALUES ($1,$2,$3,$4,$5,$6,'verified',$7,$8,$9,$10,$11,$12,NOW(),$13,$14,$13,$14)`,
+               verified_at, verified_by,
+               created_by
+             ) VALUES ($1,$2,$3,$4,$5,$6,'verified',$7,$8,$9,$10,$11,$12,NOW(),$13,$13)`,
             [
               tenantId,
               item.medicine_id,
@@ -403,7 +403,6 @@ export class ProcurementController {
               body.supplier_id || null,
               po[0].po_number,  // Use PO number as invoice
               req.user.sub,
-              req.user.full_name || 'Unknown',
             ],
           );
 
