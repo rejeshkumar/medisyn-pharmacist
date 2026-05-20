@@ -382,74 +382,77 @@ export class ProcurementController {
           
           await qr.query(
             `INSERT INTO stock_batches (
-               tenant_id, medicine_id, batch_number, expiry_date,
-               quantity, received_qty, verification_status,
-               purchase_price, mrp, sale_rate, po_id,
-               supplier_id, purchase_invoice_no,
-               verified_at, verified_by,
-               created_by
-             ) VALUES ($1,$2,$3,$4,$5,$6,'verified',$7,$8,$9,$10,$11,$12,NOW(),$13,$13)`,
+               id, tenant_id, medicine_id, batch_number, expiry_date,
+               quantity, purchase_price, mrp, sale_rate,
+               supplier_id, purchase_invoice_no, is_active,
+               po_id, received_qty, verified_qty,
+               verification_status, verified_by, verified_at,
+               created_by, created_at, updated_at
+             ) VALUES (
+               gen_random_uuid(), $1, $2, $3, $4,
+               $5, $6, $7, $8,
+               $9, $10, true,
+               $11, $5, $5,
+               'verified', $12, NOW(),
+               $12, NOW(), NOW()
+             )`,
             [
-              tenantId,
-              item.medicine_id,
-              batchNumber,
-              body.expected_date || dayjs().add(2, 'year').format('YYYY-MM-DD'), // Default 2 year expiry
-              item.ordered_qty,  // quantity = immediately sellable
-              item.ordered_qty,  // received_qty
-              item.unit_price || 0,
-              item.unit_price ? (item.unit_price * 1.2) : 0,  // MRP = cost + 20%
-              item.unit_price || 0,  // sale_rate = cost for now
-              po[0].id,
-              body.supplier_id || null,
-              po[0].po_number,  // Use PO number as invoice
-              req.user.sub,
+              tenantId,                                                          // $1
+              item.medicine_id,                                                  // $2
+              batchNumber,                                                       // $3
+              body.expected_date || dayjs().add(2, 'year').format('YYYY-MM-DD'), // $4
+              item.ordered_qty || 1,                                             // $5 (quantity, received_qty, verified_qty)
+              item.unit_price || 0,                                              // $6 purchase_price
+              item.unit_price ? Math.round(item.unit_price * 1.2 * 100) / 100 : 0, // $7 mrp
+              item.unit_price || 0,                                              // $8 sale_rate
+              body.supplier_id || null,                                          // $9
+              po[0].po_number,                                                   // $10 purchase_invoice_no
+              po[0].id,                                                          // $11 po_id
+              req.user.sub,                                                      // $12 verified_by, created_by
             ],
-          );
-
-          // Update medicine total stock
-          await qr.query(
-            `UPDATE medicines SET total_stock = (
-               SELECT COALESCE(SUM(quantity), 0)
-               FROM stock_batches
-               WHERE medicine_id = $1 AND tenant_id = $2 AND is_active = true
-             ) WHERE id = $1 AND tenant_id = $2`,
-            [item.medicine_id, tenantId],
           );
         }
 
         // 2. Update PO status to received
         await qr.query(
           `UPDATE purchase_orders 
-           SET status = 'received', 
+           SET status = 'received',
                receiving_status = 'complete',
-               items_received_count = (SELECT COUNT(*) FROM purchase_order_items WHERE po_id = purchase_orders.id),
-               total_items_count = (SELECT COUNT(*) FROM purchase_order_items WHERE po_id = purchase_orders.id),
+               items_received_count = (SELECT COUNT(*) FROM purchase_order_items WHERE po_id = $1),
+               total_items_count = (SELECT COUNT(*) FROM purchase_order_items WHERE po_id = $1),
                updated_at = NOW()
            WHERE id = $1`,
           [po[0].id],
         );
 
-        // 3. Create pharmacy_purchases entry
-        const purchaseResult = await qr.query(
+        // 3. Create pharmacy_purchases entry (marked as PAID for cash walk-in)
+        await qr.query(
           `INSERT INTO pharmacy_purchases (
-             tenant_id, purchase_date, vendor_name, invoice_no,
-             amount, payment_mode, credit_period, is_paid,
-             payment_status, po_id, created_by, created_at, updated_at
-           ) VALUES ($1, $2, $3, $4, $5, 'cash', 0, true, 'paid', $6, $7, NOW(), NOW())
-           RETURNING id`,
+             id, tenant_id, purchase_date, vendor_name, invoice_no,
+             amount, payment_mode, is_paid, paid_date,
+             created_by, created_at, updated_at,
+             po_id, supplier_id, total_amount,
+             paid_amount, payment_status, pending_amount
+           ) VALUES (
+             gen_random_uuid(), $1, $2, $3, $4,
+             $5, 'cash', true, $2,
+             $6, NOW(), NOW(),
+             $7, $8, $5,
+             $5, 'paid', 0
+           )`,
           [
-            tenantId,
-            body.order_date || dayjs().format('YYYY-MM-DD'),
-            body.supplier_name || 'Walk-in Supplier',
-            po[0].po_number,
-            totalAmount,
-            po[0].id,
-            req.user.sub,
+            tenantId,                                             // $1
+            body.order_date || dayjs().format('YYYY-MM-DD'),      // $2 purchase_date, paid_date
+            body.supplier_name || 'Walk-in Supplier',             // $3 vendor_name
+            po[0].po_number,                                      // $4 invoice_no
+            totalAmount,                                          // $5 amount, total_amount, paid_amount
+            req.user.sub,                                         // $6 created_by
+            po[0].id,                                             // $7 po_id
+            body.supplier_id || null,                             // $8 supplier_id
           ],
         );
 
-        // 4. No upcoming_payment needed (cash = paid immediately)
-        // Walk-in purchases are marked as paid, so no payment tracking needed
+        // 4. No upcoming_payment needed - cash = paid immediately
       }
 
       await qr.commitTransaction();
