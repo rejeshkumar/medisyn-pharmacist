@@ -423,7 +423,8 @@ export class ProcurementController {
           `UPDATE purchase_orders 
            SET status = 'received', 
                receiving_status = 'complete',
-               items_received_count = total_items_count,
+               items_received_count = (SELECT COUNT(*) FROM purchase_order_items WHERE po_id = purchase_orders.id),
+               total_items_count = (SELECT COUNT(*) FROM purchase_order_items WHERE po_id = purchase_orders.id),
                updated_at = NOW()
            WHERE id = $1`,
           [po[0].id],
