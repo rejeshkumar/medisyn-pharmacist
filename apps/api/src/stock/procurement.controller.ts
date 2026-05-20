@@ -372,6 +372,7 @@ export class ProcurementController {
         [totalAmount, po[0].id],
       );
 
+      await qr.commitTransaction();
       return { id: po[0].id, po_number: po[0].po_number, total_amount: totalAmount };
     } catch (e) {
       await qr.rollbackTransaction(); throw e;
