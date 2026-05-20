@@ -432,13 +432,13 @@ export class ProcurementController {
              amount, payment_mode, is_paid, paid_date,
              created_by, created_at, updated_at,
              po_id, supplier_id, total_amount,
-             paid_amount, payment_status, pending_amount
+             paid_amount, payment_status
            ) VALUES (
              gen_random_uuid(), $1, $2, $3, $4,
              $5, 'cash', true, $2,
              $6, NOW(), NOW(),
              $7, $8, $5,
-             $5, 'paid', 0
+             $5, 'paid'
            )`,
           [
             tenantId,                                             // $1
