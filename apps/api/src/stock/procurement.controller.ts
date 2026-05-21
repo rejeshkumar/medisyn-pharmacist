@@ -298,9 +298,9 @@ export class ProcurementController {
       const po = await qr.query(
         `INSERT INTO purchase_orders (
            tenant_id, po_number, supplier_id, supplier_name,
-           supplier_phone, supplier_email, status, order_date,
+           supplier_phone, supplier_email, order_date,
            expected_date, notes, created_by
-         ) VALUES ($1,$2,$3,$4,$5,$6,'draft',$7,$8,$9,$10,$11)
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
          RETURNING id, po_number`,
         [
           tenantId, poNumber,
@@ -312,7 +312,6 @@ export class ProcurementController {
           body.expected_date || null,
           body.notes || null,
           req.user.sub,
-          req.user.full_name || 'Unknown',
         ],
       );
 
