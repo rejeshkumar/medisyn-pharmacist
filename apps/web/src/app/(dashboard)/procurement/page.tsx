@@ -876,25 +876,11 @@ function POTab({ initialMedicine }: { initialMedicine?: string }) {
                               className={`flex-1 px-2 py-1 border rounded-lg text-sm focus:outline-none focus:border-[#00b8a0] ${
                                 !ri.batch_number ? 'border-red-300 bg-red-50' : 'border-slate-200'
                               }`} />
-                            <MedicineLabelScanner
-                              onScan={(data: any) => {
-                                setReceiveItems(prev => prev.map((x, i) => {
-                                  if (i !== idx) return x;
-                                  return {
-                                    ...x,
-                                    batch_number: data.batch || x.batch_number,
-                                    expiry_date: data.expiry || x.expiry_date,
-                                    mrp: data.mrp || x.mrp,
-                                  };
-                                }));
-                              }}
-                              trigger={
-                                <button type="button"
-                                  className="px-2 py-1 bg-[#00b8a0] text-white rounded-lg text-xs font-semibold flex items-center gap-1 hover:bg-[#009e8a] whitespace-nowrap">
-                                  📷 Scan
-                                </button>
-                              }
-                            />
+                            <button type="button"
+                              onClick={() => setScannerIdx(idx)}
+                              className="px-2 py-1 bg-[#00b8a0] text-white rounded-lg text-xs font-semibold flex items-center gap-1 hover:bg-[#009e8a] whitespace-nowrap">
+                              📷 Scan
+                            </button>
                           </div>
                         </div>
                         <div className="col-span-2">
