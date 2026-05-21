@@ -141,8 +141,16 @@ export class BulkService {
     let successCount = 0;
     for (const item of toInsert) {
       try {
-        const medicine = await this.medicineRepo.findOne({ where: { brand_name: item.brandName } });
-        if (!medicine) { errors.push({ row: 0, error: `Medicine not found: ${item.brandName}`, data: item }); continue; }
+        // Try exact match first, then case-insensitive
+        let medicine = await this.medicineRepo.findOne({ where: { brand_name: item.brandName } });
+        if (!medicine) {
+          const allMeds = await this.medicineRepo.find({ where: { is_active: true } });
+          medicine = allMeds.find(m => m.brand_name.toLowerCase().trim() === item.brandName.toLowerCase().trim()) || null;
+        }
+        if (!medicine) {
+          errors.push({ row: 0, error: `Medicine "${item.brandName}" not found in your medicine master. Add it first via Medicine Master or Bulk Upload → Medicine Master tab.`, data: item });
+          continue;
+        }
 
         let supplierId = null;
         if (item.supplierName) {
@@ -155,7 +163,9 @@ export class BulkService {
           medicine_id: medicine.id, batch_number: item.batchNo,
           expiry_date: new Date(`01/${item.expiry}`),
           quantity: item.qty, purchase_price: item.purchasePrice,
-          mrp: item.saleRate * 1.1, sale_rate: item.saleRate, supplier_id: supplierId,
+          mrp: item.saleRate * 1.1, sale_rate: item.saleRate,
+          supplier_id: supplierId,
+          verification_status: 'pending',
         }));
         successCount++;
       } catch (err) {
