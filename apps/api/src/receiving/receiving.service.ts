@@ -18,7 +18,7 @@ export class ReceivingService {
         sb.batch_number as batch_no,
         sb.expiry_date,
         sb.ordered_qty,
-        sb.received_qty,
+        COALESCE(sb.received_qty, sb.quantity) as received_qty,
         sb.purchase_price,
         sb.sale_rate as mrp,
         sb.verification_status,
