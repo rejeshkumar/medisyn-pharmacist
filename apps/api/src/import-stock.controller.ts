@@ -136,10 +136,14 @@ export class ImportStockController {
     const ws = wb.Sheets[wb.SheetNames[0]];
     const raw: any[] = XLSX.utils.sheet_to_json(ws, { header: 1 });
 
-    // Find header row (contains 'Drug Name')
+    // Find header row (contains 'Drug Name' or 'Brand Name *' for SimpliRx template)
     let headerIdx = 0;
     for (let i = 0; i < 10; i++) {
-      if (raw[i]?.includes('Drug Name')) { headerIdx = i; break; }
+      const row = raw[i];
+      if (row?.includes('Drug Name') || row?.includes('Brand Name *') || row?.includes('Brand Name')) {
+        headerIdx = i;
+        break;
+      }
     }
     const headers: string[] = raw[headerIdx];
     const data = raw.slice(headerIdx + 1).map(row => {
