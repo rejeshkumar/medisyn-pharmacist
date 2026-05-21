@@ -1129,6 +1129,9 @@ function UpcomingPaymentsTab() {
                     {p.source_type === 'pharmacy_purchase' && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 ml-1">Auto from purchase</span>
                     )}
+                    {p.source_type === 'purchase_order' && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-teal-50 text-teal-600 ml-1">Auto from PO</span>
+                    )}
                   </td>
                   <td className="px-4 py-2.5 text-right font-semibold">₹{Number(p.amount).toLocaleString('en-IN')}</td>
                   <td className="px-4 py-2.5">
