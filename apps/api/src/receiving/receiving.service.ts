@@ -128,6 +128,57 @@ export class ReceivingService {
       await this.checkAndUpdatePOStatus(batchData.po_id, tenantId);
     }
 
+    // For walk-in / CSV batches (no PO), create Finance upcoming payment on verify
+    if (!batchData.po_id && verified_qty > 0 && batchData.purchase_price > 0) {
+      try {
+        const amount = verified_qty * Number(batchData.purchase_price);
+        // Get supplier name
+        let supplierName = 'Supplier';
+        if (batchData.supplier_id) {
+          const sup = await this.dataSource.query(
+            `SELECT name FROM suppliers WHERE id = $1`,
+            [batchData.supplier_id],
+          );
+          if (sup.length > 0) supplierName = sup[0].name;
+        }
+        // Check if payment already exists for this batch
+        const existing = await this.dataSource.query(
+          `SELECT id FROM upcoming_payments
+           WHERE source_type = 'stock_batch' AND source_id = $1 AND tenant_id = $2`,
+          [batch_id, tenantId],
+        );
+        if (existing.length === 0) {
+          const dueDate = new Date();
+          dueDate.setDate(dueDate.getDate() + 30); // default 30 days
+          await this.dataSource.query(
+            `INSERT INTO upcoming_payments (
+               id, tenant_id, payment_type, description, amount,
+               due_date, is_urgent, is_paid, source_type, source_id,
+               created_at, updated_at
+             ) VALUES (
+               gen_random_uuid(), $1, 'purchase', $2, $3,
+               $4, false, false, 'stock_batch', $5, NOW(), NOW()
+             )`,
+            [
+              tenantId,
+              `${supplierName} — Batch ${batchData.batch_number}`,
+              amount,
+              dueDate.toISOString().split('T')[0],
+              batch_id,
+            ],
+          );
+        } else {
+          // Update amount if already exists (partial re-verify)
+          await this.dataSource.query(
+            `UPDATE upcoming_payments SET amount = $1, updated_at = NOW()
+             WHERE source_type = 'stock_batch' AND source_id = $2 AND tenant_id = $3`,
+            [amount, batch_id, tenantId],
+          );
+        }
+      } catch (finErr) {
+        console.error('Finance auto-entry failed for walk-in batch (non-fatal):', finErr);
+      }
+    }
 
     return {
       success: true,
