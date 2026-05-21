@@ -646,6 +646,7 @@ function POTab({ initialMedicine }: { initialMedicine?: string }) {
   const [selectedPO, setSelectedPO] = useState<string | null>(null);
   const [poDetail, setPODetail]   = useState<any>(null);
   const [receiving, setReceiving] = useState(false);
+  const [scannerIdx, setScannerIdx] = useState<number | null>(null);
   const [receiveItems, setReceiveItems] = useState<any[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(!!initialMedicine);
   const [suppliers, setSuppliers] = useState<any[]>([]);
@@ -692,6 +693,12 @@ function POTab({ initialMedicine }: { initialMedicine?: string }) {
 
   const receiveStock = async () => {
     if (!poDetail) return;
+    // Validate mandatory fields
+    const invalid = receiveItems.filter(i => i.recv_qty > 0).find(i => !i.batch_number || !i.expiry_date);
+    if (invalid) {
+      toast.error('Batch number and expiry date are required for all items');
+      return;
+    }
     setReceiving(true);
     try {
       await api.post(`/purchase-orders/${poDetail.id}/receive`, {
@@ -857,20 +864,49 @@ function POTab({ initialMedicine }: { initialMedicine?: string }) {
                               i === idx ? { ...x, recv_qty: Number(e.target.value) } : x))}
                             className="w-full px-2 py-1 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00475a]" />
                         </div>
-                        <div>
-                          <label className="text-[10px] text-slate-400 block mb-1">Batch no.</label>
-                          <input type="text" value={ri.batch_number}
-                            onChange={e => setReceiveItems(prev => prev.map((x,i) =>
-                              i === idx ? { ...x, batch_number: e.target.value } : x))}
-                            placeholder="e.g. B240101"
-                            className="w-full px-2 py-1 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00475a]" />
+                        <div className="col-span-2">
+                          <label className="text-[10px] text-slate-400 block mb-1">
+                            Batch no. <span className="text-red-500 font-semibold">*</span>
+                          </label>
+                          <div className="flex gap-1">
+                            <input type="text" value={ri.batch_number}
+                              onChange={e => setReceiveItems(prev => prev.map((x,i) =>
+                                i === idx ? { ...x, batch_number: e.target.value } : x))}
+                              placeholder="e.g. B240101"
+                              className={`flex-1 px-2 py-1 border rounded-lg text-sm focus:outline-none focus:border-[#00b8a0] ${
+                                !ri.batch_number ? 'border-red-300 bg-red-50' : 'border-slate-200'
+                              }`} />
+                            <MedicineLabelScanner
+                              onScan={(data: any) => {
+                                setReceiveItems(prev => prev.map((x, i) => {
+                                  if (i !== idx) return x;
+                                  return {
+                                    ...x,
+                                    batch_number: data.batch || x.batch_number,
+                                    expiry_date: data.expiry || x.expiry_date,
+                                    mrp: data.mrp || x.mrp,
+                                  };
+                                }));
+                              }}
+                              trigger={
+                                <button type="button"
+                                  className="px-2 py-1 bg-[#00b8a0] text-white rounded-lg text-xs font-semibold flex items-center gap-1 hover:bg-[#009e8a] whitespace-nowrap">
+                                  📷 Scan
+                                </button>
+                              }
+                            />
+                          </div>
                         </div>
-                        <div>
-                          <label className="text-[10px] text-slate-400 block mb-1">Expiry date</label>
+                        <div className="col-span-2">
+                          <label className="text-[10px] text-slate-400 block mb-1">
+                            Expiry date <span className="text-red-500 font-semibold">*</span>
+                          </label>
                           <input type="date" value={ri.expiry_date}
                             onChange={e => setReceiveItems(prev => prev.map((x,i) =>
                               i === idx ? { ...x, expiry_date: e.target.value } : x))}
-                            className="w-full px-2 py-1 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00475a]" />
+                            className={`w-full px-2 py-1 border rounded-lg text-sm focus:outline-none focus:border-[#00b8a0] ${
+                              !ri.expiry_date ? 'border-red-300 bg-red-50' : 'border-slate-200'
+                            }`} />
                         </div>
                         <div>
                           <label className="text-[10px] text-slate-400 block mb-1">Sale rate ₹</label>
@@ -903,6 +939,33 @@ function POTab({ initialMedicine }: { initialMedicine?: string }) {
                 {receiving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Truck className="w-4 h-4" />}
                 Confirm receipt & add to stock
               </button>
+            )}
+
+            {/* Barcode Scanner Modal */}
+            {scannerIdx !== null && (
+              <MedicineLabelScanner
+                mode="procurement"
+                onScanComplete={(data) => {
+                  setReceiveItems(prev => prev.map((x, i) => {
+                    if (i !== scannerIdx) return x;
+                    // Convert expiry from MM/YYYY to YYYY-MM-DD for date input
+                    let expiry = x.expiry_date;
+                    if (data.expiry_date && data.expiry_date.includes('/')) {
+                      const [mm, yyyy] = data.expiry_date.split('/');
+                      expiry = `${yyyy}-${mm.padStart(2,'0')}-01`;
+                    }
+                    return {
+                      ...x,
+                      batch_number: data.batch_number || x.batch_number,
+                      expiry_date: expiry,
+                      mrp: data.mrp ? String(data.mrp) : x.mrp,
+                      manufacturer: data.manufacturer || x.manufacturer,
+                    };
+                  }));
+                  setScannerIdx(null);
+                }}
+                onClose={() => setScannerIdx(null)}
+              />
             )}
           </div>
         </div>
