@@ -148,8 +148,31 @@ export class ImportStockController {
       return obj;
     });
 
+    // ── Normalize column names to support multiple template formats ──────────
+    const normalize = (row: any): any => {
+      const r = { ...row };
+      // Support new SimpliRx template columns alongside old vendor CSV columns
+      if (!r['Drug Name'] && r['Brand Name *'])         r['Drug Name']   = r['Brand Name *'];
+      if (!r['Drug Name'] && r['Brand Name'])           r['Drug Name']   = r['Brand Name'];
+      if (!r['Avail Qty'] && r['Quantity *'])           r['Avail Qty']   = r['Quantity *'];
+      if (!r['Avail Qty'] && r['Quantity'])             r['Avail Qty']   = r['Quantity'];
+      if (!r['Batch No'] && r['Batch No *'])            r['Batch No']    = r['Batch No *'];
+      if (!r['Rate'] && r['Purchase Price *'])          r['Rate']        = r['Purchase Price *'];
+      if (!r['Rate'] && r['Purchase Price'])            r['Rate']        = r['Purchase Price'];
+      if (!r['Mrp'] && r['MRP *'])                     r['Mrp']         = r['MRP *'];
+      if (!r['Mrp'] && r['MRP'])                       r['Mrp']         = r['MRP'];
+      if (!r['Mrp'] && r['Sale Rate *'])               r['Mrp']         = r['Sale Rate *'];
+      if (!r['Mrp'] && r['Sale Rate'])                 r['Mrp']         = r['Sale Rate'];
+      if (!r['Expiry By'] && r['Expiry (MM/YYYY) *'])  r['Expiry By']   = r['Expiry (MM/YYYY) *'];
+      if (!r['Expiry By'] && r['Expiry (MM/YYYY)'])    r['Expiry By']   = r['Expiry (MM/YYYY)'];
+      if (!r['Expiry By'] && r['Expiry'])              r['Expiry By']   = r['Expiry'];
+      if (!r['Mfg Name'] && r['Supplier'])             r['Mfg Name']    = r['Supplier'];
+      return r;
+    };
+    const normalizedData = data.map(normalize);
+
     // Only rows with available stock
-    const stockRows = data.filter(r => r['Drug Name'] && Number(r['Avail Qty'] || 0) > 0);
+    const stockRows = normalizedData.filter(r => r['Drug Name'] && Number(r['Avail Qty'] || 0) > 0);
 
     // ── Helpers ───────────────────────────────────────────────────────────────
     // Safe float — null if invalid/negative
@@ -196,15 +219,24 @@ export class ImportStockController {
       return 'other';
     };
 
-    // Parse expiry: 'Apr-2028', 'Apr-28', 'Sep-27' → YYYY-MM-DD (last day of month)
+    // Parse expiry: 'Apr-2028', 'Apr-28', 'Sep-27', '12/2026', '12/26' → YYYY-MM-DD (last day of month)
     const expiry = (v: any): string | null => {
       if (!v) return null;
       const s = String(v).trim();
       const months: any = { Jan:1,Feb:2,Mar:3,Apr:4,May:5,Jun:6,Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12 };
-      const m = s.match(/^([A-Za-z]{3})-(\d{2,4})$/);
-      if (m) {
-        const mon = months[m[1]] || 1;
-        const yr = m[2].length === 2 ? 2000 + parseInt(m[2]) : parseInt(m[2]);
+      // Format: Mon-YYYY or Mon-YY e.g. 'Apr-2028', 'Sep-27'
+      const m1 = s.match(/^([A-Za-z]{3})-(\d{2,4})$/);
+      if (m1) {
+        const mon = months[m1[1]] || 1;
+        const yr = m1[2].length === 2 ? 2000 + parseInt(m1[2]) : parseInt(m1[2]);
+        const last = new Date(yr, mon, 0).getDate();
+        return `${yr}-${String(mon).padStart(2,'0')}-${String(last).padStart(2,'0')}`;
+      }
+      // Format: MM/YYYY or MM/YY e.g. '12/2026', '12/26'
+      const m2 = s.match(/^(\d{1,2})\/(\d{2,4})$/);
+      if (m2) {
+        const mon = parseInt(m2[1]);
+        const yr = m2[2].length === 2 ? 2000 + parseInt(m2[2]) : parseInt(m2[2]);
         const last = new Date(yr, mon, 0).getDate();
         return `${yr}-${String(mon).padStart(2,'0')}-${String(last).padStart(2,'0')}`;
       }
