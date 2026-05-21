@@ -455,6 +455,50 @@ export class ProcurementController {
       );
 
       await qr.commitTransaction();
+
+      // ── Auto-create upcoming payment in Finance ──────────────────────
+      try {
+        const po = await this.ds.query(
+          `SELECT po_number, supplier_name, total_amount, credit_days
+           FROM purchase_orders WHERE id=$1 AND tenant_id=$2`,
+          [id, tenantId],
+        );
+        if (po.length > 0) {
+          const existing = await this.ds.query(
+            `SELECT id FROM upcoming_payments
+             WHERE source_type='purchase_order' AND source_id=$1 AND tenant_id=$2`,
+            [id, tenantId],
+          );
+          if (existing.length === 0) {
+            const creditDays = po[0].credit_days && po[0].credit_days > 0
+              ? po[0].credit_days : 30;
+            const dueDate = new Date();
+            dueDate.setDate(dueDate.getDate() + creditDays);
+            await this.ds.query(
+              `INSERT INTO upcoming_payments (
+                 id, tenant_id, payment_type, description, amount,
+                 due_date, is_urgent, is_paid, source_type, source_id,
+                 created_at, updated_at
+               ) VALUES (
+                 gen_random_uuid(), $1, 'purchase', $2, $3,
+                 $4, false, false, 'purchase_order', $5, NOW(), NOW()
+               )`,
+              [
+                tenantId,
+                `Payment for ${po[0].po_number} - ${po[0].supplier_name || 'Supplier'}`,
+                po[0].total_amount || 0,
+                dueDate.toISOString().split('T')[0],
+                id,
+              ],
+            );
+          }
+        }
+      } catch (finErr) {
+        // Finance entry failure must not roll back stock receipt
+        console.error('Finance auto-entry failed (non-fatal):', finErr);
+      }
+      // ────────────────────────────────────────────────────────────────
+
       return { ok: true, status: newStatus };
     } catch (e) {
       await qr.rollbackTransaction(); throw e;
