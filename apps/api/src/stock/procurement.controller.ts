@@ -386,7 +386,7 @@ export class ProcurementController {
   ) {
     if (!ALLOWED.includes(req.user.role)) throw new ForbiddenException();
     await this.ds.query(
-      `UPDATE purchase_orders SET status=$1,
+      `UPDATE purchase_orders SET status=$1::po_status_enum,
        sent_via=COALESCE($2, sent_via),
        sent_at=CASE WHEN $1='sent' THEN NOW() ELSE sent_at END,
        updated_at=NOW()
