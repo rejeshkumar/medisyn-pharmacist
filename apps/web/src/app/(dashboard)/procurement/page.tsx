@@ -532,7 +532,7 @@ function POCreateModal({ flags, suppliers, onClose, onCreated, initialMedicineNa
               <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Order items</label>
               <span className="text-xs text-slate-400">{items.length} items</span>
             </div>
-            <div className="border border-slate-200 rounded-xl overflow-hidden">
+            <div className="border border-slate-200 rounded-xl overflow-visible">
               <table className="w-full">
                 <thead className="bg-slate-50">
                   <tr>
@@ -560,7 +560,7 @@ function POCreateModal({ flags, suppliers, onClose, onCreated, initialMedicineNa
                         <input type="number" min={0} step="0.01" value={item.unit_price}
                           onChange={e => updateItem(idx, 'unit_price', e.target.value)}
                           placeholder="0.00"
-                          className="w-20 px-2 py-1 border border-slate-200 rounded-lg text-sm text-right focus:outline-none focus:border-[#00475a]" />
+                          className={`w-20 px-2 py-1 border rounded-lg text-sm text-right focus:outline-none focus:border-[#00b8a0] ${!item.unit_price || Number(item.unit_price) === 0 ? 'border-amber-300 bg-amber-50' : 'border-slate-200'}`} />
                       </td>
                       <td className="px-3 py-2 text-sm font-semibold text-slate-700">
                         {item.unit_price ? `₹${(item.ordered_qty * Number(item.unit_price)).toFixed(2)}` : '—'}
@@ -579,7 +579,7 @@ function POCreateModal({ flags, suppliers, onClose, onCreated, initialMedicineNa
               {/* Manual medicine add */}
               <div className="border-t border-slate-100 px-3 py-2 bg-slate-50/50 relative">
                 {manualResults.length > 0 && (
-                  <div className="absolute left-0 right-0 bottom-full bg-white border border-slate-200 rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto mb-1">
+                  <div className="absolute left-0 right-0 top-full bg-white border border-slate-200 rounded-xl shadow-xl z-[200] max-h-48 overflow-y-auto mt-1">
                     {manualResults.map((m: any) => (
                       <button key={m.id} onMouseDown={() => addManualItem(m)}
                         className="w-full px-3 py-2 text-left text-sm hover:bg-teal-50 border-b border-slate-50 last:border-0">
