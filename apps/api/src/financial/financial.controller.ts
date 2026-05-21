@@ -859,6 +859,46 @@ export class FinancialController {
       );
     }
 
+    // Auto-create expense entry when any upcoming payment is marked paid
+    try {
+      const up = await this.ds.query(
+        `SELECT description, amount, payment_mode, reference_no, source_type
+         FROM upcoming_payments WHERE id=$1 AND tenant_id=$2`,
+        [id, req.user.tenant_id],
+      );
+      if (up.length > 0) {
+        const category = up[0].source_type === 'purchase_order'
+          ? 'Supplier Payment (PO)'
+          : up[0].source_type === 'pharmacy_purchase'
+          ? 'Supplier Payment'
+          : 'Vendor Payment';
+
+        await this.ds.query(
+          `INSERT INTO expenses (
+             tenant_id, expense_date, category, description, amount,
+             payment_mode, reference_no, vendor_name, paid_by,
+             voucher_amount, created_by
+           ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+          [
+            req.user.tenant_id,
+            body.paid_date || new Date().toISOString().split('T')[0],
+            category,
+            up[0].description || 'Supplier payment',
+            body.paid_amount || up[0].amount || 0,
+            body.payment_mode || up[0].payment_mode || 'cash',
+            body.reference_no || up[0].reference_no || null,
+            up[0].description || null,
+            'PHARMACY',
+            null,
+            req.user.sub,
+          ],
+        );
+      }
+    } catch (expErr) {
+      // Expense creation failure must not affect mark-paid success
+      console.error('Auto-expense creation failed (non-fatal):', expErr);
+    }
+
     return { success: true };
   }
 
