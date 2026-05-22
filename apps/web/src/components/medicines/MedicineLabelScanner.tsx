@@ -74,23 +74,21 @@ export default function MedicineLabelScanner({ mode, onScanComplete, onClose }: 
       ? 'Extract medicine brand name and composition from this label. Return JSON only: {"medicine_name":"<brand>","composition":"<generic>","strength":"<dosage>"}'
       : 'Extract all medicine details from this label. Return JSON only: {"medicine_name":"<brand>","composition":"<generic>","strength":"<dosage>","batch_number":"<batch>","expiry_date":"<MM/YYYY>","mrp":<number>,"manufacturer":"<company>"}. Omit missing fields.';
     try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 500,
-          messages: [{ role: 'user', content: [
-            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64 } },
-            { type: 'text', text: prompt }
-          ]}]
-        })
-      });
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'https://successful-playfulness-production-873f.up.railway.app'}/scan-label`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ image: base64, mode }),
+        }
+      );
+      if (!response.ok) throw new Error('Scan failed');
       const data = await response.json();
-      const text = data.content?.[0]?.text || '';
-      const match = text.match(/\{[\s\S]*\}/);
-      if (!match) throw new Error('No JSON');
-      setResult(JSON.parse(match[0]));
+      setResult(data);
       setStep('result');
     } catch {
       setErrorMsg('Could not read the label. Try better lighting or a clearer photo.');

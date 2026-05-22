@@ -47,6 +47,7 @@ import { ClearDataController } from './clear-data.controller';
 import { ImportStockController } from './import-stock.controller';
 import { ScheduleClassifierController } from './schedule-classifier.controller';
 import { MoleculeClassifierController } from './molecule-classifier.controller';
+import { ScanLabelController } from './scan-label.controller';
 import { SetReorderController } from './set-reorder.controller';
 import { KaggleImportController } from './kaggle-import.controller';
 import { PatientHealthModule } from './patient-health/patient-health.module';
@@ -120,7 +121,8 @@ import { InventoryIntelligenceService } from './inventory/services/inventory-int
     ClearDataController, 
     ImportStockController, 
     ScheduleClassifierController, 
-    MoleculeClassifierController, 
+    MoleculeClassifierController,
+    ScanLabelController, 
     SetReorderController, 
     KaggleImportController, 
     InventoryClassificationController,
