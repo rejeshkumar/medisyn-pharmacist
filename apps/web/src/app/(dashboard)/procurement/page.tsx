@@ -647,6 +647,8 @@ function POTab({ initialMedicine }: { initialMedicine?: string }) {
   const [poDetail, setPODetail]   = useState<any>(null);
   const [receiving, setReceiving] = useState(false);
   const [scannerIdx, setScannerIdx] = useState<number | null>(null);
+  const [invoiceScanning, setInvoiceScanning] = useState(false);
+  const invoiceFileRef = useRef<HTMLInputElement | null>(null);
   const [receiveItems, setReceiveItems] = useState<any[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(!!initialMedicine);
   const [suppliers, setSuppliers] = useState<any[]>([]);
@@ -689,6 +691,59 @@ function POTab({ initialMedicine }: { initialMedicine?: string }) {
       await load();
       if (selectedPO === id) openPO(id);
     } catch { toast.error('Failed'); }
+  };
+
+  const handleInvoiceScan = async (file: File) => {
+    if (!poDetail) return;
+    setInvoiceScanning(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const r = await api.post('/bulk/invoice/parse', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const parsed = r.data;
+      if (!parsed.items || parsed.items.length === 0) {
+        toast.error('No medicines found in invoice. Try a clearer scan.');
+        return;
+      }
+      // Match parsed items to PO items by medicine name and fill batch details
+      let matched = 0;
+      setReceiveItems(prev => prev.map(ri => {
+        const poItem = poDetail.items.find((x: any) => x.id === ri.id);
+        if (!poItem) return ri;
+        const medicineName = (poItem.medicine_name || '').toUpperCase().trim();
+        const parsedItem = parsed.items.find((p: any) => {
+          const pName = (p.medicineName || '').toUpperCase().trim();
+          return medicineName.includes(pName.substring(0, 6)) || pName.includes(medicineName.substring(0, 6));
+        });
+        if (!parsedItem) return ri;
+        matched++;
+        // Convert expiry MM/YYYY to YYYY-MM-DD
+        let expiry = ri.expiry_date;
+        if (parsedItem.expiry && parsedItem.expiry.includes('/')) {
+          const parts = parsedItem.expiry.split('/');
+          if (parts.length === 2) {
+            const mm = parts[0].padStart(2, '0');
+            const yyyy = parts[1].length === 2 ? `20${parts[1]}` : parts[1];
+            expiry = `${yyyy}-${mm}-01`;
+          }
+        }
+        return {
+          ...ri,
+          batch_number: parsedItem.batchNo || ri.batch_number,
+          expiry_date: expiry,
+          mrp: parsedItem.mrp ? String(parsedItem.mrp) : ri.mrp,
+          sale_rate: parsedItem.purchasePrice ? String(parsedItem.purchasePrice) : ri.sale_rate,
+        };
+      }));
+      toast.success(`Invoice scanned — ${matched} of ${poDetail.items.length} medicines matched. Review and confirm.`);
+      if (parsed.supplier) toast.success(`Supplier: ${parsed.supplier} · Invoice: ${parsed.invoiceNo}`);
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Failed to scan invoice');
+    } finally {
+      setInvoiceScanning(false);
+    }
   };
 
   const receiveStock = async () => {
@@ -830,6 +885,27 @@ function POTab({ initialMedicine }: { initialMedicine?: string }) {
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-lg hover:bg-green-700">
                   <Truck className="w-3.5 h-3.5" /> Receive stock
                 </button>
+                {['sent','partially_received'].includes(poDetail.status) && (
+                  <>
+                    <button
+                      onClick={() => invoiceFileRef.current?.click()}
+                      disabled={invoiceScanning}
+                      className="px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold hover:bg-slate-200 flex items-center gap-1 disabled:opacity-50">
+                      {invoiceScanning ? '⏳ Scanning...' : '📄 Scan Invoice'}
+                    </button>
+                    <input
+                      ref={invoiceFileRef}
+                      type="file"
+                      accept=".pdf,image/*"
+                      className="hidden"
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) handleInvoiceScan(file);
+                        e.target.value = '';
+                      }}
+                    />
+                  </>
+                )}
               )}
             </div>
 
