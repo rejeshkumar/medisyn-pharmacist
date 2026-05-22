@@ -1,5 +1,5 @@
 import { Controller, Post, Body, UseGuards, Req } from '@nestjs/common';
-import { JwtAuthGuard } from './auth/jwt-auth.guard';
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 @Controller('scan-label')
 export class ScanLabelController {
