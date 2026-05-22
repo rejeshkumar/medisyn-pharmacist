@@ -357,6 +357,13 @@ export class ProcurementController {
 
         // Update reorder flag status
         if (item.reorder_flag_id) {
+          // First dismiss any existing 'in_po' flag for this medicine to avoid unique constraint
+          await qr.query(
+            `UPDATE reorder_flags SET status='dismissed', updated_at=NOW()
+             WHERE medicine_id=(SELECT medicine_id FROM reorder_flags WHERE id=$1)
+             AND tenant_id=$2 AND status='in_po' AND id != $1`,
+            [item.reorder_flag_id, tenantId],
+          );
           await qr.query(
             `UPDATE reorder_flags SET status='in_po', po_id=$1, updated_at=NOW()
              WHERE id=$2 AND tenant_id=$3`,
