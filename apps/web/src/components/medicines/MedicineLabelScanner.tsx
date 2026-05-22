@@ -74,7 +74,7 @@ export default function MedicineLabelScanner({ mode, onScanComplete, onClose }: 
       ? 'Extract medicine brand name and composition from this label. Return JSON only: {"medicine_name":"<brand>","composition":"<generic>","strength":"<dosage>"}'
       : 'Extract all medicine details from this label. Return JSON only: {"medicine_name":"<brand>","composition":"<generic>","strength":"<dosage>","batch_number":"<batch>","expiry_date":"<MM/YYYY>","mrp":<number>,"manufacturer":"<company>"}. Omit missing fields.';
     try {
-      const token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+      const token = localStorage.getItem('medisyn_token') || '';
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL || 'https://successful-playfulness-production-873f.up.railway.app'}/scan-label`,
         {
