@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import Anthropic from '@anthropic-ai/sdk';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as ExcelJS from 'exceljs';
@@ -223,17 +224,110 @@ export class BulkService {
 
   async parseInvoicePdf(filePath: string): Promise<{
     supplier: string; invoiceNo: string; invoiceDate: string;
-    items: Array<{ medicineName: string; batchNo: string; expiry: string; qty: number; purchasePrice: number; mrp: number; gstPercent: number }>;
+    items: Array<{ medicineName: string; batchNo: string; expiry: string; qty: number; freeQty: number; purchasePrice: number; mrp: number; gstPercent: number; hsnCode: string }>;
   }> {
+    // Step 1: Try text extraction first (works for digital PDFs)
     const pdfData = await pdfParse(readFileSync(filePath));
-    const lines = pdfData.text.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
+    const text = pdfData.text || '';
+    const lines = text.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
 
-    const supplier    = this.extractSupplierName(lines);
-    const invoiceNo   = this.extractInvoiceNo(lines);
-    const invoiceDate = this.extractInvoiceDate(lines);
-    const items       = this.parseMargItems(lines);
+    // If we got meaningful text, try the Marg ERP parser
+    if (lines.length > 10) {
+      const items = this.parseMargItems(lines);
+      if (items.length > 0) {
+        return {
+          supplier: this.extractSupplierName(lines),
+          invoiceNo: this.extractInvoiceNo(lines),
+          invoiceDate: this.extractInvoiceDate(lines),
+          items: items.map(i => ({ ...i, freeQty: 0, hsnCode: '' })),
+        };
+      }
+    }
 
-    return { supplier, invoiceNo, invoiceDate, items };
+    // Step 2: Fall back to Claude AI vision for scanned/image PDFs
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set — cannot scan image-based invoice');
+
+    // Convert PDF to base64 for Claude vision
+    const pdfBuffer = readFileSync(filePath);
+    const base64Pdf = pdfBuffer.toString('base64');
+
+    const client = new Anthropic({ apiKey });
+
+    const prompt = `You are extracting data from an Indian pharmaceutical supplier invoice/tax invoice.
+
+Extract ALL medicine line items from this invoice and return ONLY a JSON object in this exact format:
+{
+  "supplier": "supplier company name",
+  "invoiceNo": "invoice number",
+  "invoiceDate": "DD/MM/YYYY",
+  "items": [
+    {
+      "medicineName": "full medicine name as shown",
+      "batchNo": "batch number",
+      "expiry": "MM/YYYY",
+      "qty": 10,
+      "freeQty": 0,
+      "purchasePrice": 45.50,
+      "mrp": 100.00,
+      "gstPercent": 5,
+      "hsnCode": "30049099"
+    }
+  ]
+}
+
+Rules:
+- medicineName: exact name from invoice including strength/form (e.g. "TAB AZTOR 10MG", "CAP BECOSULES")
+- batchNo: alphanumeric batch/lot number
+- expiry: convert to MM/YYYY format (e.g. "11/29" → "11/2029", "03/28" → "03/2028")
+- qty: numeric quantity ordered/billed (not free qty)
+- freeQty: free/bonus units (0 if none)
+- purchasePrice: the price per unit paid (Trade Price / PTR / Rate / PTS column)
+- mrp: Maximum Retail Price per unit
+- gstPercent: GST percentage as number (5, 12, 18, or 28)
+- hsnCode: HSN/SAC code if shown
+- Return ONLY the JSON, no other text`;
+
+    const response = await client.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4096,
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'document',
+            source: {
+              type: 'base64',
+              media_type: 'application/pdf',
+              data: base64Pdf,
+            },
+          } as any,
+          { type: 'text', text: prompt },
+        ],
+      }],
+    });
+
+    const responseText = response.content[0]?.type === 'text' ? response.content[0].text : '';
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('Could not parse AI response from invoice');
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    return {
+      supplier: parsed.supplier || '',
+      invoiceNo: parsed.invoiceNo || '',
+      invoiceDate: parsed.invoiceDate || '',
+      items: (parsed.items || []).map((item: any) => ({
+        medicineName: item.medicineName || '',
+        batchNo: item.batchNo || '',
+        expiry: item.expiry || '',
+        qty: Number(item.qty) || 0,
+        freeQty: Number(item.freeQty) || 0,
+        purchasePrice: Number(item.purchasePrice) || 0,
+        mrp: Number(item.mrp) || 0,
+        gstPercent: Number(item.gstPercent) || 5,
+        hsnCode: String(item.hsnCode || ''),
+      })),
+    };
   }
 
   // ── SUPPLIER / INVOICE META ──────────────────────────────────────────────────
