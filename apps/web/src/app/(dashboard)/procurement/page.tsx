@@ -881,12 +881,11 @@ function POTab({ initialMedicine }: { initialMedicine?: string }) {
                 </>
               )}
               {['sent','partially_received'].includes(poDetail.status) && (
+                <>
                 <button onClick={() => updateStatus(poDetail.id, 'partially_received')}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-lg hover:bg-green-700">
                   <Truck className="w-3.5 h-3.5" /> Receive stock
                 </button>
-                {['sent','partially_received'].includes(poDetail.status) && (
-                  <>
                     <button
                       onClick={() => invoiceFileRef.current?.click()}
                       disabled={invoiceScanning}
