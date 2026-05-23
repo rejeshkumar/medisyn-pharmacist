@@ -762,9 +762,11 @@ function POTab({ initialMedicine }: { initialMedicine?: string }) {
           received_qty: i.recv_qty,
           batch_number: i.batch_number,
           expiry_date: i.expiry_date,
-          unit_price: Number(poDetail.items.find((x: any) => x.id === i.id)?.unit_price || 0),
+          unit_price: i.purchase_price ? Number(i.purchase_price) : Number(poDetail.items.find((x: any) => x.id === i.id)?.unit_price || 0),
           sale_rate: i.sale_rate ? Number(i.sale_rate) : null,
           mrp: i.mrp ? Number(i.mrp) : null,
+          free_qty: i.free_qty ? Number(i.free_qty) : null,
+          hsn_code: i.hsn_code || null,
           manufacturer: i.manufacturer || '',
         })),
         invoice_number: poDetail.invoice_number,
@@ -969,12 +971,44 @@ function POTab({ initialMedicine }: { initialMedicine?: string }) {
                             }`} />
                         </div>
                         <div>
+                          <label className="text-[10px] text-slate-400 block mb-1">Purchase price ₹</label>
+                          <input type="number" value={ri.purchase_price || ''}
+                            onChange={e => setReceiveItems(prev => prev.map((x,i) =>
+                              i === idx ? { ...x, purchase_price: e.target.value } : x))}
+                            placeholder="0.00"
+                            className="w-full px-2 py-1 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00b8a0]" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-slate-400 block mb-1">MRP ₹</label>
+                          <input type="number" value={ri.mrp || ''}
+                            onChange={e => setReceiveItems(prev => prev.map((x,i) =>
+                              i === idx ? { ...x, mrp: e.target.value } : x))}
+                            placeholder="0.00"
+                            className="w-full px-2 py-1 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00b8a0]" />
+                        </div>
+                        <div>
                           <label className="text-[10px] text-slate-400 block mb-1">Sale rate ₹</label>
                           <input type="number" value={ri.sale_rate}
                             onChange={e => setReceiveItems(prev => prev.map((x,i) =>
                               i === idx ? { ...x, sale_rate: e.target.value } : x))}
                             placeholder="0.00"
-                            className="w-full px-2 py-1 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00475a]" />
+                            className="w-full px-2 py-1 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00b8a0]" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-slate-400 block mb-1">Free qty</label>
+                          <input type="number" min={0} value={ri.free_qty || ''}
+                            onChange={e => setReceiveItems(prev => prev.map((x,i) =>
+                              i === idx ? { ...x, free_qty: e.target.value } : x))}
+                            placeholder="0"
+                            className="w-full px-2 py-1 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00b8a0]" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-slate-400 block mb-1">HSN code</label>
+                          <input type="text" value={ri.hsn_code || item.hsn_code || ''}
+                            onChange={e => setReceiveItems(prev => prev.map((x,i) =>
+                              i === idx ? { ...x, hsn_code: e.target.value } : x))}
+                            placeholder="e.g. 30049099"
+                            className="w-full px-2 py-1 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00b8a0]" />
                         </div>
                         <div className="col-span-2">
                           <label className="text-[10px] text-slate-400 block mb-1">Manufacturer <span className="text-amber-500 font-semibold">*</span></label>
@@ -982,7 +1016,7 @@ function POTab({ initialMedicine }: { initialMedicine?: string }) {
                             onChange={e => setReceiveItems(prev => prev.map((x,i) =>
                               i === idx ? { ...x, manufacturer: e.target.value } : x))}
                             placeholder="e.g. Sun Pharma, Cipla, Abbott"
-                            className={`w-full px-2 py-1 border rounded-lg text-sm focus:outline-none focus:border-[#00475a] ${
+                            className={`w-full px-2 py-1 border rounded-lg text-sm focus:outline-none focus:border-[#00b8a0] ${
                               !ri.manufacturer ? 'border-amber-300 bg-amber-50' : 'border-slate-200'
                             }`} />
                         </div>
