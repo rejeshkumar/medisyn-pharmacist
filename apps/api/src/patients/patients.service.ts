@@ -551,9 +551,12 @@ Thank you for choosing MediSyn!
 📍 MediSyn Specialty Clinic, Taliparamba
 📞 0490 234 5678`;
 
-    const whatsappUrl = this.configService?.get('WHATSAPP_API_URL');
-    if (whatsappUrl && patient.mobile) {
-      await fetch(whatsappUrl, {
+    const whatsappToken = process.env.WHATSAPP_TOKEN;
+    const whatsappPhoneId = process.env.WHATSAPP_PHONE_ID;
+    if (whatsappToken && whatsappPhoneId && patient.mobile) {
+      const phone = patient.mobile.replace(/\D/g, '');
+      const to = phone.startsWith('91') ? phone : \`91\${phone}\`;
+      await fetch(\`https://graph.facebook.com/v19.0/\${whatsappPhoneId}/messages\`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

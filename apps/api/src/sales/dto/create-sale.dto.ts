@@ -82,6 +82,11 @@ export class ComplianceDataDto {
   @IsString()
   @IsOptional()
   doctor_reg_no?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  customer_mobile?: string;
 }
 
 export class CreateSaleDto {
@@ -99,6 +104,11 @@ export class CreateSaleDto {
   @IsString()
   @IsOptional()
   doctor_reg_no?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  customer_mobile?: string;
 
   @ApiProperty({ type: [SaleItemDto] })
   @IsArray()

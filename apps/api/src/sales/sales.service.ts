@@ -233,6 +233,22 @@ export class SalesService {
         },
       });
 
+      // ── WhatsApp: Bill notification to patient ─────────────────────
+      if (dto.customer_mobile) {
+        const mobile = dto.customer_mobile.replace(/\D/g, '');
+        if (mobile.length >= 10) {
+          const itemsList = saleItemsData.slice(0, 5)
+            .map(i => `  • ${i.medicine_name} × ${i.qty}`)
+            .join('\n');
+          const moreItems = saleItemsData.length > 5 ? `\n  ...and ${saleItemsData.length - 5} more` : '';
+          const patientMsg = `🏥 *MEDISYN SPECIALITY CLINIC*\n\nDear ${dto.customer_name || 'Patient'},\n\nYour bill has been generated.\n\n*Bill No:* ${billNumber}\n*Amount:* ₹${totalAmount}\n*Payment:* ${dto.payment_mode?.toUpperCase()}\n\n*Medicines Dispensed:*\n${itemsList}${moreItems}\n\nThank you for visiting us. Get well soon! 🙏\n\n_Reply STOP to opt out of messages_`;
+          this.sendWhatsApp(mobile, patientMsg).catch(() => {});
+        }
+      }
+
+      // ── WhatsApp: Bill alert to owner ──────────────────────────────────
+      this.sendOwnerBillAlert(tenantId, billNumber, totalAmount, dto.customer_name || 'Walk-in', dto.items.length).catch(() => {});
+
       return this.findOne(savedSale.id, tenantId);
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -240,6 +256,38 @@ export class SalesService {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  // ── WhatsApp helpers ──────────────────────────────────────────────────────
+  private async sendWhatsApp(mobile: string, message: string): Promise<void> {
+    const token   = process.env.WHATSAPP_TOKEN;
+    const phoneId = process.env.WHATSAPP_PHONE_ID;
+    if (!token || !phoneId) return;
+    const phone = mobile.replace(/\D/g, '');
+    if (!phone || phone.length < 10) return;
+    const to = phone.startsWith('91') ? phone : `91${phone}`;
+    await fetch(`https://graph.facebook.com/v19.0/${phoneId}/messages`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to,
+        type: 'text',
+        text: { body: message },
+      }),
+    }).catch(() => {});
+  }
+
+  private async sendOwnerBillAlert(tenantId: string, billNo: string, amount: number, customer: string, itemCount: number): Promise<void> {
+    try {
+      const staff = await this.dataSource.query(
+        `SELECT mobile, full_name FROM users WHERE tenant_id=$1 AND role='owner' AND is_active=true LIMIT 1`,
+        [tenantId]
+      );
+      if (!staff.length || !staff[0].mobile) return;
+      const msg = `💊 *New Bill — MEDISYN*\n\n*Bill:* ${billNo}\n*Patient:* ${customer}\n*Items:* ${itemCount}\n*Amount:* ₹${amount}\n\n_Billed just now_`;
+      await this.sendWhatsApp(staff[0].mobile, msg);
+    } catch {}
   }
 
   async findAll(tenantId: string, from?: string, to?: string, search?: string) {
