@@ -903,8 +903,7 @@ function POTab({ initialMedicine }: { initialMedicine?: string }) {
                         e.target.value = '';
                       }}
                     />
-                  </>
-                )}
+                </>
               )}
             </div>
 
