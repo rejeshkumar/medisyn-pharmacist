@@ -271,7 +271,8 @@ Extract ALL medicine line items from this invoice and return ONLY a JSON object 
       "purchasePrice": 45.50,
       "mrp": 100.00,
       "gstPercent": 5,
-      "hsnCode": "30049099"
+      "hsnCode": "30049099",
+      "manufacturer": "Sun Pharma"
     }
   ]
 }
@@ -286,6 +287,7 @@ Rules:
 - mrp: Maximum Retail Price per unit
 - gstPercent: GST percentage as number (5, 12, 18, or 28)
 - hsnCode: HSN/SAC code if shown
+- manufacturer: the drug manufacturer/company name (not the supplier/distributor)
 - Return ONLY the JSON, no other text`;
 
     const response = await client.messages.create({

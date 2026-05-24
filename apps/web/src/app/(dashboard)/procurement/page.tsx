@@ -839,6 +839,7 @@ function POTab({ initialMedicine }: { initialMedicine?: string }) {
           free_qty: parsedItem.freeQty ? String(parsedItem.freeQty) : ri.free_qty,
           hsn_code: parsedItem.hsnCode || ri.hsn_code,
           recv_qty: parsedItem.qty || ri.recv_qty,
+          manufacturer: parsedItem.manufacturer || ri.manufacturer,
         };
       }));
       toast.success(`Invoice scanned — ${matched} of ${poDetail.items.length} medicines matched. Review and confirm.`);
