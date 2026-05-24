@@ -48,6 +48,8 @@ import { ImportStockController } from './import-stock.controller';
 import { ScheduleClassifierController } from './schedule-classifier.controller';
 import { MoleculeClassifierController } from './molecule-classifier.controller';
 import { ScanLabelController } from './scan-label.controller';
+import { WhatsAppTemplateService } from './common/whatsapp-template.service';
+import { WhatsAppTemplateController } from './common/whatsapp-template.controller';
 import { SetReorderController } from './set-reorder.controller';
 import { KaggleImportController } from './kaggle-import.controller';
 import { PatientHealthModule } from './patient-health/patient-health.module';
@@ -122,7 +124,9 @@ import { InventoryIntelligenceService } from './inventory/services/inventory-int
     ImportStockController, 
     ScheduleClassifierController, 
     MoleculeClassifierController,
-    ScanLabelController, 
+    WhatsAppTemplateService,
+    ScanLabelController,
+    WhatsAppTemplateController, 
     SetReorderController, 
     KaggleImportController, 
     InventoryClassificationController,

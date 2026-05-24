@@ -18,6 +18,7 @@ import { AuditService, AuditEntry } from '../audit/audit.service';
 import { AuditAction } from '../database/entities/audit-log.entity';
 import * as dayjs from 'dayjs';
 import { AutoCarePlanService } from '../ai-care/auto-care-plan.service';
+import { WhatsAppTemplateService, WaEvent } from '../common/whatsapp-template.service';
 
 export interface UserContext {
   id: string;
@@ -46,6 +47,7 @@ export class SalesService {
     private dataSource: DataSource,
     private auditService: AuditService,
     private autoCarePlan: AutoCarePlanService,
+    private readonly waTpl: WhatsAppTemplateService,
     private dispensingService: DispensingService,
   ) {}
 
@@ -233,21 +235,29 @@ export class SalesService {
         },
       });
 
-      // ── WhatsApp: Bill notification to patient ─────────────────────
-      if (dto.customer_mobile) {
-        const mobile = dto.customer_mobile.replace(/\D/g, '');
-        if (mobile.length >= 10) {
-          const itemsList = saleItemsData.slice(0, 5)
-            .map(i => `  • ${i.medicine_name} × ${i.qty}`)
-            .join('\n');
-          const moreItems = saleItemsData.length > 5 ? `\n  ...and ${saleItemsData.length - 5} more` : '';
-          const patientMsg = `🏥 *MEDISYN SPECIALITY CLINIC*\n\nDear ${dto.customer_name || 'Patient'},\n\nYour bill has been generated.\n\n*Bill No:* ${billNumber}\n*Amount:* ₹${totalAmount}\n*Payment:* ${dto.payment_mode?.toUpperCase()}\n\n*Medicines Dispensed:*\n${itemsList}${moreItems}\n\nThank you for visiting us. Get well soon! 🙏\n\n_Reply STOP to opt out of messages_`;
-          this.sendWhatsApp(mobile, patientMsg).catch(() => {});
+      // ── WhatsApp: Bill notification via template system ─────────────
+      this.waTpl.getClinicName(tenantId).then(clinicName => {
+        const itemsList = saleItemsData.slice(0, 5)
+          .map(i => `  • ${i.medicine_name} × ${i.qty}`).join('\n')
+          + (saleItemsData.length > 5 ? `\n  ...and ${saleItemsData.length - 5} more` : '');
+        const vars = {
+          clinic_name:   clinicName,
+          patient_name:  dto.customer_name || 'Patient',
+          bill_number:   billNumber,
+          amount:        String(totalAmount),
+          payment_mode:  (dto.payment_mode || 'cash').toUpperCase(),
+          medicines_list:itemsList,
+          items_count:   String(dto.items.length),
+        };
+        // Notify patient
+        if (dto.customer_mobile) {
+          this.waTpl.notify(tenantId, dto.customer_mobile, WaEvent.BILL_GENERATED, 'patient', vars).catch(() => {});
         }
-      }
-
-      // ── WhatsApp: Bill alert to owner ──────────────────────────────────
-      this.sendOwnerBillAlert(tenantId, billNumber, totalAmount, dto.customer_name || 'Walk-in', dto.items.length).catch(() => {});
+        // Notify owner
+        this.waTpl.getOwnerMobile(tenantId).then(ownerMobile => {
+          if (ownerMobile) this.waTpl.notify(tenantId, ownerMobile, WaEvent.BILL_GENERATED, 'owner', vars).catch(() => {});
+        }).catch(() => {});
+      }).catch(() => {});
 
       return this.findOne(savedSale.id, tenantId);
     } catch (error) {
