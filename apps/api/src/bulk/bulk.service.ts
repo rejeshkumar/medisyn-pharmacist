@@ -450,7 +450,7 @@ Rules:
         const [mm, yyyy] = item.expiry.split('/');
         const expiryDate = new Date(parseInt(yyyy), parseInt(mm) - 1, 1);
 
-        const existing = await this.batchRepo.findOne({ where: { medicine_id: medicine.id, batch_number: item.batchNo, tenant_id: tenantId } });
+        const existing = await this.batchRepo.findOne({ where: { medicine_id: medicine.id, batch_number: item.batchNo } });
         if (!existing) {
           await this.batchRepo.save(this.batchRepo.create({
             medicine_id: medicine.id, batch_number: item.batchNo,
@@ -464,7 +464,7 @@ Rules:
             supplier_id: supplier?.id ?? null,
             purchase_invoice_no: invoiceNo || null,
             po_id: poId || null,
-            tenant_id: tenantId,
+
           }));
         } else {
           existing.quantity = (existing.quantity || 0) + item.qty;
