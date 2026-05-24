@@ -335,16 +335,15 @@ export class WhatsAppTemplateService {
   }
 
   async previewTemplate(tenantId: string, eventType: WaEvent, sendTo: 'patient' | 'owner') {
-    const sampleVars: Record<WaEvent, Record<string, string>> = {
-      [WaEvent.BILL_GENERATED]:      { clinic_name:'MediSyn Clinic', patient_name:'Rejesh Kumar', bill_number:'BILL-20260524-0001', amount:'450', payment_mode:'CASH', medicines_list:'  • TAB AZTOR 10MG × 10
-  • CAP BECOSULES × 30', items_count:'2' },
-      [WaEvent.PATIENT_REGISTERED]:  { clinic_name:'MediSyn Clinic', patient_name:'Rejesh Kumar', uhid:'MED-001234', vip_plan:'Individual', mobile:'9876543210' },
-      [WaEvent.PRESCRIPTION_READY]:  { clinic_name:'MediSyn Clinic', patient_name:'Rejesh Kumar', doctor_name:'Dr. Sharma' },
-      [WaEvent.REFILL_REMINDER]:     { clinic_name:'MediSyn Clinic', patient_name:'Rejesh Kumar', medicine_name:'TAB METFORMIN 500MG', days_remaining:'3' },
-      [WaEvent.APPOINTMENT_CONFIRMED]:{ clinic_name:'MediSyn Clinic', patient_name:'Rejesh Kumar', doctor_name:'Dr. Sharma', appointment_date:'25 May 2026', appointment_time:'10:30 AM' },
-      [WaEvent.LOW_STOCK_ALERT]:     { medicine_name:'TAB AZTOR 10MG', current_stock:'5', reorder_qty:'100' },
-      [WaEvent.PAYMENT_RECEIVED]:    { patient_name:'Rejesh Kumar', amount:'450', payment_mode:'UPI', bill_number:'BILL-20260524-0001' },
-    };
-    return this.renderTemplate(tenantId, eventType, sendTo, sampleVars[eventType] || {});
+    const sampleVars: Partial<Record<WaEvent, Record<string, string>>> = {};
+    sampleVars[WaEvent.BILL_GENERATED]        = { clinic_name:'MediSyn Clinic', patient_name:'Rejesh Kumar', bill_number:'BILL-20260524-0001', amount:'450', payment_mode:'CASH', medicines_list:'TAB AZTOR 10MG x 10, CAP BECOSULES x 30', items_count:'2' };
+    sampleVars[WaEvent.PATIENT_REGISTERED]    = { clinic_name:'MediSyn Clinic', patient_name:'Rejesh Kumar', uhid:'MED-001234', vip_plan:'Individual', mobile:'9876543210' };
+    sampleVars[WaEvent.PRESCRIPTION_READY]    = { clinic_name:'MediSyn Clinic', patient_name:'Rejesh Kumar', doctor_name:'Dr. Sharma' };
+    sampleVars[WaEvent.REFILL_REMINDER]       = { clinic_name:'MediSyn Clinic', patient_name:'Rejesh Kumar', medicine_name:'TAB METFORMIN 500MG', days_remaining:'3' };
+    sampleVars[WaEvent.APPOINTMENT_CONFIRMED] = { clinic_name:'MediSyn Clinic', patient_name:'Rejesh Kumar', doctor_name:'Dr. Sharma', appointment_date:'25 May 2026', appointment_time:'10:30 AM' };
+    sampleVars[WaEvent.LOW_STOCK_ALERT]       = { medicine_name:'TAB AZTOR 10MG', current_stock:'5', reorder_qty:'100' };
+    sampleVars[WaEvent.PAYMENT_RECEIVED]      = { patient_name:'Rejesh Kumar', amount:'450', payment_mode:'UPI', bill_number:'BILL-20260524-0001' };
+    const vars: Record<string, string> = sampleVars[eventType] ?? {};
+    return this.renderTemplate(tenantId, eventType, sendTo, vars);
   }
 }
