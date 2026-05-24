@@ -13,6 +13,7 @@ import { ScheduleDrugLog } from '../database/entities/schedule-drug-log.entity';
 import { Tenant } from '../database/entities/tenant.entity';
 import { AuditModule } from '../audit/audit.module';
 import { AutoCarePlanService } from '../ai-care/auto-care-plan.service';
+import { WhatsAppTemplateService } from '../common/whatsapp-template.service';
 
 @Module({
   imports: [
