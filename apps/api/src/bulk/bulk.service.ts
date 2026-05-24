@@ -282,7 +282,7 @@ Rules:
 - expiry: convert to MM/YYYY format (e.g. "11/29" → "11/2029", "03/28" → "03/2028")
 - qty: numeric quantity ordered/billed (not free qty)
 - freeQty: free/bonus units (0 if none)
-- purchasePrice: the price per unit paid (Trade Price / PTR / Rate / PTS column)
+- purchasePrice: the NET price per unit that the pharmacy pays to the supplier. Look for columns named: Rate, PTR, Trade Price, PTS, Price, Net Rate, Basic Rate. Do NOT use MRP as purchasePrice
 - mrp: Maximum Retail Price per unit
 - gstPercent: GST percentage as number (5, 12, 18, or 28)
 - hsnCode: HSN/SAC code if shown
