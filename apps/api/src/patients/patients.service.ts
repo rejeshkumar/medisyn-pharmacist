@@ -555,8 +555,8 @@ Thank you for choosing MediSyn!
     const whatsappPhoneId = process.env.WHATSAPP_PHONE_ID;
     if (whatsappToken && whatsappPhoneId && patient.mobile) {
       const phone = patient.mobile.replace(/\D/g, '');
-      const to = phone.startsWith('91') ? phone : \`91\${phone}\`;
-      await fetch(\`https://graph.facebook.com/v19.0/\${whatsappPhoneId}/messages\`, {
+      const to = phone.startsWith('91') ? phone : `91${phone}`;
+      await fetch(`https://graph.facebook.com/v19.0/${whatsappPhoneId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
