@@ -22,7 +22,7 @@ import { WhatsAppTemplateService } from '../common/whatsapp-template.service';
     DispensingModule,
   ],
   controllers: [SalesController, CreditNoteController],
-  providers: [SalesService, CreditNoteService, AutoCarePlanService],
+  providers: [SalesService, CreditNoteService, AutoCarePlanService, WhatsAppTemplateService],
   exports: [SalesService],
 })
 export class SalesModule {}
