@@ -834,7 +834,11 @@ function POTab({ initialMedicine }: { initialMedicine?: string }) {
           batch_number: parsedItem.batchNo || ri.batch_number,
           expiry_date: expiry,
           mrp: parsedItem.mrp ? String(parsedItem.mrp) : ri.mrp,
-          sale_rate: parsedItem.purchasePrice ? String(parsedItem.purchasePrice) : ri.sale_rate,
+          purchase_price: parsedItem.purchasePrice ? String(parsedItem.purchasePrice) : ri.purchase_price,
+          sale_rate: parsedItem.mrp ? String((parsedItem.mrp * 0.85).toFixed(2)) : ri.sale_rate,
+          free_qty: parsedItem.freeQty ? String(parsedItem.freeQty) : ri.free_qty,
+          hsn_code: parsedItem.hsnCode || ri.hsn_code,
+          recv_qty: parsedItem.qty || ri.recv_qty,
         };
       }));
       toast.success(`Invoice scanned — ${matched} of ${poDetail.items.length} medicines matched. Review and confirm.`);
