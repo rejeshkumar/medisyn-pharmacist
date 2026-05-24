@@ -355,6 +355,9 @@ function POCreateModal({ flags, suppliers, onClose, onCreated, initialMedicineNa
   const [manualSearch, setManualSearch] = useState('');
   const [showLabelScanner, setShowLabelScanner] = useState(false);
   const [manualResults, setManualResults] = useState<any[]>([]);
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [quickAddSaving, setQuickAddSaving] = useState(false);
+  const [quickAdd, setQuickAdd] = useState({ brand_name:'', molecule:'', strength:'', hsn_code:'', gst_percent:'5', dosage_form:'TABLET' });
 
   useEffect(() => {
     if (manualSearch.length < 2) { setManualResults([]); return; }
@@ -399,6 +402,31 @@ function POCreateModal({ flags, suppliers, onClose, onCreated, initialMedicineNa
       ordered_qty: 1, unit_price: '', is_manual: true,
     }]);
     setManualSearch(''); setManualResults([]);
+  };
+
+  const quickAddMedicine = async () => {
+    if (!quickAdd.brand_name.trim()) { toast.error('Medicine name required'); return; }
+    setQuickAddSaving(true);
+    try {
+      const res = await api.post('/medicines', {
+        brand_name: quickAdd.brand_name.trim().toUpperCase(),
+        molecule: quickAdd.molecule.trim() || 'As per label',
+        strength: quickAdd.strength.trim() || 'As per label',
+        hsn_code: quickAdd.hsn_code.trim() || null,
+        gst_percent: Number(quickAdd.gst_percent) || 5,
+        dosage_form: quickAdd.dosage_form || 'TABLET',
+        schedule_class: 'OTC',
+        is_active: true,
+      });
+      const med = res.data;
+      addManualItem(med);
+      setShowQuickAdd(false);
+      setQuickAdd({ brand_name:'', molecule:'', strength:'', hsn_code:'', gst_percent:'5', dosage_form:'TABLET' });
+      setManualSearch('');
+      toast.success('Medicine added to master and PO');
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Failed to add medicine');
+    } finally { setQuickAddSaving(false); }
   };
 
   const updateItem = (idx: number, field: string, value: any) => {
@@ -594,14 +622,86 @@ function POCreateModal({ flags, suppliers, onClose, onCreated, initialMedicineNa
                     ))}
                   </div>
                 )}
+                {manualSearch.length >= 2 && manualResults.length === 0 && !showQuickAdd && (
+                  <div className="absolute left-0 right-0 top-full bg-white border border-slate-200 rounded-xl shadow-xl z-[200] mt-1">
+                    <div className="px-4 py-3 text-center">
+                      <p className="text-sm text-slate-500 mb-2">No medicine found for <strong>{manualSearch}</strong></p>
+                      <button onMouseDown={() => { setShowQuickAdd(true); setQuickAdd(q => ({ ...q, brand_name: manualSearch.toUpperCase() })); }}
+                        className="px-4 py-2 bg-[#00b8a0] text-white text-sm font-semibold rounded-lg hover:bg-[#009688]">
+                        + Add as new medicine
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {showQuickAdd && (
+                  <div className="absolute left-0 right-0 top-full bg-white border border-[#00b8a0] rounded-xl shadow-xl z-[200] mt-1 p-4">
+                    <p className="text-xs font-bold text-[#00b8a0] mb-3 uppercase tracking-wide">New Medicine</p>
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                      <div className="col-span-2">
+                        <label className="text-[10px] text-slate-400 block mb-1">Brand name *</label>
+                        <input type="text" value={quickAdd.brand_name}
+                          onChange={e => setQuickAdd(q => ({ ...q, brand_name: e.target.value.toUpperCase() }))}
+                          className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00b8a0]" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-400 block mb-1">Molecule / Salt</label>
+                        <input type="text" value={quickAdd.molecule}
+                          onChange={e => setQuickAdd(q => ({ ...q, molecule: e.target.value }))}
+                          placeholder="e.g. Paracetamol"
+                          className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00b8a0]" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-400 block mb-1">Strength</label>
+                        <input type="text" value={quickAdd.strength}
+                          onChange={e => setQuickAdd(q => ({ ...q, strength: e.target.value }))}
+                          placeholder="e.g. 500mg"
+                          className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00b8a0]" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-400 block mb-1">Dosage form</label>
+                        <select value={quickAdd.dosage_form}
+                          onChange={e => setQuickAdd(q => ({ ...q, dosage_form: e.target.value }))}
+                          className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00b8a0]">
+                          {['TABLET','CAPSULE','SYRUP','INJECTION','CREAM','OINTMENT','DROPS','INHALER','POWDER','OTHER'].map(d =>
+                            <option key={d} value={d}>{d}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-400 block mb-1">GST %</label>
+                        <select value={quickAdd.gst_percent}
+                          onChange={e => setQuickAdd(q => ({ ...q, gst_percent: e.target.value }))}
+                          className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00b8a0]">
+                          {['0','5','12','18'].map(g => <option key={g} value={g}>{g}%</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-400 block mb-1">HSN code</label>
+                        <input type="text" value={quickAdd.hsn_code}
+                          onChange={e => setQuickAdd(q => ({ ...q, hsn_code: e.target.value }))}
+                          placeholder="e.g. 30049099"
+                          className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00b8a0]" />
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={quickAddMedicine} disabled={quickAddSaving}
+                        className="flex-1 py-2 bg-[#00b8a0] text-white text-sm font-semibold rounded-lg hover:bg-[#009688] disabled:opacity-50">
+                        {quickAddSaving ? 'Adding...' : 'Add to master & PO'}
+                      </button>
+                      <button onClick={() => { setShowQuickAdd(false); setManualSearch(''); }}
+                        className="px-4 py-2 border border-slate-200 text-slate-600 text-sm rounded-lg hover:bg-slate-50">
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <Plus className="w-3.5 h-3.5 text-slate-400" />
-                  <input type="text" value={manualSearch} onChange={e => setManualSearch(e.target.value)}
+                  <input type="text" value={manualSearch} onChange={e => { setManualSearch(e.target.value); setShowQuickAdd(false); }}
                     placeholder="Search medicine to add..."
                     autoComplete="off"
                     className="flex-1 text-sm bg-transparent border-none outline-none text-slate-600 placeholder-slate-400" />
                   {manualSearch && (
-                    <button onClick={() => { setManualSearch(''); setManualResults([]); }}
+                    <button onClick={() => { setManualSearch(''); setManualResults([]); setShowQuickAdd(false); }}
                       className="text-slate-300 hover:text-slate-500">
                       <X className="w-3.5 h-3.5" />
                     </button>
