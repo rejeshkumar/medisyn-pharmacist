@@ -450,24 +450,31 @@ Rules:
         const [mm, yyyy] = item.expiry.split('/');
         const expiryDate = new Date(parseInt(yyyy), parseInt(mm) - 1, 1);
 
-        const existing = await this.batchRepo.findOne({ where: { medicine_id: medicine.id, batch_number: item.batchNo } });
+        const existing = await this.batchRepo.findOne({ where: { medicine_id: medicine.id, batch_number: item.batchNo, tenant_id: tenantId } });
         if (!existing) {
           await this.batchRepo.save(this.batchRepo.create({
             medicine_id: medicine.id, batch_number: item.batchNo,
-            expiry_date: expiryDate, 
-            quantity: 0,  // NOT sellable until verified
-            received_qty: item.qty,  // Track what was received
-            verification_status: 'pending',  // Requires verification
-            purchase_price: item.purchasePrice, mrp: item.mrp,
-            sale_rate: item.purchasePrice * 1.15,
-            supplier_id: supplier?.id ?? null, 
+            expiry_date: expiryDate,
+            quantity: item.qty,
+            received_qty: item.qty,
+            verification_status: 'verified',
+            purchase_price: item.purchasePrice || 0,
+            mrp: item.mrp || 0,
+            sale_rate: item.mrp ? item.mrp * 0.85 : (item.purchasePrice || 0) * 1.15,
+            supplier_id: supplier?.id ?? null,
             purchase_invoice_no: invoiceNo || null,
-            po_id: poId || null,  // Link to purchase order
+            po_id: poId || null,
+            tenant_id: tenantId,
           }));
         } else {
-          // Existing batch - add to received_qty, keep pending
+          existing.quantity = (existing.quantity || 0) + item.qty;
           existing.received_qty = (existing.received_qty || 0) + item.qty;
-          existing.verification_status = 'pending';
+          existing.verification_status = 'verified';
+          if (item.purchasePrice) existing.purchase_price = item.purchasePrice;
+          if (item.mrp) existing.mrp = item.mrp;
+          if (item.mrp) existing.sale_rate = item.mrp * 0.85;
+          if (supplier?.id) existing.supplier_id = supplier.id;
+          if (invoiceNo) existing.purchase_invoice_no = invoiceNo;
           await this.batchRepo.save(existing);
         }
         successCount++;
