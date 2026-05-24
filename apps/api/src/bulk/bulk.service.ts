@@ -224,7 +224,7 @@ export class BulkService {
 
   async parseInvoicePdf(filePath: string): Promise<{
     supplier: string; invoiceNo: string; invoiceDate: string;
-    items: Array<{ medicineName: string; batchNo: string; expiry: string; qty: number; freeQty: number; purchasePrice: number; mrp: number; gstPercent: number; hsnCode: string }>;
+    items: Array<{ medicineName: string; batchNo: string; expiry: string; qty: number; freeQty: number; purchasePrice: number; mrp: number; gstPercent: number; hsnCode: string; manufacturer: string }>;
   }> {
     // Step 1: Try text extraction first (works for digital PDFs)
     const pdfData = await pdfParse(readFileSync(filePath));
@@ -239,7 +239,7 @@ export class BulkService {
           supplier: this.extractSupplierName(lines),
           invoiceNo: this.extractInvoiceNo(lines),
           invoiceDate: this.extractInvoiceDate(lines),
-          items: items.map(i => ({ ...i, freeQty: 0, hsnCode: '' })),
+          items: items.map(i => ({ ...i, freeQty: 0, hsnCode: '', manufacturer: '' })),
         };
       }
     }
@@ -328,6 +328,7 @@ Rules:
         mrp: Number(item.mrp) || 0,
         gstPercent: Number(item.gstPercent) || 5,
         hsnCode: String(item.hsnCode || ''),
+        manufacturer: String(item.manufacturer || ''),
       })),
     };
   }
