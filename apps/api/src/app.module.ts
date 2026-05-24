@@ -124,7 +124,6 @@ import { InventoryIntelligenceService } from './inventory/services/inventory-int
     ImportStockController, 
     ScheduleClassifierController, 
     MoleculeClassifierController,
-    WhatsAppTemplateService,
     ScanLabelController,
     WhatsAppTemplateController, 
     SetReorderController, 
@@ -133,6 +132,7 @@ import { InventoryIntelligenceService } from './inventory/services/inventory-int
     InventoryIntelligenceController,
   ],
   providers: [
+    WhatsAppTemplateService,
     // Applied globally in order — JwtAuthGuard first, then TenantGuard
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: TenantGuard },
