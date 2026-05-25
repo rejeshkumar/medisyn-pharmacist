@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ProcurementController } from './procurement.controller';
 import { StockAdjustmentController } from './stock-adjustment.controller';
+import { ReturnRequestsController } from './return-requests.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { StockController } from './stock.controller';
 import { StockService } from './stock.service';
@@ -13,7 +14,7 @@ import { DemandController } from './demand.controller';
 
 @Module({
   imports: [TypeOrmModule.forFeature([StockBatch, StockAdjustment, Supplier, Medicine]), AuditModule],
-  controllers: [ProcurementController, StockAdjustmentController, StockController, DemandController],
+  controllers: [ProcurementController, StockAdjustmentController, StockController, DemandController, ReturnRequestsController],
   providers: [StockService],
   exports: [StockService],
 })
