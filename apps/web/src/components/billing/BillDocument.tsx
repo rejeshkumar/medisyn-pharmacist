@@ -204,43 +204,98 @@ function ReceiptContent({ data }: { data: BillData }) {
   );
 }
 
-// ─── Print Styles (injected once) ─────────────────────────────────────────────
-const PRINT_CSS = `
-@media print {
-  @page { size: 100mm 155mm; margin: 0; }
-  body > * { display: none !important; }
-  #medisyn-print-root { display: block !important; }
-  #medisyn-print-root * { visibility: visible; }
-}
-`;
+// ─── Print Styles ─────────────────────────────────────────────────────────────
+// Print is handled by an isolated iframe (see handlePrint) so we don't need
+// global @media print rules that hide the modal — those caused blank pages on
+// iOS Safari because the modal is position:fixed inside a stacking context.
 
 // ─── Main Component ─────────────────────────────────────────────────────────────
 export default function BillDocument({ data, mode, onClose, onConfirm, isLoading }: Props) {
   const printRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = () => {
-    const styleEl = document.createElement('style');
-    styleEl.innerHTML = `
-      @media print {
-        @page { size: 100mm 155mm; margin: 0; }
-        body > *:not(#bill-print-area) { display: none !important; }
-        #bill-print-area { display: block !important; width: 94mm !important; margin: 0 !important; padding: 0 !important; }
+    const billHtml = printRef.current?.innerHTML;
+    if (!billHtml) {
+      console.error('[BillDocument] No bill content to print');
+      return;
+    }
+
+    // Remove any stale print frame from a previous attempt
+    const stale = document.getElementById('medisyn-print-frame');
+    if (stale) stale.remove();
+
+    // Create a hidden iframe that holds an isolated document. This avoids
+    // every cross-browser pitfall with printing position:fixed modals:
+    //  • iOS Safari paints content correctly (no stacking-context bug)
+    //  • Chrome strips its default headers/footers because @page margin is 0
+    //  • Parent DOM/CSS does not interfere
+    const iframe = document.createElement('iframe');
+    iframe.id = 'medisyn-print-frame';
+    iframe.setAttribute('aria-hidden', 'true');
+    iframe.style.cssText = [
+      'position:fixed',
+      'right:0',
+      'bottom:0',
+      'width:0',
+      'height:0',
+      'border:0',
+      'visibility:hidden',
+    ].join(';');
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!doc) {
+      console.error('[BillDocument] Could not access iframe document');
+      iframe.remove();
+      return;
+    }
+
+    doc.open();
+    doc.write(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Bill</title>
+<style>
+  @page { size: 100mm 155mm; margin: 0; }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  html, body { margin: 0; padding: 0; background: #fff; }
+  body { padding: 3mm 4mm; font-family: 'Courier New', Courier, monospace; }
+  @media print {
+    html, body { width: 100mm; height: 155mm; }
+  }
+</style>
+</head>
+<body>${billHtml}</body>
+</html>`);
+    doc.close();
+
+    // Wait for fonts / layout before calling print. iOS Safari needs the
+    // iframe to be fully loaded, otherwise it prints an empty page.
+    const triggerPrint = () => {
+      try {
+        const win = iframe.contentWindow;
+        if (!win) return;
+        win.focus();
+        win.print();
+      } catch (err) {
+        console.error('[BillDocument] Print failed', err);
+      } finally {
+        // Keep the iframe in the DOM long enough for the print dialog to
+        // finish capturing it, then clean up.
+        setTimeout(() => iframe.remove(), 2000);
       }
-    `;
-    document.head.appendChild(styleEl);
+    };
 
-    const printArea = document.createElement('div');
-    printArea.id = 'bill-print-area';
-    printArea.style.cssText = 'display:none;';
-    printArea.innerHTML = printRef.current?.innerHTML || '';
-    document.body.appendChild(printArea);
-
-    window.print();
-
-    setTimeout(() => {
-      printArea.remove();
-      styleEl.remove();
-    }, 1500);
+    // If the iframe is already loaded (synchronous doc.write), fire next tick.
+    // Otherwise wait for load event.
+    if (doc.readyState === 'complete') {
+      setTimeout(triggerPrint, 100);
+    } else {
+      iframe.addEventListener('load', triggerPrint, { once: true });
+      // Safety net: fire after 500ms even if load never resolves
+      setTimeout(triggerPrint, 500);
+    }
   };
 
   return (
