@@ -91,7 +91,7 @@ export default function ReturnsPage() {
   const [error, setError] = useState('');
   const [showCreate, setShowCreate] = useState(false);
 
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+  const token = typeof window !== 'undefined' ? localStorage.getItem('medisyn_token') : '';
 
   // ── Load requests ──────────────────────────────────────────────────────────
   const loadRequests = useCallback(async () => {
