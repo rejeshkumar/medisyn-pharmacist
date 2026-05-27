@@ -257,12 +257,12 @@ export default function BillDocument({ data, mode, onClose, onConfirm, isLoading
 <meta charset="utf-8" />
 <title>Bill</title>
 <style>
-  @page { size: 100mm 155mm; margin: 0; }
+  @page { size: 241mm auto; margin: 0; }
   * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   html, body { margin: 0; padding: 0; background: #fff; }
-  body { padding: 3mm 4mm; font-family: 'Courier New', Courier, monospace; }
+  body { padding: 3mm 4mm 3mm 8mm; width: 108mm; font-family: 'Courier New', Courier, monospace; }
   @media print {
-    html, body { width: 100mm; height: 155mm; }
+    html, body { width: 241mm; }
   }
 </style>
 </head>
