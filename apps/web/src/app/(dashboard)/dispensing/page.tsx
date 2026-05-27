@@ -1360,15 +1360,15 @@ export default function DispensingPage() {
                 return (
                   <tr key={`${item.medicine_id}-${item.batch_id}-${idx}`}
                     className="border-b border-slate-100 hover:bg-slate-50/50">
-                    <td className="px-3 py-2 text-xs text-slate-400 text-center">{idx + 1}</td>
-                    <td className="px-3 py-2">
-                      <div className="flex items-center gap-2">
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold border flex-shrink-0"
+                    <td className="px-1 sm:px-3 py-2 text-xs text-slate-400 text-center align-top">{idx + 1}</td>
+                    <td className="px-2 sm:px-3 py-2 align-top">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold border flex-shrink-0 self-start"
                           style={{ background: cfg.bg, color: cfg.color, borderColor: cfg.border }}>
                           {item.schedule_class}
                         </span>
-                        <div>
-                          <p className="text-sm font-semibold text-slate-800">{item.medicine_name}</p>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-slate-800 break-words leading-tight">{item.medicine_name}</p>
                           {(item as any).manufacturer && (
                             <p className="text-[10px] text-slate-500 italic">{(item as any).manufacturer}</p>
                           )}
@@ -1399,7 +1399,7 @@ export default function DispensingPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="hidden sm:table-cell px-3 py-2 text-center">
+                    <td className="hidden sm:table-cell px-3 py-2 text-center align-top">
                       <span className={`text-sm font-bold ${
                         item.avl_qty <= 0 ? 'text-red-500'
                         : item.avl_qty <= 10 ? 'text-amber-600'
@@ -1416,7 +1416,7 @@ export default function DispensingPage() {
                         )}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-center">
+                    <td className="px-1 sm:px-3 py-2 text-center align-top">
                       <input
                         ref={el => { qtyRefs.current[idx] = el; }}
                         id={`qty-${idx}`} type="number" min={1} value={item.qty || ''}
@@ -1453,11 +1453,11 @@ export default function DispensingPage() {
                         );
                       })()}
                     </td>
-                    <td className="hidden sm:table-cell px-3 py-2 text-right text-sm font-medium text-slate-700">
+                    <td className="hidden sm:table-cell px-3 py-2 text-right text-sm font-medium text-slate-700 align-top">
                       ₹{Number(item.rate).toFixed(2)}
                     </td>
 
-                    <td className="px-3 py-2 text-right text-sm font-semibold text-slate-800">
+                    <td className="px-1 sm:px-3 py-2 text-right text-sm font-semibold text-slate-800 align-top">
                       ₹{amt.toFixed(2)}
                       {/* Live profit indicator */}
                       {item.purchase_price && item.purchase_price > 0 && item.qty > 0 && (() => {
@@ -1477,7 +1477,7 @@ export default function DispensingPage() {
                         );
                       })()}
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="px-1 sm:px-3 py-2 align-top">
                       <button onClick={() => {
                         const newCart = cart.filter((_,i) => i !== idx);
                         setCart(newCart);
