@@ -119,7 +119,7 @@ export class DispensingService {
     const batches: BatchInfo[] = await this.dataSource.query(
       `SELECT id, batch_number, expiry_date, quantity, sale_rate
        FROM stock_batches
-       WHERE medicine_id = $1 AND tenant_id = $2 AND quantity > 0
+       WHERE medicine_id = $1 AND tenant_id = $2 AND quantity > 0 AND is_active = true
        ORDER BY expiry_date ASC`,
       [medicineId, tenantId],
     );
