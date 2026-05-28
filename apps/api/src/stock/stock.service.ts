@@ -226,6 +226,7 @@ export class StockService {
       .andWhere('b.tenant_id = :tenantId', { tenantId })
       .andWhere('b.quantity > 0')
       .andWhere('b.expiry_date > NOW()')
+      .andWhere('b.is_active = true')
       .orderBy('b.expiry_date', 'ASC')  // FEFO
       .getOne();
   }
