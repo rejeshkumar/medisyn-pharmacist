@@ -150,3 +150,4 @@ export class AppModule implements OnModuleInit {
 // Trigger Railway redeploy: Fri May 16 09:30:00 IST 2026 - Inventory Intelligence with AI
 
 // Sun May 24 10:36:43 IST 2026
+// force rebuild Thu May 28 14:45:07 IST 2026
