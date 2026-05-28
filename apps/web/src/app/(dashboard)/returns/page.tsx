@@ -123,7 +123,9 @@ export default function ReturnsPage() {
         });
         if (!res.ok) throw new Error('Failed to load detail');
         const data = await res.json();
-        setDetail(data);
+        // API returns return-request fields flat with `items` appended.
+        // Normalise to the { rr, items } shape the render expects.
+        setDetail(data?.rr ? data : { rr: data, items: data?.items || [] });
       } catch {
         setDetail(null);
       }
@@ -149,8 +151,9 @@ export default function ReturnsPage() {
         const det = await fetch(`${API}/return-requests/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
         }).then(r => r.json());
-        setDetail(det);
-        setSelected(det.rr || det);
+        const norm = det?.rr ? det : { rr: det, items: det?.items || [] };
+        setDetail(norm);
+        setSelected(norm.rr);
       }
     } catch (e: any) {
       alert(e.message || 'Error');
@@ -310,7 +313,7 @@ export default function ReturnsPage() {
           </div>
 
           {/* Detail panel */}
-          {selected && detail && (
+          {selected && detail?.rr && (
             <div className="bg-white rounded-2xl border border-slate-200 flex flex-col overflow-hidden flex-1 lg:w-1/2">
               {/* Detail header */}
               <div className="px-4 sm:px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-2">
