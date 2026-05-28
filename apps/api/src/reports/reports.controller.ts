@@ -381,6 +381,97 @@ export class ReportsController {
     );
   }
 
+
+  // ── Low stock report ───────────────────────────────────────
+  @Get('low-stock')
+  async lowStock(@Query() q: any, @Req() req: any) {
+    this.checkRole(req.user, ['owner','pharmacist']);
+    const tid = req.user.tenant_id;
+
+    // Read velocity-based reorder settings from tenant config (same as procurement)
+    const settingsRow = await this.ds.query(
+      `SELECT settings FROM tenants WHERE id = $1`, [tid],
+    );
+    const cfg         = settingsRow[0]?.settings || {};
+    const coverDays   = cfg.reorder_cover_days ?? 14;
+    const fallbackMin = cfg.fallback_min_stock ?? 10;
+
+    // Mirrors procurement.controller reorder logic exactly so counts match the dashboard.
+    const rows = await this.ds.query(`
+      SELECT
+        m.brand_name,
+        m.molecule,
+        m.strength,
+        m.schedule_class,
+        sup.name                                                  AS supplier,
+        COALESCE(stock.total_qty, 0)::int                         AS current_qty,
+        CASE
+          WHEN COALESCE(sales.sold_30d, 0) > 0
+          THEN CEIL(sales.sold_30d / 30.0 * $2)::int
+          ELSE $3
+        END                                                       AS reorder_level,
+        GREATEST(
+          CASE
+            WHEN COALESCE(sales.sold_30d, 0) > 0
+            THEN CEIL(sales.sold_30d / 30.0 * $2)::int
+            ELSE $3
+          END - COALESCE(stock.total_qty, 0), 0
+        )::int                                                    AS shortfall,
+        ROUND(COALESCE(sales.sold_30d, 0) / 30.0, 1)              AS avg_daily_sales,
+        CASE
+          WHEN COALESCE(sales.sold_30d, 0) > 0
+          THEN ROUND(COALESCE(stock.total_qty, 0) / (sales.sold_30d / 30.0), 0)
+          ELSE NULL
+        END                                                       AS days_of_stock
+      FROM medicines m
+      LEFT JOIN (
+        SELECT medicine_id, SUM(quantity)::int AS total_qty
+        FROM stock_batches
+        WHERE tenant_id = $1 AND is_active = true
+          AND quantity > 0 AND expiry_date > CURRENT_DATE
+        GROUP BY medicine_id
+      ) stock ON stock.medicine_id = m.id
+      LEFT JOIN (
+        SELECT si.medicine_id, SUM(si.qty)::int AS sold_30d
+        FROM sale_items si
+        JOIN sales s ON s.id = si.sale_id
+        WHERE s.tenant_id = $1
+          AND s.is_voided = false
+          AND s.created_at > NOW() - INTERVAL '30 days'
+        GROUP BY si.medicine_id
+      ) sales ON sales.medicine_id = m.id
+      LEFT JOIN LATERAL (
+        SELECT sup2.name
+        FROM stock_batches sb2
+        LEFT JOIN suppliers sup2 ON sup2.id = sb2.supplier_id
+        WHERE sb2.medicine_id = m.id AND sb2.tenant_id = $1
+        ORDER BY sb2.created_at DESC NULLS LAST
+        LIMIT 1
+      ) sup ON true
+      WHERE m.tenant_id = $1
+        AND m.is_active = true
+        AND (
+          COALESCE(stock.total_qty, 0) = 0
+          OR (
+            COALESCE(sales.sold_30d, 0) > 0
+            AND COALESCE(stock.total_qty, 0) < (sales.sold_30d / 30.0 * $2)
+          )
+          OR (
+            COALESCE(sales.sold_30d, 0) = 0
+            AND COALESCE(stock.total_qty, 0) <= $3
+          )
+        )
+      ORDER BY
+        (COALESCE(stock.total_qty, 0) = 0) DESC,
+        days_of_stock ASC NULLS LAST,
+        shortfall DESC
+      LIMIT 1000`,
+      [tid, coverDays, fallbackMin],
+    );
+
+    return { rows };
+  }
+
   // ── Purchase order history ─────────────────────────────────
   @Get('purchase-history')
   async purchaseHistory(@Query() q: any, @Req() req: any) {
@@ -532,6 +623,7 @@ export class ReportsController {
       doctor_revenue:     (q, r) => this.doctorRevenue(q, r),
       patient_visits:     (q, r) => this.patientVisits(q, r),
       stock_valuation:    (q, r) => this.stockValuation(q, r),
+      low_stock:          (q, r) => this.lowStock(q, r),
       expiry_report:      (q, r) => this.expiryReport(q, r),
       purchase_history:   (q, r) => this.purchaseHistory(q, r),
       gst_report:         (q, r) => this.gstReport(q, r),

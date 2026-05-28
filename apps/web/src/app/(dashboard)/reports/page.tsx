@@ -42,6 +42,7 @@ const ENDPOINT_MAP: Record<string, string> = {
   doctor_revenue:     'doctor-revenue',
   patient_visits:     'patient-visits',
   stock_valuation:    'stock-valuation',
+  low_stock:          'low-stock',
   expiry_report:      'expiry-report',
   purchase_history:   'purchase-history',
   gst_report:         'gst-report',
@@ -71,6 +72,8 @@ const COL_LABELS: Record<string, string> = {
   late_count: 'Late', bill_number: 'Bill #', doctor_reg_no: 'Dr. Reg #',
   qty: 'Qty', pharmacist: 'Pharmacist', manufacturer: 'Manufacturer',
   supplier_name: 'Supplier', total_units: 'Units',
+  current_qty: 'Current qty', reorder_level: 'Reorder level',
+  shortfall: 'Shortfall', avg_daily_sales: 'Avg/day', days_of_stock: 'Days left',
 };
 
 function formatCell(key: string, val: any): string {
@@ -82,6 +85,11 @@ function formatCell(key: string, val: any): string {
     return `₹${Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }
   if (key === 'gst_percent') return `${val}%`;
+  if (key === 'days_of_stock') {
+    if (val === null || val === undefined) return 'No sales';
+    return `${Number(val)} days`;
+  }
+  if (key === 'avg_daily_sales') return Number(val).toLocaleString('en-IN');
   if (key === 'days_left') {
     const d = Number(val);
     return d < 0 ? 'EXPIRED' : `${d} days`;
@@ -93,6 +101,15 @@ function formatCell(key: string, val: any): string {
 }
 
 function cellClass(key: string, val: any): string {
+  if (key === 'days_of_stock') {
+    if (val === null || val === undefined) return 'text-slate-400';
+    const d = Number(val);
+    if (d <= 3)  return 'text-red-600 font-bold';
+    if (d <= 7)  return 'text-red-500 font-semibold';
+    if (d <= 14) return 'text-amber-600';
+  }
+  if (key === 'current_qty' && Number(val) === 0) return 'text-red-600 font-bold';
+  if (key === 'shortfall' && Number(val) > 0) return 'text-amber-600 font-semibold';
   if (key === 'days_left') {
     const d = Number(val);
     if (d < 0)  return 'text-red-600 font-bold';
@@ -232,6 +249,24 @@ export default function ReportsPage() {
       }
     }).catch(() => toast.error('Failed to load reports'));
   }, []);
+
+  // Deep-link: open the report named in ?report= once the registry is loaded.
+  // Reads window.location (client-only) to avoid useSearchParams Suspense/SSG issues.
+  useEffect(() => {
+    if (!registry.length) return;
+    const sp = new URLSearchParams(window.location.search);
+    const want = sp.get('report');
+    if (want && want !== activeReport) {
+      const rep = registry.find(r => r.report_id === want && r.is_visible);
+      if (rep) {
+        setActive(rep.report_id);
+        setActiveCols(rep.visible_cols || rep.default_cols);
+        setRange(rep.default_range || '30d');
+        setFilters({});
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [registry]);
 
   const currentReport = registry.find(r => r.report_id === activeReport);
 

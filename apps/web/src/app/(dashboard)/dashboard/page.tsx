@@ -118,11 +118,11 @@ function OwnerDashboard() {
         </div>
 
         {/* Card 4 - Alerts */}
-        <div style={{ background: 'white', borderRadius: 16, padding: '20px', border: '1.5px solid #00b8a0', cursor: 'pointer' }} onClick={() => router.push('/procurement')}>
+        <div style={{ background: 'white', borderRadius: 16, padding: '20px', border: '1.5px solid #00b8a0', cursor: 'pointer' }} onClick={() => router.push('/reports?report=low_stock')}>
           <div style={{ width: 36, height: 36, background: '#fee2e2', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, color: '#dc2626', fontSize: 16 }}>⚠</div>
           <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>Low Stock Items</div>
           <div style={{ fontSize: 26, fontWeight: 700, color: '#dc2626', marginBottom: 6 }}>{lowStock?.length || 0}</div>
-          <div style={{ fontSize: 11, color: '#dc2626', fontWeight: 500 }}>View in Procurement →</div>
+          <div style={{ fontSize: 11, color: '#dc2626', fontWeight: 500 }}>View Low Stock Report →</div>
         </div>
       </div>
 
@@ -158,7 +158,7 @@ function OwnerDashboard() {
         </div>
 
         {/* Expiring Soon */}
-        <div style={{ background: 'white', borderRadius: 16, border: '0.5px solid #e5e7eb', overflow: 'hidden', cursor: 'pointer' }} onClick={() => router.push('/reports')}>
+        <div style={{ background: 'white', borderRadius: 16, border: '0.5px solid #e5e7eb', overflow: 'hidden', cursor: 'pointer' }} onClick={() => router.push('/reports?report=expiry_report')}>
           <div style={{ padding: '16px 20px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '0.5px solid #f3f4f6' }}>
             <span style={{ fontSize: 15, fontWeight: 600, color: '#1a1a2e' }}>Expiring Soon</span>
             <span style={{ background: '#fef3c7', color: '#d97706', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 8 }}>{nearExpiry?.length || 0} batches</span>
