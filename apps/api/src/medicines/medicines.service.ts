@@ -186,7 +186,7 @@ export class MedicinesService {
               m.dosage_form, m.schedule_class, m.gst_percent
        FROM stock_batches sb
        JOIN medicines m ON sb.medicine_id = m.id
-       WHERE sb.barcode = $1 AND sb.tenant_id = $2 AND sb.quantity > 0
+       WHERE sb.barcode = $1 AND sb.tenant_id = $2 AND sb.quantity > 0 AND sb.is_active = true
        ORDER BY sb.expiry_date ASC LIMIT 1`,
       [barcode, tenantId]
     ).catch(() => []);
@@ -214,7 +214,7 @@ export class MedicinesService {
       const med = mappingRows[0];
       const batches = await this.dataSource.query(
         `SELECT * FROM stock_batches WHERE medicine_id = $1 AND tenant_id = $2
-         AND quantity > 0 AND expiry_date > NOW() ORDER BY expiry_date ASC LIMIT 1`,
+         AND quantity > 0 AND expiry_date > NOW() AND is_active = true ORDER BY expiry_date ASC LIMIT 1`,
         [med.id, tenantId]
       ).catch(() => []);
       return {
@@ -318,7 +318,7 @@ export class MedicinesService {
            FROM stock_batches sb
            WHERE sb.medicine_id = m.id AND sb.tenant_id = $1
              AND sb.quantity > 0 AND sb.expiry_date > CURRENT_DATE
-             AND sb.verification_status IN ('verified', 'partial')
+             AND sb.is_active = true
              AND sb.verification_status IN ('verified', 'partial')
          ), 0) AS total_stock,
          (SELECT row_to_json(fb)
@@ -328,7 +328,7 @@ export class MedicinesService {
             FROM stock_batches b
             WHERE b.medicine_id = m.id AND b.tenant_id = $1
               AND b.quantity > 0 AND b.expiry_date > CURRENT_DATE
-              AND b.verification_status IN ('verified', 'partial')
+              AND b.is_active = true
               AND b.verification_status IN ('verified', 'partial')
             ORDER BY b.expiry_date ASC LIMIT 1
           ) fb) AS fefo_batch,
@@ -340,7 +340,7 @@ export class MedicinesService {
             FROM stock_batches b
             WHERE b.medicine_id = m.id AND b.tenant_id = $1
               AND b.quantity > 0 AND b.expiry_date > CURRENT_DATE
-              AND b.verification_status IN ('verified', 'partial')
+              AND b.is_active = true
               AND b.verification_status IN ('verified', 'partial')
             ORDER BY b.expiry_date ASC
           ) ab) AS all_batches,
@@ -354,7 +354,7 @@ export class MedicinesService {
                SELECT 1 FROM stock_batches sb2
                WHERE sb2.medicine_id = m2.id AND sb2.tenant_id = $1
                  AND sb2.quantity > 0 AND sb2.expiry_date > CURRENT_DATE
-                 AND sb2.verification_status IN ('verified', 'partial')
+                 AND sb2.is_active = true
                  AND sb2.verification_status IN ('verified', 'partial')
              )
          ), 0) AS substitute_count
