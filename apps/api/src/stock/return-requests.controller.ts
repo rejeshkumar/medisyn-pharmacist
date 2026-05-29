@@ -233,7 +233,7 @@ export class ReturnRequestsController {
                (tenant_id, batch_id, medicine_id, adjustment_type,
                 quantity_change, quantity_before, quantity_after,
                 notes, performed_by, created_by)
-             VALUES ($1,$2,$3,'return_to_distributor',$4,$5,$6,$7,$8,$8)`,
+             VALUES ($1,$2,$3,'supplier_return',$4,$5,$6,$7,$8,$8)`,
             [tenantId, item.batch_id, item.medicine_id,
              -item.return_qty, batch.quantity, newQty,
              `Return Request ${rr.rr_number} — ${rr.supplier_name || ''}`.trim(),
