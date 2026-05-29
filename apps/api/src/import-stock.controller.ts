@@ -416,12 +416,12 @@ export class ImportStockController {
             medicine_id, batch_number, expiry_date, quantity,
             purchase_price, mrp, sale_rate, purchase_invoice_no,
             free_qty, batch_qty, discount_amount, tax_amount, purchase_value,
-            is_active, tenant_id, created_at, updated_at
+            is_active, verification_status, tenant_id, created_at, updated_at
           ) VALUES (
             $1, $2, $3, $4,
             $5, $6, $6, $7,
             $8, $9, $10, $11, $12,
-            true, $13, NOW(), NOW()
+            true, 'verified', $13, NOW(), NOW()
           )
         `, [medId, batchNo, exp, qty,
             cost, mrp, invoiceNo,
