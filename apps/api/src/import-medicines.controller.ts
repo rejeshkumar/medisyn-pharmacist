@@ -7,7 +7,8 @@ export class ImportMedicinesController {
   @Public()
   @Post('import-medicines')
   async run(@Headers('x-admin-key') key: string) {
-    if (key !== 'medisyn-import-2024') throw new ForbiddenException();
+    const adminKey = process.env.ADMIN_IMPORT_KEY;
+    if (!adminKey || key !== adminKey) throw new ForbiddenException();
     const dbUrl = process.env.DATABASE_URL!;
     const result = await importMedicineReference(dbUrl);
     return { result };

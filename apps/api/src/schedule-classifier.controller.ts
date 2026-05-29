@@ -62,7 +62,8 @@ export class ScheduleClassifierController {
   @Public()
   @Post('classify-schedules')
   async classify(@Headers('x-admin-key') key: string) {
-    if (key !== 'medisyn-import-2024') throw new ForbiddenException();
+    const adminKey = process.env.ADMIN_IMPORT_KEY;
+    if (!adminKey || key !== adminKey) throw new ForbiddenException();
 
     const medicines = await this.ds.query(
       `SELECT id, brand_name FROM medicines WHERE tenant_id = $1`, [TENANT]

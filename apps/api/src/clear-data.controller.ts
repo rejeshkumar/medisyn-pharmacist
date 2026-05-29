@@ -10,7 +10,8 @@ export class ClearDataController {
   @Public()
   @Post('clear-medicines')
   async clear(@Headers('x-admin-key') key: string) {
-    if (key !== 'medisyn-import-2024') throw new ForbiddenException();
+    const adminKey = process.env.ADMIN_IMPORT_KEY;
+    if (!adminKey || key !== adminKey) throw new ForbiddenException();
     const TENANT = '00000000-0000-0000-0000-000000000001';
     const tables = [
       'refill_followups','medication_plans','demand_requests',

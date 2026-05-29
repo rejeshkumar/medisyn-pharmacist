@@ -15,7 +15,8 @@ export class ImportStockController {
   @Public()
   @Post('clear-stock')
   async clearStock(@Headers('x-admin-key') key: string) {
-    if (key !== 'medisyn-import-2024') throw new ForbiddenException();
+    const adminKey = process.env.ADMIN_IMPORT_KEY;
+    if (!adminKey || key !== adminKey) throw new ForbiddenException();
     const tables = [
       'refill_followups', 'medication_plans', 'demand_requests',
       'credit_note_items', 'schedule_drug_logs', 'prescription_items',
@@ -39,7 +40,8 @@ export class ImportStockController {
   @Public()
   @Get('check-data-integrity')
   async checkDataIntegrity(@Headers('x-admin-key') key: string) {
-    if (key !== 'medisyn-import-2024') throw new ForbiddenException();
+    const adminKey = process.env.ADMIN_IMPORT_KEY;
+    if (!adminKey || key !== adminKey) throw new ForbiddenException();
 
     const issues: any = {
       duplicate_batches: [],
@@ -129,7 +131,8 @@ export class ImportStockController {
     @Headers('x-admin-key') key: string,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    if (key !== 'medisyn-import-2024') throw new ForbiddenException();
+    const adminKey = process.env.ADMIN_IMPORT_KEY;
+    if (!adminKey || key !== adminKey) throw new ForbiddenException();
 
     // ── Parse Excel ──────────────────────────────────────────────────────────
     const wb = XLSX.read(file.buffer, { type: 'buffer' });

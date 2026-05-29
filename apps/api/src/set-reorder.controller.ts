@@ -12,7 +12,8 @@ export class SetReorderController {
   @Public()
   @Post('set-reorder-thresholds')
   async set(@Headers('x-admin-key') key: string) {
-    if (key !== 'medisyn-import-2024') throw new ForbiddenException();
+    const adminKey = process.env.ADMIN_IMPORT_KEY;
+    if (!adminKey || key !== adminKey) throw new ForbiddenException();
 
     // Strip medicines — reorder at 2 strips
     const r1 = await this.ds.query(`

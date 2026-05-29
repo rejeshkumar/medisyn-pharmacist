@@ -29,7 +29,8 @@ export class MoleculeClassifierController {
   @Public()
   @Post('classify-molecules')
   async classify(@Headers('x-admin-key') key: string) {
-    if (key !== 'medisyn-import-2024') throw new ForbiddenException();
+    const adminKey = process.env.ADMIN_IMPORT_KEY;
+    if (!adminKey || key !== adminKey) throw new ForbiddenException();
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) return { error: 'ANTHROPIC_API_KEY not set' };
