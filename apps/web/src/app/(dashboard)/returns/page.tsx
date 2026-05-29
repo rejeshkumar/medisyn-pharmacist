@@ -960,6 +960,7 @@ function CreateReturnModal({
                       setShowSupplierDrop(true);
                     }}
                     onFocus={() => setShowSupplierDrop(true)}
+                    onBlur={() => setTimeout(() => setShowSupplierDrop(false), 200)}
                     placeholder="Search supplier..."
                     className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-teal-500"
                   />
