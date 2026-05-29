@@ -68,6 +68,24 @@ export class ReturnRequestsController {
     );
   }
 
+  // ── GET /return-requests/supplier-credits ────────────────────────────────
+  @Get('supplier-credits')
+  async supplierCredits(@Query() q: any, @Req() req: any) {
+    const tenantId = req.user.tenant_id;
+    const params: any[] = [tenantId];
+    let filter = '';
+    if (q.supplier_id) { params.push(q.supplier_id); filter = `AND sc.supplier_id = $${params.length}`; }
+    return this.ds.query(
+      `SELECT sc.*,
+         COALESCE(s.name, sc.supplier_name) AS supplier_name_resolved
+       FROM supplier_credits sc
+       LEFT JOIN suppliers s ON s.id = sc.supplier_id
+       WHERE sc.tenant_id = $1 AND sc.status != 'fully_used' ${filter}
+       ORDER BY sc.created_at DESC`,
+      params,
+    );
+  }
+
   // ── GET /return-requests/:id ──────────────────────────────────────────────
   @Get(':id')
   async getOne(@Param('id') id: string, @Req() req: any) {
@@ -100,7 +118,6 @@ export class ReturnRequestsController {
     await qr.startTransaction();
 
     try {
-      // Generate RR number
       const [cnt] = await qr.query(
         `SELECT COUNT(*)::int AS c FROM return_requests WHERE tenant_id = $1`,
         [tenantId],
@@ -109,7 +126,6 @@ export class ReturnRequestsController {
       const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
       const rrNumber = `RR-${today}-${seq}`;
 
-      // Create return request
       const [rr] = await qr.query(
         `INSERT INTO return_requests
            (tenant_id, rr_number, supplier_id, supplier_name, supplier_phone,
@@ -121,7 +137,6 @@ export class ReturnRequestsController {
          body.notes || null, userId, full_name || 'Unknown'],
       );
 
-      // Create items
       for (const item of body.items) {
         const [batch] = await qr.query(
           `SELECT sb.*, m.brand_name FROM stock_batches sb
@@ -173,7 +188,7 @@ export class ReturnRequestsController {
     const newStatus = body.status;
     const validTransitions: Record<string, string[]> = {
       draft: ['sent', 'cancelled'],
-      sent: ['confirmed', 'cancelled'],
+      sent: ['cancelled'],
       confirmed: ['closed'],
     };
 
@@ -186,15 +201,14 @@ export class ReturnRequestsController {
     await qr.startTransaction();
 
     try {
-      // If confirming — reduce stock for all items
-      if (newStatus === 'confirmed') {
+      // Mark as sent → deduct stock immediately
+      if (newStatus === 'sent') {
         const items = await qr.query(
           `SELECT * FROM return_request_items WHERE return_request_id = $1 AND stock_reduced = false`,
           [id],
         );
 
         for (const item of items) {
-          // Lock and reduce batch quantity
           const [batch] = await qr.query(
             `SELECT * FROM stock_batches WHERE id = $1 FOR UPDATE`,
             [item.batch_id],
@@ -209,25 +223,22 @@ export class ReturnRequestsController {
             [newQty, item.batch_id],
           );
 
-          // Mark item stock reduced
           await qr.query(
             `UPDATE return_request_items SET stock_reduced = true WHERE id = $1`,
             [item.id],
           );
 
-          // Stock adjustment audit log
           await qr.query(
             `INSERT INTO stock_adjustments
                (tenant_id, batch_id, medicine_id, adjustment_type, direction,
                 qty_adjusted, qty_before, qty_after, reason,
-                distributor_name, distributor_ref,
-                schedule_class, requires_compliance, compliance_noted,
+                distributor_name, schedule_class, requires_compliance, compliance_noted,
                 adjusted_by, adjusted_by_name, notes)
-             VALUES ($1,$2,$3,'return_to_distributor','decrease',$4,$5,$6,$7,$8,$9,$10,$11,true,$12,$13,$14)`,
+             VALUES ($1,$2,$3,'return_to_distributor','decrease',$4,$5,$6,$7,$8,$9,$10,true,$11,$12,$13)`,
             [tenantId, item.batch_id, item.medicine_id,
              item.return_qty, batch.quantity, newQty,
              `Return Request ${rr.rr_number}`,
-             rr.supplier_name || '', body.credit_note_no || '',
+             rr.supplier_name || '',
              batch.schedule_class || 'OTC',
              ['H','H1','X'].includes(batch.schedule_class || ''),
              userId, full_name || 'Unknown',
@@ -235,43 +246,104 @@ export class ReturnRequestsController {
           );
         }
 
-        // Create finance credit entry (supplier owes us)
-        const [totals] = await qr.query(
-          `SELECT COALESCE(SUM(return_value),0) AS total FROM return_request_items
-           WHERE return_request_id = $1`,
+        await qr.query(
+          `UPDATE return_requests SET status = 'sent'::return_request_status,
+           sent_at = NOW(), updated_at = NOW() WHERE id = $1`,
           [id],
         );
-        const creditAmount = Number(totals.total) || 0;
-
-        if (creditAmount > 0) {
-          await qr.query(
-            `INSERT INTO upcoming_payments
-               (tenant_id, amount, due_date,
-                payment_type, source_type, source_id, description, is_paid, created_by)
-             VALUES ($1,$2,NOW() + INTERVAL '30 days','receivable','return_request',$3,$4,false,$5)
-             ON CONFLICT DO NOTHING`,
-            [tenantId, creditAmount, id,
-             'Credit from ' + (rr.supplier_name || 'supplier') + ' — ' + rr.rr_number,
-             userId],
-          );
-        }
-
+      } else {
         await qr.query(
-          `UPDATE return_requests
-           SET status = $1, confirmed_at = NOW(),
-               credit_note_no = $2, credit_amount = $3, updated_at = NOW()
-           WHERE id = $4`,
-          [newStatus, body.credit_note_no || null, creditAmount, id],
+          `UPDATE return_requests SET status = $1::return_request_status,
+           updated_at = NOW() WHERE id = $2`,
+          [newStatus, id],
+        );
+      }
+
+      await qr.commitTransaction();
+      return this.getOne(id, req);
+    } catch (e) {
+      await qr.rollbackTransaction();
+      throw e;
+    } finally {
+      await qr.release();
+    }
+  }
+
+  // ── PATCH /return-requests/:id/settle ────────────────────────────────────
+  @Patch(':id/settle')
+  async settle(@Param('id') id: string, @Body() body: any, @Req() req: any) {
+    const { tenant_id: tenantId, sub: userId, role, full_name } = req.user;
+    if (!ALLOWED.includes(role)) throw new ForbiddenException();
+
+    const [rr] = await this.ds.query(
+      `SELECT * FROM return_requests WHERE id = $1 AND tenant_id = $2`,
+      [id, tenantId],
+    );
+    if (!rr) throw new BadRequestException('Return request not found');
+    if (rr.status !== 'sent') throw new BadRequestException('Can only settle a sent return request');
+
+    const { settlement_type, settlement_amount, settlement_ref, settlement_date, settlement_notes } = body;
+    if (!['credit_note', 'cash', 'upi'].includes(settlement_type)) {
+      throw new BadRequestException('Invalid settlement type');
+    }
+    if (!settlement_amount || Number(settlement_amount) <= 0) {
+      throw new BadRequestException('Settlement amount is required');
+    }
+
+    const qr = this.ds.createQueryRunner();
+    await qr.connect();
+    await qr.startTransaction();
+
+    try {
+      const amount = Number(settlement_amount);
+      const sDate = settlement_date || new Date().toISOString().slice(0, 10);
+
+      // Update return request
+      await qr.query(
+        `UPDATE return_requests SET
+           status = 'confirmed'::return_request_status,
+           confirmed_at = NOW(),
+           settlement_type = $1,
+           settlement_amount = $2,
+           settlement_ref = $3,
+           settlement_date = $4,
+           settlement_notes = $5,
+           credit_note_no = $6,
+           credit_amount = $2,
+           updated_at = NOW()
+         WHERE id = $7`,
+        [settlement_type, amount, settlement_ref || null,
+         sDate, settlement_notes || null,
+         settlement_type === 'credit_note' ? (settlement_ref || null) : null,
+         id],
+      );
+
+      if (settlement_type === 'credit_note') {
+        // Create supplier credit record
+        await qr.query(
+          `INSERT INTO supplier_credits
+             (tenant_id, supplier_id, supplier_name, return_request_id,
+              credit_note_no, credit_amount, used_amount,
+              credit_date, status, notes, created_by)
+           VALUES ($1,$2,$3,$4,$5,$6,0,$7,'active',$8,$9)`,
+          [tenantId, rr.supplier_id || null, rr.supplier_name || null,
+           id, settlement_ref || null, amount, sDate,
+           settlement_notes || null, userId],
         );
       } else {
-        // Simple status update for sent/cancelled/closed
+        // Cash or UPI — create income entry in expenses table
         await qr.query(
-          `UPDATE return_requests
-           SET status = $1::return_request_status,
-               sent_at = CASE WHEN $1 = 'sent' THEN NOW() ELSE sent_at END,
-               updated_at = NOW()
-           WHERE id = $2`,
-          [newStatus, id],
+          `INSERT INTO expenses
+             (tenant_id, expense_date, category, description, amount,
+              payment_mode, reference_no, vendor_name, payment_type, created_by)
+           VALUES ($1,$2,'Stock Return Income',$3,$4,$5,$6,$7,'income',$8)`,
+          [tenantId, sDate,
+           `Stock return from ${rr.supplier_name || 'supplier'} — ${rr.rr_number}`,
+           amount,
+           settlement_type === 'upi' ? 'UPI' : 'Cash',
+           settlement_ref || null,
+           rr.supplier_name || null,
+           userId],
         );
       }
 

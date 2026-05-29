@@ -87,6 +87,13 @@ export default function ReturnsPage() {
   const [requests, setRequests] = useState<ReturnRequest[]>([]);
   const [selected, setSelected] = useState<ReturnRequest | null>(null);
   const [detail, setDetail] = useState<{ rr: ReturnRequest; items: ReturnRequestItem[] } | null>(null);
+  const [settlementModal, setSettlementModal] = useState<string | null>(null); // return request id
+  const [settlementType, setSettlementType] = useState<'credit_note'|'cash'|'upi'>('credit_note');
+  const [settlementAmount, setSettlementAmount] = useState('');
+  const [settlementRef, setSettlementRef] = useState('');
+  const [settlementDate, setSettlementDate] = useState(new Date().toISOString().slice(0,10));
+  const [settlementNotes, setSettlementNotes] = useState('');
+  const [settlementSaving, setSettlementSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showCreate, setShowCreate] = useState(false);
@@ -361,10 +368,13 @@ export default function ReturnsPage() {
                   )}
                   {detail.rr.status === 'sent' && (
                     <button
-                      onClick={() => confirmWithCredit(detail.rr.id)}
+                      onClick={() => {
+                        setSettlementAmount(String(detail.rr.total_value || ''));
+                        setSettlementModal(detail.rr.id);
+                      }}
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-lg hover:bg-green-700"
                     >
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Confirm & receive credit
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Record Settlement
                     </button>
                   )}
                   {detail.rr.status === 'confirmed' && (
@@ -407,11 +417,14 @@ export default function ReturnsPage() {
                       </p>
                     </div>
                   )}
-                  {detail.rr.credit_note_no && (
+                  {detail.rr.settlement_type && (
                     <div className="col-span-2 pt-2 border-t border-slate-200">
-                      <span className="text-slate-500">Credit note</span>
+                      <span className="text-slate-500">Settlement</span>
                       <p className="font-semibold text-green-700 mt-0.5">
-                        {detail.rr.credit_note_no} · ₹{Number(detail.rr.credit_amount).toFixed(2)}
+                        {detail.rr.settlement_type === 'credit_note' ? '📄 Credit Note' :
+                         detail.rr.settlement_type === 'upi' ? '📱 UPI' : '💵 Cash'}
+                        {' '}· ₹{Number(detail.rr.settlement_amount || detail.rr.credit_amount || 0).toFixed(2)}
+                        {detail.rr.settlement_ref && ` · ${detail.rr.settlement_ref}`}
                       </p>
                     </div>
                   )}
@@ -484,7 +497,138 @@ export default function ReturnsPage() {
           )}
 
           {/* Empty state when no selection */}
-          {!selected && (
+          {/* Settlement Modal */}
+      {settlementModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+              <h2 className="font-bold text-slate-900">Record Settlement</h2>
+              <button onClick={() => setSettlementModal(null)} className="text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+            <div className="p-5 space-y-4">
+              {/* Settlement type */}
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase mb-2">How did the distributor settle?</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    { key: 'credit_note', label: '📄 Credit Note', desc: 'Adjust in next PO' },
+                    { key: 'cash', label: '💵 Cash', desc: 'Cash payment received' },
+                    { key: 'upi', label: '📱 UPI', desc: 'UPI transfer received' },
+                  ] as const).map(t => (
+                    <button key={t.key} onClick={() => setSettlementType(t.key)}
+                      className={`p-2.5 rounded-lg border-2 text-center transition-all ${
+                        settlementType === t.key
+                          ? 'border-teal-500 bg-teal-50'
+                          : 'border-slate-200 hover:border-slate-300'
+                      }`}>
+                      <p className="text-sm font-semibold">{t.label}</p>
+                      <p className="text-[10px] text-slate-500 mt-0.5">{t.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Amount */}
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase">Amount Received (₹)</label>
+                <input type="number" value={settlementAmount}
+                  onChange={e => setSettlementAmount(e.target.value)}
+                  className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-teal-500"
+                  placeholder="0.00" />
+              </div>
+
+              {/* Reference */}
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase">
+                  {settlementType === 'credit_note' ? 'Credit Note Number' :
+                   settlementType === 'upi' ? 'UPI Transaction ID' : 'Receipt Number (optional)'}
+                </label>
+                <input type="text" value={settlementRef}
+                  onChange={e => setSettlementRef(e.target.value)}
+                  className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-teal-500"
+                  placeholder={settlementType === 'credit_note' ? 'e.g. CN/2026/1234' :
+                               settlementType === 'upi' ? 'e.g. 4056789012345' : 'Optional'} />
+              </div>
+
+              {/* Date */}
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase">Settlement Date</label>
+                <input type="date" value={settlementDate}
+                  onChange={e => setSettlementDate(e.target.value)}
+                  className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-teal-500" />
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase">Notes (optional)</label>
+                <textarea value={settlementNotes} onChange={e => setSettlementNotes(e.target.value)}
+                  rows={2} placeholder="Any additional notes..."
+                  className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-teal-500" />
+              </div>
+
+              {settlementType === 'credit_note' && (
+                <div className="bg-blue-50 rounded-lg p-3 text-xs text-blue-700">
+                  💡 Credit note will be saved against this supplier. You can apply it when raising the next Purchase Order.
+                </div>
+              )}
+              {(settlementType === 'cash' || settlementType === 'upi') && (
+                <div className="bg-green-50 rounded-lg p-3 text-xs text-green-700">
+                  💡 This amount will be recorded as income in the Finance module automatically.
+                </div>
+              )}
+            </div>
+
+            <div className="px-5 py-4 border-t border-slate-100 flex justify-end gap-3">
+              <button onClick={() => setSettlementModal(null)}
+                className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">
+                Cancel
+              </button>
+              <button
+                disabled={!settlementAmount || settlementSaving}
+                onClick={async () => {
+                  setSettlementSaving(true);
+                  try {
+                    const res = await fetch(`${API}/return-requests/${settlementModal}/settle`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                      body: JSON.stringify({
+                        settlement_type: settlementType,
+                        settlement_amount: Number(settlementAmount),
+                        settlement_ref: settlementRef || null,
+                        settlement_date: settlementDate,
+                        settlement_notes: settlementNotes || null,
+                      }),
+                    });
+                    if (!res.ok) throw new Error('Failed to record settlement');
+                    setSettlementModal(null);
+                    setSettlementAmount('');
+                    setSettlementRef('');
+                    setSettlementNotes('');
+                    await loadList();
+                    if (selected) {
+                      const det = await fetch(`${API}/return-requests/${selected.id}`, {
+                        headers: { Authorization: `Bearer ${token}` },
+                      }).then(r => r.json());
+                      const norm = det?.rr ? det : { rr: det, items: det?.items || [] };
+                      setDetail(norm);
+                      setSelected(norm.rr);
+                    }
+                  } catch (e: any) {
+                    alert(e.message || 'Error recording settlement');
+                  } finally {
+                    setSettlementSaving(false);
+                  }
+                }}
+                className="px-4 py-2 text-sm text-white rounded-lg font-semibold disabled:opacity-50"
+                style={{ backgroundColor: BRAND }}>
+                {settlementSaving ? 'Saving...' : 'Record Settlement'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!selected && (
             <div className="hidden lg:flex flex-1 bg-white rounded-2xl border border-slate-200 items-center justify-center">
               <div className="text-center">
                 <RefreshCw className="w-12 h-12 text-slate-300 mx-auto mb-3" />
