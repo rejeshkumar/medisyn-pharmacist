@@ -666,9 +666,24 @@ function CreateReturnModal({
   const [selected, setSelected] = useState<Record<string, { qty: number; reason: string }>>({});
   const [supplierName, setSupplierName] = useState('');
   const [supplierPhone, setSupplierPhone] = useState('');
+  const [suppliers, setSuppliers] = useState<{id:string;name:string;phone?:string}[]>([]);
+  const [supplierSearch, setSupplierSearch] = useState('');
+  const [showSupplierDrop, setShowSupplierDrop] = useState(false);
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`${API}/stock/suppliers`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        setSuppliers(Array.isArray(data) ? data : []);
+      } catch {}
+    })();
+  }, [token]);
 
   useEffect(() => {
     (async () => {
@@ -936,12 +951,45 @@ function CreateReturnModal({
               {/* Supplier info */}
               <div className="space-y-3">
                 <p className="text-xs font-semibold text-slate-500 uppercase">Supplier</p>
-                <input
-                  value={supplierName}
-                  onChange={e => setSupplierName(e.target.value)}
-                  placeholder="Supplier name"
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg"
-                />
+                <div className="relative">
+                  <input
+                    value={supplierSearch || supplierName}
+                    onChange={e => {
+                      setSupplierSearch(e.target.value);
+                      setSupplierName(e.target.value);
+                      setShowSupplierDrop(true);
+                    }}
+                    onFocus={() => setShowSupplierDrop(true)}
+                    placeholder="Search supplier..."
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-teal-500"
+                  />
+                  {showSupplierDrop && (supplierSearch || supplierName) && (
+                    <div className="absolute z-50 w-full bg-white border border-slate-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                      {suppliers
+                        .filter(s => s.name.toLowerCase().includes((supplierSearch || supplierName).toLowerCase()))
+                        .slice(0, 20)
+                        .map(s => (
+                          <button
+                            key={s.id}
+                            type="button"
+                            onClick={() => {
+                              setSupplierName(s.name);
+                              setSupplierPhone(s.phone || '');
+                              setSupplierSearch('');
+                              setShowSupplierDrop(false);
+                            }}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-teal-50 border-b border-slate-50 last:border-0"
+                          >
+                            <span className="font-medium text-slate-800">{s.name}</span>
+                            {s.phone && <span className="text-slate-400 text-xs ml-2">{s.phone}</span>}
+                          </button>
+                        ))}
+                      {suppliers.filter(s => s.name.toLowerCase().includes((supplierSearch || supplierName).toLowerCase())).length === 0 && (
+                        <div className="px-3 py-2 text-sm text-slate-400">No suppliers found</div>
+                      )}
+                    </div>
+                  )}
+                </div>
                 <input
                   value={supplierPhone}
                   onChange={e => setSupplierPhone(e.target.value)}
