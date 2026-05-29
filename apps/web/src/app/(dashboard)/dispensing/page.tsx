@@ -1240,7 +1240,7 @@ export default function DispensingPage() {
           )}
           {/* Upload Rx */}
           <button onClick={() => fileRef.current?.click()}
-            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200">
+            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-teal-50 text-[#00475a] rounded-lg hover:bg-teal-100 border border-teal-200 sm:bg-slate-100 sm:text-slate-600 sm:border-0 sm:hover:bg-slate-200">
             {aiExtracting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
             <span className="hidden sm:inline">Upload</span> Rx
           </button>
@@ -1861,14 +1861,17 @@ export default function DispensingPage() {
       )}
 
       {/* ── Mobile bottom bar ── */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 px-4 py-3 bg-white border-t border-slate-200 shadow-lg" style={{paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))"}}>
-        <div className="flex items-center gap-3">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-[#00475a] shadow-lg" style={{paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))"}}>
+        <div className="flex items-center gap-3 px-4 py-3">
           <div className="flex-1 min-w-0">
-            <p className="text-xs text-slate-400 truncate">
-              {cart.length > 0 ? `${cart.length} item${cart.length !== 1 ? 's' : ''}` : 'No items yet'}
-              {paymentMode && <span className="ml-2 font-semibold text-[#00475a] uppercase">{paymentMode === 'hybrid' ? 'Cash+UPI' : paymentMode}</span>}
+            <p className="text-xs text-white/60 truncate">
+              {compliance.patient_name
+                ? <span className="text-white/90 font-medium">{compliance.patient_name}</span>
+                : 'Walk-in'}
+              {cart.length > 0 && <span className="ml-1.5">· {cart.length} item{cart.length !== 1 ? 's' : ''}</span>}
+              {paymentMode && <span className="ml-1.5 font-semibold uppercase">{paymentMode === 'hybrid' ? 'Cash+UPI' : paymentMode}</span>}
             </p>
-            <p className="text-base font-bold text-slate-900">{formatCurrency(netTotal)}</p>
+            <p className="text-lg font-bold text-white">{formatCurrency(netTotal)}</p>
           </div>
           {/* Rx panel button on mobile */}
           {rxQueue.length > 0 && (
