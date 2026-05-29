@@ -49,8 +49,25 @@ export class StockController {
 
   @Get('alerts/near-expiry')
   @ApiOperation({ summary: 'Get near expiry alerts' })
-  getNearExpiryAlerts(@Request() req, @Query('days') days?: number) {
-    return this.stockService.getNearExpiryAlerts(req.tenantId, days ? Number(days) : 90);
+  async getNearExpiryAlerts(@Request() req, @Query('days') days?: number) {
+    const batches = await this.stockService.getNearExpiryAlerts(req.tenantId, days ? Number(days) : 90);
+    return batches.map((b: any) => ({
+      batch_id:       b.id,
+      batch_number:   b.batch_number,
+      expiry_date:    b.expiry_date,
+      quantity:       b.quantity,
+      purchase_price: b.purchase_price,
+      mrp:            b.mrp,
+      sale_rate:      b.sale_rate,
+      supplier_id:    b.supplier_id,
+      supplier_name:  b.supplier?.name || null,
+      medicine_id:    b.medicine?.id || b.medicine_id,
+      brand_name:     b.medicine?.brand_name || null,
+      molecule:       b.medicine?.molecule || null,
+      strength:       b.medicine?.strength || null,
+      schedule_class: b.medicine?.schedule_class || null,
+      days_to_expiry: Math.floor((new Date(b.expiry_date).getTime() - Date.now()) / 86400000),
+    }));
   }
 
   @Get('suppliers')
