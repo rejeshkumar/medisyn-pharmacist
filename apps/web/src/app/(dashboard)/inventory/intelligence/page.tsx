@@ -145,6 +145,13 @@ export default function InventoryIntelligencePage() {
     fetchTab(activeTab, e.target.value);
   };
 
+  const handleExport = () => {
+    const token = getToken();
+    const category = activeTab === 'stockout' ? 'fast' : activeTab;
+    const url = `${API_BASE}/inventory-classification/export?${params}&category=${category}&token=${token}`;
+    window.open(url, '_blank');
+  };
+
   const fmt = (v: number) =>
     new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(v);
 
@@ -171,6 +178,10 @@ export default function InventoryIntelligencePage() {
           <button onClick={handleRefreshAll} disabled={refreshing}
             className="px-4 py-2 bg-[#00b8a0] text-white rounded-lg text-sm hover:bg-[#009d89] disabled:opacity-50">
             {refreshing ? '🔄 Refreshing...' : '🔄 Refresh All'}
+          </button>
+          <button onClick={handleExport}
+            className="px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg text-sm hover:bg-gray-50 flex items-center gap-1">
+            ⬇️ Export CSV
           </button>
         </div>
       </div>
