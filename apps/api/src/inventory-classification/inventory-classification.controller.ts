@@ -274,7 +274,13 @@ export class InventoryClassificationController {
   @Get('dead-stock-returns')
   async listReturns(@Query('status') status: string, @Req() req: any) {
     this.checkRole(req.user);
-    const sf = status ? `AND dsr.status = '${status}'` : '';
+    const VALID_STATUSES = ['pending', 'returned', 'credit_received', 'rejected'];
+    if (status && !VALID_STATUSES.includes(status)) {
+      throw new BadRequestException('Invalid status filter');
+    }
+    const params: any[] = [req.user.tenant_id];
+    const sf = status ? `AND dsr.status = $2` : '';
+    if (status) params.push(status);
     return this.ds.query(
       `SELECT dsr.*, m.brand_name, m.molecule, m.strength, s.name AS supplier_name
        FROM dead_stock_returns dsr
@@ -282,7 +288,7 @@ export class InventoryClassificationController {
        LEFT JOIN suppliers s ON s.id = dsr.supplier_id
        WHERE dsr.tenant_id = $1 ${sf}
        ORDER BY dsr.created_at DESC`,
-      [req.user.tenant_id],
+      params,
     );
   }
 
@@ -290,6 +296,8 @@ export class InventoryClassificationController {
   @Get('export')
   async exportCSV(@Query() q: any, @Req() req: any) {
     this.checkRole(req.user);
+    // Only allow export from same tenant
+    if (!req.user?.tenant_id) throw new ForbiddenException('Unauthorized');
     let rows = await this.classify(req.user.tenant_id, q);
     if (q.category && ['fast','slow','dead'].includes(q.category)) {
       rows = rows.filter((r: any) => r.category === q.category);

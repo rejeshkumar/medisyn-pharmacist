@@ -145,11 +145,26 @@ export default function InventoryIntelligencePage() {
     fetchTab(activeTab, e.target.value);
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     const token = getToken();
     const category = activeTab === 'stockout' ? 'fast' : activeTab;
-    const url = `${API_BASE}/inventory-classification/export?${params}&category=${category}&token=${token}`;
-    window.open(url, '_blank');
+    try {
+      const res = await fetch(
+        `${API_BASE}/inventory-classification/export?${params}&category=${category}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!res.ok) throw new Error('Export failed');
+      const data = await res.json();
+      const blob = new Blob([data.content], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = data.filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      toast.error('Export failed');
+    }
   };
 
   const fmt = (v: number) =>
