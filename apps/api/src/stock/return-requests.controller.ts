@@ -230,19 +230,14 @@ export class ReturnRequestsController {
 
           await qr.query(
             `INSERT INTO stock_adjustments
-               (tenant_id, batch_id, medicine_id, adjustment_type, direction,
-                qty_adjusted, qty_before, qty_after, reason,
-                distributor_name, schedule_class, requires_compliance, compliance_noted,
-                adjusted_by, adjusted_by_name, notes)
-             VALUES ($1,$2,$3,'return_to_distributor','decrease',$4,$5,$6,$7,$8,$9,$10,true,$11,$12,$13)`,
+               (tenant_id, batch_id, medicine_id, adjustment_type,
+                quantity_change, quantity_before, quantity_after,
+                notes, performed_by, created_by)
+             VALUES ($1,$2,$3,'return_to_distributor',$4,$5,$6,$7,$8,$8)`,
             [tenantId, item.batch_id, item.medicine_id,
-             item.return_qty, batch.quantity, newQty,
-             `Return Request ${rr.rr_number}`,
-             rr.supplier_name || '',
-             batch.schedule_class || 'OTC',
-             ['H','H1','X'].includes(batch.schedule_class || ''),
-             userId, full_name || 'Unknown',
-             item.notes || null],
+             -item.return_qty, batch.quantity, newQty,
+             `Return Request ${rr.rr_number} — ${rr.supplier_name || ''}`.trim(),
+             userId],
           );
         }
 
