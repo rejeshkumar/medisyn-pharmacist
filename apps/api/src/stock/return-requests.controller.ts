@@ -25,7 +25,7 @@ export class ReturnRequestsController {
     const wc = where.length ? 'AND ' + where.join(' AND ') : '';
     return this.ds.query(
       `SELECT rr.*,
-         COUNT(rri.id)::int AS items_count,
+         COUNT(rri.id)::int AS item_count,
          COALESCE(SUM(rri.return_qty),0)::int AS total_units,
          COALESCE(SUM(rri.return_value),0)::numeric AS total_value
        FROM return_requests rr
