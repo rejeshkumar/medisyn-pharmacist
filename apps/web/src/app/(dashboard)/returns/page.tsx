@@ -614,7 +614,14 @@ export default function ReturnsPage() {
                       setSelected(norm.rr);
                     }
                   } catch (e: any) {
-                    alert(e.message || 'Error recording settlement');
+                    const msg = e.message || 'Error recording settlement';
+                    if (msg.includes('already') || msg.includes('Cannot transition') || msg.includes('sent')) {
+                      // Already settled — just close and refresh
+                      setSettlementModal(null);
+                      await loadList();
+                    } else {
+                      alert(msg);
+                    }
                   } finally {
                     setSettlementSaving(false);
                   }
