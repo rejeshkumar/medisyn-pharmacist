@@ -137,7 +137,7 @@ function VipRegisterContent() {
           <form onSubmit={handleFormSubmit} className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
 
             <div className="bg-[#00b8a0] px-5 py-4 text-white text-center">
-              <p className="font-semibold text-base">Step 1 of 2 — Patient Details</p>
+              <p className="font-semibold text-base">Step 1 of 2 — Member Details</p>
             </div>
 
             <div className="p-5 space-y-4">
