@@ -44,355 +44,209 @@ function QuickAction({ label, icon: Icon, color, href }: any) {
   );
 }
 
-// ── Owner Dashboard ──────────────────────────────────────────────────────────
+// ── Owner Dashboard ─────────────────────────────────────────────────────────
 function OwnerDashboard() {
   const router = useRouter();
+  const { data: dash } = useQuery({ queryKey: ['dashboard'], queryFn: () => api.get('/reports/dashboard').then(r => r.data), refetchInterval: 60000 });
+  const { data: lowStock } = useQuery({ queryKey: ['low-stock'], queryFn: () => api.get('/stock/alerts/low-stock').then(r => r.data) });
+  const { data: nearExpiry } = useQuery({ queryKey: ['near-expiry'], queryFn: () => api.get('/stock/alerts/near-expiry?days=30').then(r => r.data) });
 
-  const { data: dash, isLoading: dashLoading } = useQuery({
-    queryKey: ['dashboard'],
-    queryFn: () => api.get('/reports/dashboard').then(r => r.data),
-    refetchInterval: 60000,
-  });
-  const { data: lowStockRaw = [] } = useQuery({
-    queryKey: ['low-stock'],
-    queryFn: () => api.get('/stock/alerts/low-stock').then(r => r.data),
-  });
-  const { data: nearExpiry = [] } = useQuery({
-    queryKey: ['near-expiry'],
-    queryFn: () => api.get('/stock/alerts/near-expiry?days=30').then(r => r.data),
-  });
-  const { data: queue = [] } = useQuery({
-    queryKey: ['queue-today-owner'],
-    queryFn: () => api.get('/queue?date=today&limit=50').then(r => r.data).catch(() => []),
-    refetchInterval: 30000,
-  });
-
-  const totalSales  = dash?.today_sales     || 0;
-  const billCount   = dash?.today_bill_count || 0;
-  const dailyData   = dash?.daily_sales      || [];
-  const recentBills = dash?.recent_bills     || [];
-  const topMeds     = dash?.top_medicines    || [];
-  const maxQty      = Math.max(...topMeds.map((m: any) => m.total_qty || 0), 1);
-  const today       = new Date().getDate().toString().padStart(2, '0');
-
-  const queueArr   = Array.isArray(queue) ? queue : [];
-  const totalToday = queueArr.length;
-  const waiting    = queueArr.filter((q: any) => q.status === 'waiting').length;
-  const inConsult  = queueArr.filter((q: any) => q.status === 'in_consultation').length;
-  const done       = queueArr.filter((q: any) => ['completed','dispensed'].includes(q.status)).length;
-
-  const outOfStock   = (lowStockRaw as any[]).filter(b => (b.quantity ?? b.current_stock ?? 0) <= 0);
-  const belowReorder = (lowStockRaw as any[]).filter(b => {
-    const qty = b.quantity ?? b.current_stock ?? 0;
-    return qty > 0 && qty <= (b.reorder_level ?? b.medicine?.reorder_level ?? 5);
-  });
-
-  const todayLabel = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
+  const fmt = (v: number) => `₹${Number(v || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  const totalSales = dash?.today_sales || 0;
+  const cashTotal = dash?.today_cash || 0;
+  const upiTotal = dash?.today_upi || 0;
+  const billCount = dash?.today_bill_count || 0;
+  const dailyData = dash?.daily_sales || [];
+  const recentBills = dash?.recent_bills || [];
+  const topMeds = dash?.top_medicines || [];
+  const maxQty = Math.max(...topMeds.map((m: any) => m.total_qty || 0), 1);
+  const today = new Date().getDate().toString().padStart(2, '0');
 
   return (
-    <div style={{ background: '#f4f6f8', minHeight: '100%' }} className="p-4 lg:p-6">
+    <div className="p-3 lg:p-6" style={{ background: '#f8f9fa', minHeight: '100%', fontFamily: 'var(--font-sans)' }}>
 
-      {/* ── Header ── */}
-      <div className="flex items-center justify-between mb-5">
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Owner Dashboard</h1>
-          <p className="text-sm text-gray-400 mt-0.5">{todayLabel}</p>
+          <h1 style={{ fontSize: 22, fontWeight: 600, color: '#1a1a2e', margin: 0 }}>Order Details</h1>
+          <p style={{ fontSize: 13, color: '#6b7280', margin: '4px 0 0', display: 'flex', alignItems: 'center', gap: 4 }}>
+            Overview › <span style={{ color: '#00b8a0' }}>Dashboard</span>
+          </p>
         </div>
-        <button
-          onClick={() => router.push('/day-close')}
-          className="flex items-center gap-2 bg-[#00b8a0] text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-[#009688] transition-colors"
-        >
-          <CheckCircle2 className="w-4 h-4" /> Day Close
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button onClick={() => router.push('/day-close')}
+            style={{ background: '#00b8a0', color: 'white', border: 'none', borderRadius: 8, padding: '9px 20px', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
+            ✓ Day Close
+          </button>
+        </div>
       </div>
 
-      {/* ── 4 stat cards — exactly like the screenshot ── */}
+      {/* Stat Cards Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-
-        {/* Card 1 — dark teal (Total Today) */}
-        <div className="relative rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(135deg, #007a6e 0%, #00b8a0 100%)', padding: 20, color: 'white' }}>
-          <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
-          <div style={{ position: 'absolute', bottom: -30, left: -10, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.05)' }} />
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ background: 'rgba(255,255,255,0.18)' }}>
-            <Users className="w-5 h-5 text-white" />
+        {/* Card 1 - Dark */}
+        <div style={{ background: 'linear-gradient(135deg, #007a6e 0%, #00b8a0 100%)', borderRadius: 16, padding: '20px', color: 'white', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.05)' }} />
+          <div style={{ width: 36, height: 36, background: 'rgba(255,255,255,0.15)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, fontSize: 16 }}>₹</div>
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', marginBottom: 6 }}>Total Revenue</div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: 'white', marginBottom: 6 }}>{fmt(totalSales)}</div>
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ background: '#00b8a0', color: 'white', fontSize: 10, padding: '1px 6px', borderRadius: 6, fontWeight: 600 }}>{billCount} bills</span>
+            <span>Since today</span>
           </div>
-          <p className="text-xs mb-1" style={{ color: 'rgba(255,255,255,0.75)' }}>Total Today</p>
-          <p className="text-4xl font-bold text-white mb-2">{dashLoading ? '—' : totalToday}</p>
-          <span className="text-xs font-semibold px-2 py-0.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.2)', color: 'white' }}>Patients</span>
         </div>
 
-        {/* Card 2 — Waiting */}
-        <div className="bg-white rounded-2xl border-2 border-[#00b8a0] p-5 relative overflow-hidden">
-          <div style={{ position: 'absolute', top: -15, right: -15, width: 60, height: 60, borderRadius: '50%', background: '#fef9eb' }} />
-          <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center mb-3">
-            <Clock className="w-5 h-5 text-amber-500" />
-          </div>
-          <p className="text-xs text-gray-500 mb-1">Waiting</p>
-          <p className="text-4xl font-bold text-amber-500 mb-1">{waiting}</p>
-          <p className="text-xs font-semibold text-amber-500">In queue</p>
-        </div>
-
-        {/* Card 3 — In Consult */}
-        <div className="bg-white rounded-2xl border-2 border-[#00b8a0] p-5 relative overflow-hidden">
-          <div style={{ position: 'absolute', top: -15, right: -15, width: 60, height: 60, borderRadius: '50%', background: '#eff6ff' }} />
-          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center mb-3">
-            <FileText className="w-5 h-5 text-blue-500" />
-          </div>
-          <p className="text-xs text-gray-500 mb-1">In Consult</p>
-          <p className="text-4xl font-bold text-blue-600 mb-1">{inConsult}</p>
-          <p className="text-xs font-semibold text-blue-500">With doctor</p>
-        </div>
-
-        {/* Card 4 — Done */}
-        <div className="bg-white rounded-2xl border-2 border-[#00b8a0] p-5 relative overflow-hidden">
+        {/* Card 2 */}
+        <div style={{ background: 'white', borderRadius: 16, padding: '20px', border: '1.5px solid #00b8a0', position: 'relative', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', top: -15, right: -15, width: 60, height: 60, borderRadius: '50%', background: '#f0fdf4' }} />
-          <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center mb-3">
-            <CheckCircle2 className="w-5 h-5 text-green-500" />
+          <div style={{ width: 36, height: 36, background: '#dcfce7', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, color: '#16a34a', fontSize: 16 }}>👥</div>
+          <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>Total Patients</div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: '#1a1a2e', marginBottom: 6 }}>{billCount}</div>
+          <div style={{ fontSize: 11, color: '#6b7280', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ color: '#16a34a', fontSize: 11, fontWeight: 600 }}>↑ Since today</span>
           </div>
-          <p className="text-xs text-gray-500 mb-1">Done</p>
-          <p className="text-4xl font-bold text-green-600 mb-1">{done}</p>
-          <p className="text-xs font-semibold text-green-500">Completed</p>
+        </div>
+
+        {/* Card 3 */}
+        <div style={{ background: 'white', borderRadius: 16, padding: '20px', border: '1.5px solid #00b8a0', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: -15, right: -15, width: 60, height: 60, borderRadius: '50%', background: '#fef3c7' }} />
+          <div style={{ width: 36, height: 36, background: '#fef3c7', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, color: '#d97706', fontSize: 16 }}>🛒</div>
+          <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>Total Orders</div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: '#1a1a2e', marginBottom: 6 }}>{billCount}</div>
+          <div style={{ fontSize: 11, color: '#6b7280', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ color: '#d97706', fontSize: 11, fontWeight: 600 }}>↑ Since today</span>
+          </div>
+        </div>
+
+        {/* Card 4 - Alerts */}
+        <div style={{ background: 'white', borderRadius: 16, padding: '20px', border: '1.5px solid #00b8a0', cursor: 'pointer' }} onClick={() => router.push('/reports?report=low_stock')}>
+          <div style={{ width: 36, height: 36, background: '#fee2e2', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, color: '#dc2626', fontSize: 16 }}>⚠</div>
+          <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>Low Stock Items</div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: '#dc2626', marginBottom: 6 }}>{lowStock?.length || 0}</div>
+          <div style={{ fontSize: 11, color: '#dc2626', fontWeight: 500 }}>View Low Stock Report →</div>
         </div>
       </div>
 
-      {/* ── Main grid — Queue left, Quick Actions + Monitor right ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-4 mb-4">
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-3 mb-3">
 
-        {/* Today's Queue */}
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
-            <h2 className="font-bold text-gray-900">Today's Queue</h2>
-            <button onClick={() => router.push('/receptionist/book-appointment')}
-              className="text-xs font-semibold text-[#00475a] hover:underline">
-              + Add patient
-            </button>
+        {/* Sales Analytics Chart */}
+        <div style={{ background: 'white', borderRadius: 16, border: '0.5px solid #e5e7eb', overflow: 'hidden' }}>
+          <div style={{ padding: '16px 20px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 15, fontWeight: 600, color: '#1a1a2e' }}>Sales Analytics</span>
+            <span style={{ fontSize: 12, color: '#6b7280', background: '#f3f4f6', padding: '4px 10px', borderRadius: 6 }}>This Month</span>
           </div>
-          {queueArr.length > 0 ? (
-            <div>
-              {queueArr.slice(0, 10).map((q: any) => {
-                const name = q.patient_name || `${q.patient?.first_name || ''} ${q.patient?.last_name || ''}`.trim() || 'Walk-in';
-                const statusStyle: Record<string, string> = {
-                  waiting:         'bg-amber-100 text-amber-700',
-                  in_consultation: 'bg-blue-100 text-blue-700',
-                  completed:       'bg-green-100 text-green-700',
-                  dispensed:       'bg-teal-100 text-teal-700',
-                };
-                return (
-                  <div key={q.id} className="flex items-center gap-3 px-5 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
-                    <div className="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center text-[#00475a] text-xs font-bold flex-shrink-0">
-                      {q.token_number || name[0]?.toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-800 truncate">{name}</p>
-                      <p className="text-xs text-gray-400">{q.chief_complaint || q.visit_type || 'Consultation'}</p>
-                    </div>
-                    <span className={`text-xs px-2.5 py-1 rounded-full font-medium flex-shrink-0 ${statusStyle[q.status] || 'bg-gray-100 text-gray-600'}`}>
-                      {q.status?.replace(/_/g, ' ')}
-                    </span>
-                  </div>
-                );
-              })}
-              {queueArr.length > 10 && (
-                <div className="px-5 py-3 text-center">
-                  <button onClick={() => router.push('/receptionist/queue')} className="text-xs text-[#00475a] font-semibold hover:underline">
-                    View all {queueArr.length} patients →
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-              <Users className="w-10 h-10 mb-3 opacity-25" />
-              <p className="text-sm font-medium text-gray-500">No patients in queue</p>
-              <button onClick={() => router.push('/receptionist/book-appointment')}
-                className="mt-3 text-sm font-semibold text-[#00b8a0] hover:underline">
-                Book first appointment →
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Right column */}
-        <div className="flex flex-col gap-4">
-
-          {/* Quick Actions */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-5">
-            <h2 className="font-bold text-gray-900 mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-2 gap-3">
-              <QuickActionCard label="Book Appointment" icon={<Calendar className="w-5 h-5 text-teal-600" />} bg="bg-teal-50" href="/receptionist/book-appointment" router={router} />
-              <QuickActionCard label="New Patient"      icon={<UserPlus className="w-5 h-5 text-blue-500" />}  bg="bg-blue-50"   href="/patients" router={router} />
-              <QuickActionCard label="Follow-ups"       icon={<Bell className="w-5 h-5 text-purple-500" />}    bg="bg-purple-50" href="/receptionist/followups" router={router} />
-              <QuickActionCard label="Bills"            icon={<FileText className="w-5 h-5 text-amber-500" />} bg="bg-amber-50"  href="/billing" router={router} />
-            </div>
-          </div>
-
-          {/* Queue Monitor */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-5">
-            <h2 className="font-bold text-gray-900 mb-1">Queue Monitor</h2>
-            <p className="text-xs text-gray-400 mb-4">Live updates every 30s</p>
-            <div className="grid grid-cols-3 gap-2">
-              <div className="rounded-xl bg-amber-50 p-3 text-center">
-                <p className="text-2xl font-bold text-amber-500">{waiting}</p>
-                <p className="text-xs text-amber-500 font-medium mt-1">Waiting</p>
-              </div>
-              <div className="rounded-xl bg-blue-50 p-3 text-center">
-                <p className="text-2xl font-bold text-blue-600">{inConsult}</p>
-                <p className="text-xs text-blue-500 font-medium mt-1">In Consult</p>
-              </div>
-              <div className="rounded-xl bg-green-50 p-3 text-center">
-                <p className="text-2xl font-bold text-green-600">{done}</p>
-                <p className="text-xs text-green-500 font-medium mt-1">Done</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Stock alerts — compact */}
-          {(outOfStock.length > 0 || (nearExpiry as any[]).length > 0) && (
-            <div className="bg-white rounded-2xl border border-gray-100 p-5">
-              <h2 className="font-bold text-gray-900 mb-3">Alerts</h2>
-              {outOfStock.length > 0 && (
-                <button onClick={() => router.push('/procurement')}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl bg-red-50 border border-red-100 mb-2 text-left hover:bg-red-100 transition-colors">
-                  <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-red-700">{outOfStock.length} out of stock</p>
-                    <p className="text-xs text-red-500">Create purchase order →</p>
-                  </div>
-                </button>
-              )}
-              {belowReorder.length > 0 && (
-                <button onClick={() => router.push('/procurement')}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl bg-amber-50 border border-amber-100 mb-2 text-left hover:bg-amber-100 transition-colors">
-                  <Package className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-amber-700">{belowReorder.length} below reorder level</p>
-                    <p className="text-xs text-amber-500">View procurement →</p>
-                  </div>
-                </button>
-              )}
-              {(nearExpiry as any[]).length > 0 && (
-                <button onClick={() => router.push('/reports?report=expiry_report')}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl bg-orange-50 border border-orange-100 text-left hover:bg-orange-100 transition-colors">
-                  <Clock className="w-4 h-4 text-orange-500 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-orange-700">{(nearExpiry as any[]).length} expiring in 30 days</p>
-                    <p className="text-xs text-orange-500">View expiry report →</p>
-                  </div>
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ── Sales chart + Top medicines ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-4 mb-4">
-
-        {/* Sales chart */}
-        {dailyData.length > 0 && (
-          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-            <div className="flex items-center justify-between px-5 pt-4 pb-2">
-              <span className="font-bold text-gray-900">Sales Analytics</span>
-              <span className="text-xs text-gray-400 bg-gray-50 px-2.5 py-1 rounded-lg">This month</span>
-            </div>
-            <div style={{ height: 200 }} className="px-3 pb-3">
+          <div style={{ padding: '0 16px 16px', height: 200 }}>
+            {dailyData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dailyData} margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
+                <BarChart data={dailyData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                   <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false}
-                    tickFormatter={(v) => `₹${(v/1000).toFixed(0)}k`} />
-                  <Tooltip
-                    formatter={(v: any) => [`₹${Number(v).toLocaleString('en-IN')}`, 'Revenue']}
-                    labelFormatter={(l) => `Day ${l}`}
-                    contentStyle={{ fontSize: 12, borderRadius: 8, border: '0.5px solid #e5e7eb' }}
-                  />
-                  <Bar dataKey="total" radius={[4,4,0,0]}>
-                    {dailyData.map((entry: any, i: number) => (
-                      <Cell key={i} fill={entry.day === today ? '#00b8a0' : '#e1f5ee'} />
+                  <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${(v/1000).toFixed(0)}k`} />
+                  <Tooltip formatter={(v: any) => [`₹${Number(v).toLocaleString('en-IN')}`, 'Revenue']} labelFormatter={(l) => `Day ${l}`} contentStyle={{ fontSize: 12, borderRadius: 8, border: '0.5px solid #e5e7eb' }} />
+                  <Bar dataKey="total" radius={[4, 4, 0, 0]}>
+                    {dailyData.map((entry: any, index: number) => (
+                      <Cell key={index} fill={entry.day === today ? '#00b8a0' : '#e1f5ee'} />
                     ))}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
-            </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#9ca3af', fontSize: 13 }}>
+                No sales data this month
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
-        {/* Top medicines */}
-        {topMeds.length > 0 && (
-          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
-              <span className="font-bold text-gray-900">Top Selling</span>
-              <span className="text-xs text-gray-400 bg-gray-50 px-2.5 py-1 rounded-lg">This month</span>
-            </div>
-            <div className="px-5 py-3">
-              {topMeds.slice(0, 5).map((med: any, i: number) => {
-                const colors = ['#00b8a0','#1a2e1a','#16a34a','#0891b2','#7c3aed'];
-                const pct = Math.round((med.total_qty / maxQty) * 100);
-                return (
-                  <div key={i} className="mb-3 last:mb-0">
-                    <div className="flex justify-between mb-1">
-                      <span className="text-xs text-gray-700 font-medium truncate max-w-[65%]">{med.medicine_name}</span>
-                      <span className="text-xs font-bold" style={{ color: colors[i] }}>{fmt(med.total_revenue)}</span>
-                    </div>
-                    <div className="h-1.5 bg-gray-100 rounded-full">
-                      <div className="h-1.5 rounded-full transition-all" style={{ width: `${pct}%`, background: colors[i] }} />
-                    </div>
-                    <p className="text-[10px] text-gray-400 mt-0.5">{med.total_qty} units</p>
-                  </div>
-                );
-              })}
-            </div>
+        {/* Expiring Soon */}
+        <div style={{ background: 'white', borderRadius: 16, border: '0.5px solid #e5e7eb', overflow: 'hidden', cursor: 'pointer' }} onClick={() => router.push('/reports?report=expiry_report')}>
+          <div style={{ padding: '16px 20px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '0.5px solid #f3f4f6' }}>
+            <span style={{ fontSize: 15, fontWeight: 600, color: '#1a1a2e' }}>Expiring Soon</span>
+            <span style={{ background: '#fef3c7', color: '#d97706', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 8 }}>{nearExpiry?.length || 0} batches</span>
           </div>
-        )}
+          <div style={{ padding: '8px 0' }}>
+            {(nearExpiry || []).slice(0, 6).map((b: any, i: number) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 20px', borderBottom: '0.5px solid #f9fafb' }}>
+                <span style={{ fontSize: 12, color: '#374151', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginRight: 8 }}>{b.medicine?.brand_name}</span>
+                <span style={{ fontSize: 11, color: '#d97706', fontWeight: 500, flexShrink: 0 }}>
+                  {b.expiry_date ? new Date(b.expiry_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : ''}
+                </span>
+              </div>
+            ))}
+            {(nearExpiry?.length || 0) === 0 && (
+              <p style={{ fontSize: 13, color: '#9ca3af', textAlign: 'center', padding: '20px 0' }}>No expiring batches</p>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* ── Latest orders ── */}
-      {recentBills.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
-            <span className="font-bold text-gray-900">Latest Orders</span>
-            <button onClick={() => router.push('/billing')} className="text-xs text-[#00b8a0] font-semibold hover:underline">View all</button>
+      {/* Bottom Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+
+        {/* Latest Orders Table */}
+        <div style={{ background: 'white', borderRadius: 16, border: '0.5px solid #e5e7eb', overflow: 'hidden' }}>
+          <div style={{ padding: '16px 20px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '0.5px solid #f3f4f6' }}>
+            <span style={{ fontSize: 15, fontWeight: 600, color: '#1a1a2e' }}>Latest Orders</span>
+            <span onClick={() => router.push('/billing')} style={{ fontSize: 12, color: '#00b8a0', cursor: 'pointer', fontWeight: 500 }}>View All</span>
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
               <tr style={{ background: '#f9fafb' }}>
-                <th style={{ padding: '8px 20px', textAlign: 'left', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>Bill No</th>
-                <th style={{ padding: '8px 20px', textAlign: 'left', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>Patient</th>
-                <th style={{ padding: '8px 20px', textAlign: 'right', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>Amount</th>
-                <th style={{ padding: '8px 20px', textAlign: 'center', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>Status</th>
+                <th style={{ padding: '8px 16px', textAlign: 'left', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>Bill No</th>
+                <th style={{ padding: '8px 16px', textAlign: 'left', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>Patient</th>
+                <th style={{ padding: '8px 16px', textAlign: 'right', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>Amount</th>
+                <th style={{ padding: '8px 16px', textAlign: 'center', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>Status</th>
               </tr>
             </thead>
             <tbody>
-              {recentBills.slice(0, 6).map((bill: any, i: number) => (
+              {recentBills.length > 0 ? recentBills.map((bill: any, i: number) => (
                 <tr key={i} style={{ borderTop: '0.5px solid #f3f4f6' }}>
-                  <td style={{ padding: '10px 20px', color: '#6b7280', fontSize: 11 }}>#{bill.bill_number?.split('-').pop()}</td>
-                  <td style={{ padding: '10px 20px', color: '#1a1a2e', fontWeight: 500 }}>{bill.customer_name || 'Walk-in'}</td>
-                  <td style={{ padding: '10px 20px', textAlign: 'right', color: '#1a1a2e', fontWeight: 600 }}>{fmt(bill.total_amount)}</td>
-                  <td style={{ padding: '10px 20px', textAlign: 'center' }}>
-                    <span style={{ background: '#dcfce7', color: '#16a34a', fontSize: 10, fontWeight: 600, padding: '3px 10px', borderRadius: 20 }}>Paid</span>
+                  <td style={{ padding: '10px 16px', color: '#6b7280', fontSize: 11 }}>#{bill.bill_number?.split('-').pop()}</td>
+                  <td style={{ padding: '10px 16px', color: '#1a1a2e', fontWeight: 500 }}>{bill.customer_name || 'Walk-in'}</td>
+                  <td style={{ padding: '10px 16px', textAlign: 'right', color: '#1a1a2e', fontWeight: 600 }}>{fmt(bill.total_amount)}</td>
+                  <td style={{ padding: '10px 16px', textAlign: 'center' }}>
+                    <span style={{ background: '#dcfce7', color: '#16a34a', fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 20 }}>Paid</span>
                   </td>
                 </tr>
-              ))}
+              )) : (
+                <tr><td colSpan={4} style={{ padding: '20px', textAlign: 'center', color: '#9ca3af', fontSize: 12 }}>No bills today</td></tr>
+              )}
             </tbody>
           </table>
         </div>
-      )}
+
+        {/* Top Selling Medicines */}
+        <div style={{ background: 'white', borderRadius: 16, border: '0.5px solid #e5e7eb', overflow: 'hidden' }}>
+          <div style={{ padding: '16px 20px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '0.5px solid #f3f4f6' }}>
+            <span style={{ fontSize: 15, fontWeight: 600, color: '#1a1a2e' }}>Top Selling Medicine</span>
+            <span style={{ fontSize: 12, color: '#6b7280', background: '#f3f4f6', padding: '4px 10px', borderRadius: 6 }}>This Month</span>
+          </div>
+          <div style={{ padding: '12px 16px' }}>
+            {topMeds.length > 0 ? topMeds.slice(0, 5).map((med: any, i: number) => {
+              const colors = ['#00b8a0', '#1a2e1a', '#16a34a', '#0891b2', '#7c3aed'];
+              const pct = Math.round((med.total_qty / maxQty) * 100);
+              return (
+                <div key={i} style={{ marginBottom: 14 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <span style={{ fontSize: 12, color: '#374151', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '70%' }}>{med.medicine_name}</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: colors[i] }}>{fmt(med.total_revenue)}</span>
+                  </div>
+                  <div style={{ height: 8, background: '#f3f4f6', borderRadius: 4 }}>
+                    <div style={{ height: 8, background: colors[i], borderRadius: 4, width: `${pct}%`, transition: 'width 0.5s ease' }} />
+                  </div>
+                  <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 2 }}>{med.total_qty} units sold</div>
+                </div>
+              );
+            }) : (
+              <p style={{ fontSize: 13, color: '#9ca3af', textAlign: 'center', padding: '20px 0' }}>No sales data yet</p>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
-// ── QuickActionCard ───────────────────────────────────────────────────────────
-function QuickActionCard({ label, icon, bg, href, router }: { label: string; icon: React.ReactNode; bg: string; href: string; router: any }) {
-  return (
-    <button onClick={() => router.push(href)}
-      className={`flex flex-col items-center justify-center gap-2 py-4 rounded-xl ${bg} border border-transparent hover:border-gray-200 transition-all`}>
-      {icon}
-      <span className="text-xs font-semibold text-gray-700">{label}</span>
-    </button>
-  );
-}
-
-// ── Pharmacist Dashboard ─────────────────────────────────────────────────────
+// ── Pharmacist Dashboard ────────────────────────────────────────────────────
 function PharmacistDashboard() {
   const router = useRouter();
   const { data: dash } = useQuery({ queryKey: ['dashboard'], queryFn: () => api.get('/reports/dashboard').then(r => r.data), refetchInterval: 30000 });
@@ -415,12 +269,19 @@ function PharmacistDashboard() {
         </div>
         <QuickAction label="New Bill" icon={ShoppingCart} href="/dispensing" color="bg-[#00b8a0] text-white border-[#00475a]" />
       </div>
+
+      {/* Today stats */}
       <div className="grid grid-cols-2 gap-3">
         <KpiCard label="Bills Today" value={dash?.today_bill_count||0} icon={FileText} color="text-teal-600" bg="bg-teal-50" border="border-teal-100" onClick={() => router.push('/billing')} />
         <KpiCard label="Today's Sales" value={fmt(dash?.today_sales||0)} icon={TrendingUp} color="text-green-600" bg="bg-green-50" border="border-green-100" />
       </div>
+
+      {/* ── Prescriptions Waiting ── */}
       {rxQueue.length > 0 && (
-        <div className="bg-teal-50 border-2 border-teal-400 rounded-2xl p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => router.push('/dispensing')}>
+        <div
+          className="bg-teal-50 border-2 border-teal-400 rounded-2xl p-4 cursor-pointer hover:shadow-md transition-shadow animate-pulse-once"
+          onClick={() => router.push('/dispensing')}
+        >
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <ClipboardList className="w-5 h-5 text-teal-700" />
@@ -431,12 +292,16 @@ function PharmacistDashboard() {
             </span>
           </div>
           <div className="space-y-2 mb-3">
-            {rxQueue.slice(0,4).map((entry: any) => {
-              const name = entry.patient ? `${entry.patient.first_name||''} ${entry.patient.last_name||''}`.trim() : entry.patient_name||'Unknown';
+            {rxQueue.slice(0, 4).map((entry: any) => {
+              const name = entry.patient
+                ? `${entry.patient.first_name || ''} ${entry.patient.last_name || ''}`.trim()
+                : entry.patient_name || 'Unknown';
               return (
                 <div key={entry.id} className="flex items-center justify-between py-1.5 border-b border-teal-100 last:border-0">
                   <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 bg-teal-200 rounded-full flex items-center justify-center text-teal-800 text-xs font-bold flex-shrink-0">{entry.token_number}</div>
+                    <div className="w-7 h-7 bg-teal-200 rounded-full flex items-center justify-center text-teal-800 text-xs font-bold flex-shrink-0">
+                      {entry.token_number}
+                    </div>
                     <div>
                       <p className="text-sm font-semibold text-teal-900">{name}</p>
                       <p className="text-xs text-teal-600">{entry.chief_complaint || 'Consultation'}</p>
@@ -446,17 +311,24 @@ function PharmacistDashboard() {
                 </div>
               );
             })}
-            {rxQueue.length > 4 && <p className="text-xs text-teal-600 text-center pt-1">+{rxQueue.length-4} more waiting</p>}
+            {rxQueue.length > 4 && (
+              <p className="text-xs text-teal-600 text-center pt-1">+{rxQueue.length - 4} more waiting</p>
+            )}
           </div>
           <div className="flex items-center justify-center gap-2 bg-teal-600 text-white text-sm font-semibold rounded-xl py-2.5">
             <ShoppingCart className="w-4 h-4" /> Open Dispensing
           </div>
         </div>
       )}
+
+      {/* URGENT: Low stock + expiry */}
       {lowStock?.length > 0 && (
         <div className="bg-red-50 border border-red-200 rounded-2xl p-4 cursor-pointer" onClick={() => router.push('/procurement')}>
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2"><AlertTriangle className="w-4 h-4 text-red-600" /><h3 className="font-bold text-red-900">Low Stock — Reorder Needed</h3></div>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-red-600" />
+              <h3 className="font-bold text-red-900">Low Stock — Reorder Needed</h3>
+            </div>
             <span className="bg-red-600 text-white text-xs font-bold px-2.5 py-1 rounded-full">{lowStock.length}</span>
           </div>
           {lowStock.slice(0,5).map((b: any) => (
@@ -467,10 +339,14 @@ function PharmacistDashboard() {
           ))}
         </div>
       )}
+
       {nearExpiry?.length > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2"><Clock className="w-4 h-4 text-amber-600" /><h3 className="font-bold text-amber-900">Expiring in 30 Days</h3></div>
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-amber-600" />
+              <h3 className="font-bold text-amber-900">Expiring in 30 Days</h3>
+            </div>
             <span className="bg-amber-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">{nearExpiry.length}</span>
           </div>
           {nearExpiry.slice(0,5).map((b: any) => (
@@ -481,6 +357,8 @@ function PharmacistDashboard() {
           ))}
         </div>
       )}
+
+      {/* Quick actions */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4">
         <h3 className="text-sm font-semibold text-gray-700 mb-3">Quick Actions</h3>
         <div className="grid grid-cols-2 gap-2">
@@ -494,15 +372,15 @@ function PharmacistDashboard() {
   );
 }
 
-// ── Receptionist Dashboard ───────────────────────────────────────────────────
+// ── Receptionist Dashboard ──────────────────────────────────────────────────
 function ReceptionistDashboard() {
   const router = useRouter();
   const { data: queue } = useQuery({ queryKey: ['queue-today'], queryFn: () => api.get('/queue?date=today&limit=20').then(r => r.data).catch(() => []), refetchInterval: 30000 });
   const { data: dash } = useQuery({ queryKey: ['dashboard'], queryFn: () => api.get('/reports/dashboard').then(r => r.data) });
 
-  const waiting  = Array.isArray(queue) ? queue.filter((q: any) => q.status === 'waiting').length : 0;
-  const inConsult= Array.isArray(queue) ? queue.filter((q: any) => q.status === 'in_consultation').length : 0;
-  const done     = Array.isArray(queue) ? queue.filter((q: any) => q.status === 'completed').length : 0;
+  const waiting = Array.isArray(queue) ? queue.filter((q: any) => q.status === 'waiting').length : 0;
+  const inConsult = Array.isArray(queue) ? queue.filter((q: any) => q.status === 'in_consultation').length : 0;
+  const done = Array.isArray(queue) ? queue.filter((q: any) => q.status === 'completed').length : 0;
 
   return (
     <div className="space-y-5">
@@ -513,11 +391,24 @@ function ReceptionistDashboard() {
         </div>
         <QuickAction label="Book Appointment" icon={Calendar} href="/receptionist/book-appointment" color="bg-[#00b8a0] text-white border-[#00475a]" />
       </div>
+
+      {/* Queue status */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-center"><p className="text-3xl font-bold text-amber-700">{waiting}</p><p className="text-xs text-amber-600 mt-1 font-medium">Waiting</p></div>
-        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-center"><p className="text-3xl font-bold text-blue-700">{inConsult}</p><p className="text-xs text-blue-600 mt-1 font-medium">In Consult</p></div>
-        <div className="bg-green-50 border border-green-200 rounded-2xl p-4 text-center"><p className="text-3xl font-bold text-green-700">{done}</p><p className="text-xs text-green-600 mt-1 font-medium">Done</p></div>
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-center">
+          <p className="text-3xl font-bold text-amber-700">{waiting}</p>
+          <p className="text-xs text-amber-600 mt-1 font-medium">Waiting</p>
+        </div>
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-center">
+          <p className="text-3xl font-bold text-blue-700">{inConsult}</p>
+          <p className="text-xs text-blue-600 mt-1 font-medium">In Consult</p>
+        </div>
+        <div className="bg-green-50 border border-green-200 rounded-2xl p-4 text-center">
+          <p className="text-3xl font-bold text-green-700">{done}</p>
+          <p className="text-xs text-green-600 mt-1 font-medium">Done</p>
+        </div>
       </div>
+
+      {/* Today's queue */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-gray-900">Today's Queue</h3>
@@ -536,9 +427,11 @@ function ReceptionistDashboard() {
                     <p className="text-xs text-gray-400">{q.chief_complaint || q.visit_type || 'Consultation'}</p>
                   </div>
                 </div>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${q.status==='waiting'?'bg-amber-100 text-amber-700':q.status==='in_consultation'?'bg-blue-100 text-blue-700':q.status==='completed'?'bg-green-100 text-green-700':'bg-gray-100 text-gray-600'}`}>
-                  {q.status?.replace('_',' ')}
-                </span>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                  q.status === 'waiting' ? 'bg-amber-100 text-amber-700' :
+                  q.status === 'in_consultation' ? 'bg-blue-100 text-blue-700' :
+                  q.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+                }`}>{q.status?.replace('_',' ')}</span>
               </div>
             ))}
           </div>
@@ -550,11 +443,13 @@ function ReceptionistDashboard() {
           </div>
         )}
       </div>
+
+      {/* Quick actions */}
       <div className="grid grid-cols-2 gap-2">
         <QuickAction label="Book Appointment" icon={Calendar} href="/receptionist/book-appointment" color="bg-teal-50 text-teal-700 border-teal-200" />
-        <QuickAction label="New Patient"      icon={UserPlus} href="/patients"                        color="bg-blue-50 text-blue-700 border-blue-200" />
-        <QuickAction label="Follow-ups"       icon={Bell}     href="/receptionist/followups"           color="bg-purple-50 text-purple-700 border-purple-200" />
-        <QuickAction label="Bills"            icon={FileText} href="/billing"                          color="bg-amber-50 text-amber-700 border-amber-200" />
+        <QuickAction label="New Patient" icon={UserPlus} href="/patients" color="bg-blue-50 text-blue-700 border-blue-200" />
+        <QuickAction label="Follow-ups" icon={Bell} href="/receptionist/followups" color="bg-purple-50 text-purple-700 border-purple-200" />
+        <QuickAction label="Bills" icon={FileText} href="/billing" color="bg-amber-50 text-amber-700 border-amber-200" />
       </div>
     </div>
   );
@@ -565,22 +460,24 @@ function DoctorDashboard() {
   const router = useRouter();
   const { data: queue } = useQuery({ queryKey: ['my-queue'], queryFn: () => api.get('/queue?date=today&limit=20').then(r => r.data).catch(() => []), refetchInterval: 15000 });
 
-  const waiting  = Array.isArray(queue) ? queue.filter((q: any) => q.status === 'waiting') : [];
-  const inConsult= Array.isArray(queue) ? queue.filter((q: any) => q.status === 'in_consultation').length : 0;
-  const done     = Array.isArray(queue) ? queue.filter((q: any) => q.status === 'completed').length : 0;
-  const total    = Array.isArray(queue) ? queue.length : 0;
+  const waiting = Array.isArray(queue) ? queue.filter((q: any) => q.status === 'waiting') : [];
+  const inConsult = Array.isArray(queue) ? queue.filter((q: any) => q.status === 'in_consultation').length : 0;
+  const done = Array.isArray(queue) ? queue.filter((q: any) => q.status === 'completed').length : 0;
+  const total = Array.isArray(queue) ? queue.length : 0;
 
   return (
-    <div className="p-3 lg:p-6" style={{ background: '#f8f9fa', minHeight: '100%' }}>
+    <div className="p-3 lg:p-6" style={{ background: '#f8f9fa', minHeight: '100%', fontFamily: 'var(--font-sans)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 600, color: '#1a1a2e', margin: 0 }}>My Queue</h1>
           <p style={{ fontSize: 13, color: '#6b7280', margin: '4px 0 0' }}>{new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'})}</p>
         </div>
-        <button onClick={() => router.push('/doctor')} style={{ background: '#00b8a0', color: 'white', border: 'none', borderRadius: 8, padding: '9px 20px', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
+        <button onClick={() => router.push('/doctor')}
+          style={{ background: '#00b8a0', color: 'white', border: 'none', borderRadius: 8, padding: '9px 20px', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
           Start Consultation
         </button>
       </div>
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         <div style={{ background: 'linear-gradient(135deg,#007a6e,#00b8a0)', borderRadius: 16, padding: '20px', color: 'white', position: 'relative', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
@@ -608,6 +505,7 @@ function DoctorDashboard() {
           <span style={{ fontSize: 10, color: '#16a34a', fontWeight: 500 }}>Completed</span>
         </div>
       </div>
+
       <div style={{ background: 'white', borderRadius: 16, border: '0.5px solid #e5e7eb', overflow: 'hidden' }}>
         <div style={{ padding: '16px 20px 12px', borderBottom: '0.5px solid #f3f4f6' }}>
           <span style={{ fontSize: 15, fontWeight: 600, color: '#1a1a2e' }}>Waiting Patients</span>
@@ -616,9 +514,11 @@ function DoctorDashboard() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#f9fafb' }}>
-                {['#','Patient','Complaint','Time','Action'].map(h => (
-                  <th key={h} style={{ padding: '8px 16px', textAlign: h==='Action'?'center':'left', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>{h}</th>
-                ))}
+                <th style={{ padding: '8px 16px', textAlign: 'left', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>#</th>
+                <th style={{ padding: '8px 16px', textAlign: 'left', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>Patient</th>
+                <th style={{ padding: '8px 16px', textAlign: 'left', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>Complaint</th>
+                <th style={{ padding: '8px 16px', textAlign: 'left', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>Time</th>
+                <th style={{ padding: '8px 16px', textAlign: 'center', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -654,23 +554,24 @@ function DoctorDashboard() {
   );
 }
 
-// ── Nurse Dashboard ───────────────────────────────────────────────────────────
+// ── Nurse Dashboard ──────────────────────────────────────────────────────────
 function NurseDashboard() {
   const router = useRouter();
   const { data: queue } = useQuery({ queryKey: ['queue-precheck'], queryFn: () => api.get('/queue?date=today&limit=20').then(r => r.data).catch(() => []), refetchInterval: 15000 });
 
   const needsPrecheck = Array.isArray(queue) ? queue.filter((q: any) => q.status === 'waiting' && !q.precheck_done) : [];
-  const done  = Array.isArray(queue) ? queue.filter((q: any) => q.status === 'completed').length : 0;
+  const done = Array.isArray(queue) ? queue.filter((q: any) => q.status === 'completed').length : 0;
   const total = Array.isArray(queue) ? queue.length : 0;
 
   return (
-    <div className="p-3 lg:p-6" style={{ background: '#f8f9fa', minHeight: '100%' }}>
+    <div className="p-3 lg:p-6" style={{ background: '#f8f9fa', minHeight: '100%', fontFamily: 'var(--font-sans)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 600, color: '#1a1a2e', margin: 0 }}>Nurse Station</h1>
           <p style={{ fontSize: 13, color: '#6b7280', margin: '4px 0 0' }}>{new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'})}</p>
         </div>
       </div>
+
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
         <div style={{ background: 'linear-gradient(135deg,#007a6e,#00b8a0)', borderRadius: 16, padding: '20px', color: 'white', position: 'relative', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
@@ -692,6 +593,7 @@ function NurseDashboard() {
           <span style={{ fontSize: 10, color: '#16a34a', fontWeight: 500 }}>Done today</span>
         </div>
       </div>
+
       <div style={{ background: 'white', borderRadius: 16, border: '0.5px solid #e5e7eb', overflow: 'hidden', marginBottom: 16 }}>
         <div style={{ padding: '16px 20px 12px', borderBottom: '0.5px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: 15, fontWeight: 600, color: '#1a1a2e' }}>Pre-check Pending</span>
@@ -701,9 +603,10 @@ function NurseDashboard() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#f9fafb' }}>
-                {['#','Patient','Complaint','Action'].map(h => (
-                  <th key={h} style={{ padding: '8px 16px', textAlign: h==='Action'?'center':'left', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>{h}</th>
-                ))}
+                <th style={{ padding: '8px 16px', textAlign: 'left', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>#</th>
+                <th style={{ padding: '8px 16px', textAlign: 'left', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>Patient</th>
+                <th style={{ padding: '8px 16px', textAlign: 'left', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>Complaint</th>
+                <th style={{ padding: '8px 16px', textAlign: 'center', color: '#6b7280', fontWeight: 500, fontSize: 11 }}>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -715,10 +618,10 @@ function NurseDashboard() {
                       <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626', fontSize: 11, fontWeight: 700 }}>
                         {(q.patient_name||q.patient?.first_name||'?')[0].toUpperCase()}
                       </div>
-                      <span style={{ fontSize: 13, fontWeight: 500, color: '#1a1a2e' }}>{q.patient_name||`${q.patient?.first_name}`}</span>
+                      <span style={{ fontSize: 13, fontWeight: 500, color: '#1a1a2e' }}>{q.patient_name || `${q.patient?.first_name}`}</span>
                     </div>
                   </td>
-                  <td style={{ padding: '10px 16px', color: '#6b7280', fontSize: 12 }}>{q.chief_complaint||'Consultation'}</td>
+                  <td style={{ padding: '10px 16px', color: '#6b7280', fontSize: 12 }}>{q.chief_complaint || 'Consultation'}</td>
                   <td style={{ padding: '10px 16px', textAlign: 'center' }}>
                     <span style={{ background: '#fee2e2', color: '#dc2626', fontSize: 11, fontWeight: 600, padding: '4px 12px', borderRadius: 20 }}>Record vitals →</span>
                   </td>
@@ -734,9 +637,12 @@ function NurseDashboard() {
           </div>
         )}
       </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {[{ label: 'AI Care Plans', emoji: '🤖', href: '/ai-care', bg: '#ede9fe', color: '#7c3aed' },
-          { label: 'Patients', emoji: '👥', href: '/patients', bg: '#dbeafe', color: '#2563eb' }].map(({ label, emoji, href, bg, color }) => (
+        {[
+          { label: 'AI Care Plans', emoji: '🤖', href: '/ai-care', bg: '#ede9fe', color: '#7c3aed' },
+          { label: 'Patients', emoji: '👥', href: '/patients', bg: '#dbeafe', color: '#2563eb' },
+        ].map(({ label, emoji, href, bg, color }) => (
           <button key={label} onClick={() => router.push(href)}
             style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px', background: 'white', border: '0.5px solid #e5e7eb', borderRadius: 16, cursor: 'pointer', textAlign: 'left' }}>
             <div style={{ width: 36, height: 36, background: bg, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>{emoji}</div>
@@ -748,14 +654,24 @@ function NurseDashboard() {
   );
 }
 
-// ── Root — routes by role ─────────────────────────────────────────────────────
+// ── Root Dashboard — routes by role ──────────────────────────────────────────
 export default function DashboardPage() {
   const [role, setRole] = useState<string | null>(null);
-  useEffect(() => { const user = getUser(); setRole(user?.role || 'owner'); }, []);
-  if (!role) return <div className="flex items-center justify-center h-full"><Loader2 className="w-6 h-6 animate-spin text-[#00475a]" /></div>;
+
+  useEffect(() => {
+    const user = getUser();
+    setRole(user?.role || 'owner');
+  }, []);
+
+  if (!role) return (
+    <div className="flex items-center justify-center h-full">
+      <Loader2 className="w-6 h-6 animate-spin text-[#00475a]" />
+    </div>
+  );
+
   if (role === 'pharmacist' || role === 'assistant') return <div className="p-4"><PharmacistDashboard /></div>;
   if (role === 'receptionist') return <div className="p-4"><ReceptionistDashboard /></div>;
-  if (role === 'doctor') return <div className="p-4 lg:p-6"><DoctorDashboard /></div>;
+  if (role === 'doctor') return <div className="p-4"><DoctorDashboard /></div>;
   if (role === 'nurse') return <div className="p-4"><NurseDashboard /></div>;
-  return <OwnerDashboard />;
+  return <div className="p-4 lg:p-6"><OwnerDashboard /></div>;
 }
