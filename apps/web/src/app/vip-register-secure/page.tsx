@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
@@ -104,10 +105,15 @@ function VipRegisterContent() {
 
       {/* ── Header — clean, no logo ── */}
       <div className="text-center mb-6">
-        <div className="w-14 h-14 rounded-2xl bg-[#00475a] flex items-center justify-center mx-auto mb-4">
-          <Crown className="w-7 h-7 text-white" />
+        <div className="flex items-center justify-center gap-2 mb-3">
+          <Image src="/images/simplirx-logo.jpg" alt="SimpliRx" width={44} height={44} className="rounded-xl object-contain" />
+          <span className="text-2xl font-bold text-[#00b8a0]">SimpliRx</span>
         </div>
-        <h1 className="text-2xl font-bold text-[#00475a]">VIP Pass Registration</h1>
+        <div className="flex items-center justify-center gap-2 mb-1">
+          <Crown className="w-5 h-5 text-[#00b8a0]" />
+          <h1 className="text-xl font-bold text-[#00b8a0]">VIP Pass Registration</h1>
+          <Crown className="w-5 h-5 text-[#00b8a0]" />
+        </div>
         <p className="text-gray-400 text-sm mt-1">Exclusive benefits for one full year</p>
         {agentCode && (
           <div className="mt-3 inline-flex items-center gap-1.5 bg-[#e1f5ee] border border-[#9FE1CB] rounded-full px-3 py-1 text-xs font-medium text-[#085041]">
@@ -131,7 +137,7 @@ function VipRegisterContent() {
         {step === 'form' && (
           <form onSubmit={handleFormSubmit} className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
 
-            <div className="bg-[#00475a] px-5 py-4 text-white text-center">
+            <div className="bg-[#00b8a0] px-5 py-4 text-white text-center">
               <p className="font-semibold text-base">Step 1 of 2 — Patient Details</p>
             </div>
 
@@ -177,11 +183,11 @@ function VipRegisterContent() {
                     <button type="button" key={plan.key} onClick={() => set('vip_category', plan.key)}
                       className={`p-4 rounded-xl border-2 text-center transition-all ${
                         form.vip_category === plan.key
-                          ? 'border-[#00475a] bg-[#e1f5ee]'
+                          ? 'border-[#00b8a0] bg-[#e1f5ee]'
                           : 'border-gray-200 hover:border-gray-300 bg-white'
                       }`}>
                       <div className="text-2xl mb-1">{plan.icon}</div>
-                      <p className={`text-sm font-bold ${form.vip_category === plan.key ? 'text-[#00475a]' : 'text-gray-700'}`}>
+                      <p className={`text-sm font-bold ${form.vip_category === plan.key ? 'text-[#00b8a0]' : 'text-gray-700'}`}>
                         {plan.label}
                       </p>
                       <p className={`text-xl font-bold mt-1 ${form.vip_category === plan.key ? 'text-[#00b8a0]' : 'text-gray-800'}`}>
@@ -194,7 +200,7 @@ function VipRegisterContent() {
               </div>
 
               <button type="submit"
-                className="w-full bg-[#00475a] text-white font-semibold py-3 rounded-xl hover:bg-[#003a4a] transition-colors">
+                className="w-full bg-[#00b8a0] text-white font-semibold py-3 rounded-xl hover:bg-[#009688] transition-colors">
                 Continue to Payment →
               </button>
             </div>
@@ -205,7 +211,7 @@ function VipRegisterContent() {
         {step === 'payment' && (
           <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
 
-            <div className="bg-[#00475a] px-5 py-4 text-white text-center">
+            <div className="bg-[#00b8a0] px-5 py-4 text-white text-center">
               <p className="font-semibold text-base">Step 2 of 2 — Payment</p>
               <p className="text-white/70 text-sm mt-0.5">
                 {form.vip_category === 'individual' ? 'Individual' : 'Family'} Plan — ₹{PRICES[form.vip_category]}
@@ -221,17 +227,17 @@ function VipRegisterContent() {
                 <div className="grid grid-cols-2 gap-3">
                   <button type="button" onClick={() => set('payment_method', 'upi')}
                     className={`p-4 rounded-xl border-2 text-center transition-all ${
-                      form.payment_method === 'upi' ? 'border-[#00475a] bg-[#e1f5ee]' : 'border-gray-200 hover:border-gray-300'
+                      form.payment_method === 'upi' ? 'border-[#00b8a0] bg-[#e1f5ee]' : 'border-gray-200 hover:border-gray-300'
                     }`}>
-                    <Smartphone className={`w-7 h-7 mx-auto mb-1.5 ${form.payment_method === 'upi' ? 'text-[#00475a]' : 'text-gray-400'}`} />
-                    <p className={`text-sm font-semibold ${form.payment_method === 'upi' ? 'text-[#00475a]' : 'text-gray-600'}`}>UPI</p>
+                    <Smartphone className={`w-7 h-7 mx-auto mb-1.5 ${form.payment_method === 'upi' ? 'text-[#00b8a0]' : 'text-gray-400'}`} />
+                    <p className={`text-sm font-semibold ${form.payment_method === 'upi' ? 'text-[#00b8a0]' : 'text-gray-600'}`}>UPI</p>
                   </button>
                   <button type="button" onClick={() => set('payment_method', 'cash')}
                     className={`p-4 rounded-xl border-2 text-center transition-all ${
-                      form.payment_method === 'cash' ? 'border-[#00475a] bg-[#e1f5ee]' : 'border-gray-200 hover:border-gray-300'
+                      form.payment_method === 'cash' ? 'border-[#00b8a0] bg-[#e1f5ee]' : 'border-gray-200 hover:border-gray-300'
                     }`}>
-                    <Banknote className={`w-7 h-7 mx-auto mb-1.5 ${form.payment_method === 'cash' ? 'text-[#00475a]' : 'text-gray-400'}`} />
-                    <p className={`text-sm font-semibold ${form.payment_method === 'cash' ? 'text-[#00475a]' : 'text-gray-600'}`}>Cash</p>
+                    <Banknote className={`w-7 h-7 mx-auto mb-1.5 ${form.payment_method === 'cash' ? 'text-[#00b8a0]' : 'text-gray-400'}`} />
+                    <p className={`text-sm font-semibold ${form.payment_method === 'cash' ? 'text-[#00b8a0]' : 'text-gray-600'}`}>Cash</p>
                   </button>
                 </div>
               </div>
@@ -240,7 +246,7 @@ function VipRegisterContent() {
               {form.payment_method === 'upi' && (
                 <div className="border border-gray-200 rounded-xl p-4 bg-gray-50">
                   <div className="flex items-center gap-2 mb-3">
-                    <QrCode className="w-4 h-4 text-[#00475a]" />
+                    <QrCode className="w-4 h-4 text-[#00b8a0]" />
                     <p className="text-sm font-medium text-gray-700">Scan to Pay ₹{PRICES[form.vip_category]}</p>
                   </div>
                   {qrDataUrl && (
@@ -262,9 +268,9 @@ function VipRegisterContent() {
               {/* Cash panel */}
               {form.payment_method === 'cash' && (
                 <div className="border border-gray-200 rounded-xl p-5 bg-gray-50 text-center">
-                  <Banknote className="w-10 h-10 mx-auto mb-2 text-[#00475a]" />
+                  <Banknote className="w-10 h-10 mx-auto mb-2 text-[#00b8a0]" />
                   <p className="text-sm text-gray-600 mb-1">Collect from customer</p>
-                  <p className="text-3xl font-bold text-[#00475a]">₹{PRICES[form.vip_category]}</p>
+                  <p className="text-3xl font-bold text-[#00b8a0]">₹{PRICES[form.vip_category]}</p>
                 </div>
               )}
 
@@ -274,7 +280,7 @@ function VipRegisterContent() {
                   ← Back
                 </button>
                 <button onClick={handlePaymentSubmit} disabled={loading}
-                  className="flex-[2] bg-[#00475a] text-white font-semibold py-3 px-6 rounded-xl hover:bg-[#003a4a] transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
+                  className="flex-[2] bg-[#00b8a0] text-white font-semibold py-3 px-6 rounded-xl hover:bg-[#009688] transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
                   {loading ? 'Processing…' : 'Complete Registration'}
                 </button>
@@ -287,7 +293,7 @@ function VipRegisterContent() {
         {step === 'success' && (
           <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm text-center">
 
-            <div className="bg-[#00475a] p-6 text-white">
+            <div className="bg-[#00b8a0] p-6 text-white">
               <CheckCircle2 className="w-12 h-12 mx-auto mb-2" />
               <h2 className="text-xl font-bold">Welcome to VIP!</h2>
               <p className="text-white/70 text-sm mt-1">Registration successful</p>
@@ -295,7 +301,7 @@ function VipRegisterContent() {
 
             <div className="p-5 space-y-4">
               {/* VIP Card */}
-              <div className="bg-[#00475a] rounded-2xl p-5 text-white text-left">
+              <div className="bg-[#00b8a0] rounded-2xl p-5 text-white text-left">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
@@ -356,7 +362,7 @@ export default function VipRegisterSecurePage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-[#00475a]" />
+        <Loader2 className="w-8 h-8 animate-spin text-[#00b8a0]" />
       </div>
     }>
       <VipRegisterContent />
