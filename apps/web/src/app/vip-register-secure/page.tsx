@@ -106,7 +106,7 @@ function VipRegisterContent() {
       {/* ── Header — clean, no logo ── */}
       <div className="text-center mb-6">
         <div className="flex items-center justify-center mb-3">
-          <Image src="/images/simplirx-logo.jpg" alt="SimpliRx" width={120} height={36} className="object-contain" />
+          <Image src="/images/simplirx-logo.jpg" alt="SimpliRx" width={180} height={54} className="object-contain" />
         </div>
         <div className="flex items-center justify-center gap-2 mb-1">
           <Crown className="w-5 h-5 text-[#00b8a0]" />
