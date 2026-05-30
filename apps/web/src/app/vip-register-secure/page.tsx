@@ -10,13 +10,13 @@ type Step = 'form' | 'payment' | 'success';
 const SALUTATIONS = ['Mr', 'Mrs', 'Ms', 'Dr', 'Baby', 'Other'];
 
 const PLANS = [
-  { key: 'individual' as const, label: 'Individual', price: 99,  desc: '1 person',    icon: '👤' },
-  { key: 'family'     as const, label: 'Family',     price: 149, desc: 'Up to 4 members', icon: '👨‍👩‍👧‍👦' },
+  { key: 'individual' as const, label: 'Individual', price: 599,  desc: '1 person',    icon: '👤' },
+  { key: 'family'     as const, label: 'Family',     price: 999, desc: 'Up to 4 members', icon: '👨‍👩‍👧‍👦' },
 ];
 
 const PRICES: Record<string, number> = {
-  individual: 99,
-  family: 149,
+  individual: 599,
+  family: 999,
 };
 
 function VipRegisterContent() {
