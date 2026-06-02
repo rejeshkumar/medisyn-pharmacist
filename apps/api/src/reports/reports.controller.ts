@@ -242,7 +242,7 @@ export class ReportsController {
         FROM sales
         WHERE tenant_id = '${tid}'
           AND is_voided = false
-          AND created_at BETWEEN '${start.toISOString()}' AND '${end.toISOString()}'
+          AND created_at BETWEEN '${start}' AND '${end}'
           ${pmFilter}
       `);
     }
@@ -256,7 +256,7 @@ export class ReportsController {
         FROM clinic_bills
         WHERE tenant_id = '${tid}'
           AND status IN ('confirmed','paid')
-          AND created_at BETWEEN '${start.toISOString()}' AND '${end.toISOString()}'
+          AND created_at BETWEEN '${start}' AND '${end}'
           ${pmFilter}
       `);
     }
@@ -269,7 +269,7 @@ export class ReportsController {
           payment_amount AS subtotal, payment_method AS payment_mode, 'vip' AS source
         FROM vip_registrations
         WHERE tenant_id = '${tid}'
-          AND registered_at BETWEEN '${start.toISOString()}' AND '${end.toISOString()}'
+          AND registered_at BETWEEN '${start}' AND '${end}'
           ${q.payment_mode ? `AND payment_method = '${q.payment_mode}'` : ''}
       `);
     }
