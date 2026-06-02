@@ -172,4 +172,19 @@ export class PatientsController {
   markReminderDone(@Param('reminderId') reminderId: string, @Request() req) {
     return this.patientsService.markReminderDone(reminderId, req.tenantId);
   }
+  // ── Record VIP subscription payment ────────────────────────────────────────
+  @Post('vip-payment')
+  async recordVipPayment(
+    @Body() body: { patient_id: string; vip_category: string; payment_method: string; payment_amount: number; upi_txn_id?: string },
+    @Req() req: any,
+  ) {
+    const tenantId = req.tenantId || req.user?.tenant_id;
+    await this.patientsService['patientRepo'].query(
+      `INSERT INTO vip_registrations (tenant_id, patient_id, vip_category, payment_method, payment_amount, upi_txn_id)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [tenantId, body.patient_id, body.vip_category, body.payment_method, body.payment_amount, body.upi_txn_id || null],
+    );
+    return { success: true };
+  }
+
 }

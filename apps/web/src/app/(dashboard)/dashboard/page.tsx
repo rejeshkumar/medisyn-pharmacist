@@ -52,10 +52,15 @@ function OwnerDashboard() {
   const { data: nearExpiry } = useQuery({ queryKey: ['near-expiry'], queryFn: () => api.get('/stock/alerts/near-expiry?days=30').then(r => r.data) });
 
   const fmt = (v: number) => `₹${Number(v || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-  const totalSales = dash?.today_sales || 0;
+  const totalSales = dash?.revenue_breakdown?.total ?? dash?.today_sales ?? 0;
+  const pharmacyRev = dash?.revenue_breakdown?.pharmacy ?? dash?.today_sales ?? 0;
+  const consultRev  = dash?.revenue_breakdown?.consultation ?? 0;
+  const labRev      = dash?.revenue_breakdown?.lab ?? 0;
+  const vipRev      = dash?.revenue_breakdown?.vip ?? 0;
   const cashTotal = dash?.today_cash || 0;
   const upiTotal = dash?.today_upi || 0;
   const billCount = dash?.today_bill_count || 0;
+  const vipStats  = dash?.vip_stats || {};
   const dailyData = dash?.daily_sales || [];
   const recentBills = dash?.recent_bills || [];
   const topMeds = dash?.top_medicines || [];
@@ -81,48 +86,71 @@ function OwnerDashboard() {
         </div>
       </div>
 
-      {/* Stat Cards Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-        {/* Card 1 - Dark */}
+      {/* ── Revenue Cards ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr_1fr_1fr_1fr] gap-3 mb-5">
+
+        {/* Total Revenue — teal gradient */}
         <div style={{ background: 'linear-gradient(135deg, #007a6e 0%, #00b8a0 100%)', borderRadius: 16, padding: '20px', color: 'white', position: 'relative', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.05)' }} />
           <div style={{ width: 36, height: 36, background: 'rgba(255,255,255,0.15)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, fontSize: 16 }}>₹</div>
           <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', marginBottom: 6 }}>Total Revenue</div>
           <div style={{ fontSize: 26, fontWeight: 700, color: 'white', marginBottom: 6 }}>{fmt(totalSales)}</div>
           <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ background: '#00b8a0', color: 'white', fontSize: 10, padding: '1px 6px', borderRadius: 6, fontWeight: 600 }}>{billCount} bills</span>
-            <span>Since today</span>
+            <span style={{ background: 'rgba(255,255,255,0.2)', color: 'white', fontSize: 10, padding: '1px 6px', borderRadius: 6, fontWeight: 600 }}>{billCount} bills</span>
+            <span>Today</span>
           </div>
         </div>
 
-        {/* Card 2 */}
-        <div style={{ background: 'white', borderRadius: 16, padding: '20px', border: '1.5px solid #00b8a0', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: -15, right: -15, width: 60, height: 60, borderRadius: '50%', background: '#f0fdf4' }} />
-          <div style={{ width: 36, height: 36, background: '#dcfce7', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, color: '#16a34a', fontSize: 16 }}>👥</div>
-          <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>Total Patients</div>
-          <div style={{ fontSize: 26, fontWeight: 700, color: '#1a1a2e', marginBottom: 6 }}>{billCount}</div>
-          <div style={{ fontSize: 11, color: '#6b7280', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ color: '#16a34a', fontSize: 11, fontWeight: 600 }}>↑ Since today</span>
+        {/* Pharmacy */}
+        <div style={{ background: 'white', borderRadius: 16, padding: '18px', border: '1.5px solid #00b8a0' }}>
+          <div style={{ width: 32, height: 32, background: '#e1f5ee', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10, fontSize: 15 }}>💊</div>
+          <div style={{ fontSize: 10, color: '#6b7280', marginBottom: 4, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pharmacy</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: '#1a1a2e', marginBottom: 4 }}>{fmt(pharmacyRev)}</div>
+          <div style={{ fontSize: 10, color: '#00b8a0', fontWeight: 500 }}>
+            {totalSales > 0 ? Math.round((pharmacyRev / totalSales) * 100) : 0}% of total
           </div>
         </div>
 
-        {/* Card 3 */}
-        <div style={{ background: 'white', borderRadius: 16, padding: '20px', border: '1.5px solid #00b8a0', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: -15, right: -15, width: 60, height: 60, borderRadius: '50%', background: '#fef3c7' }} />
-          <div style={{ width: 36, height: 36, background: '#fef3c7', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, color: '#d97706', fontSize: 16 }}>🛒</div>
-          <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>Total Orders</div>
-          <div style={{ fontSize: 26, fontWeight: 700, color: '#1a1a2e', marginBottom: 6 }}>{billCount}</div>
-          <div style={{ fontSize: 11, color: '#6b7280', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ color: '#d97706', fontSize: 11, fontWeight: 600 }}>↑ Since today</span>
+        {/* Consultation */}
+        <div style={{ background: 'white', borderRadius: 16, padding: '18px', border: '1.5px solid #00b8a0' }}>
+          <div style={{ width: 32, height: 32, background: '#eff6ff', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10, fontSize: 15 }}>🩺</div>
+          <div style={{ fontSize: 10, color: '#6b7280', marginBottom: 4, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Consultation</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: '#1a1a2e', marginBottom: 4 }}>{fmt(consultRev)}</div>
+          <div style={{ fontSize: 10, color: consultRev > 0 ? '#3b82f6' : '#9ca3af', fontWeight: 500 }}>
+            {totalSales > 0 ? Math.round((consultRev / totalSales) * 100) : 0}% of total
           </div>
         </div>
 
-        {/* Card 4 - Alerts */}
-        <div style={{ background: 'white', borderRadius: 16, padding: '20px', border: '1.5px solid #00b8a0', cursor: 'pointer' }} onClick={() => router.push('/reports?report=low_stock')}>
-          <div style={{ width: 36, height: 36, background: '#fee2e2', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, color: '#dc2626', fontSize: 16 }}>⚠</div>
-          <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>Low Stock Items</div>
-          <div style={{ fontSize: 26, fontWeight: 700, color: '#dc2626', marginBottom: 6 }}>{lowStock?.length || 0}</div>
-          <div style={{ fontSize: 11, color: '#dc2626', fontWeight: 500 }}>View Low Stock Report →</div>
+        {/* Lab — placeholder */}
+        <div style={{ background: 'white', borderRadius: 16, padding: '18px', border: '1.5px solid #e5e7eb', opacity: 0.7 }}>
+          <div style={{ width: 32, height: 32, background: '#f5f3ff', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10, fontSize: 15 }}>🔬</div>
+          <div style={{ fontSize: 10, color: '#6b7280', marginBottom: 4, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Lab</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: '#1a1a2e', marginBottom: 4 }}>{fmt(labRev)}</div>
+          <div style={{ fontSize: 10, color: '#9ca3af', fontWeight: 500 }}>Module coming soon</div>
+        </div>
+
+        {/* VIP Subscriptions */}
+        <div style={{ background: 'white', borderRadius: 16, padding: '18px', border: '1.5px solid #00b8a0', cursor: 'pointer' }} onClick={() => router.push('/patients?filter=vip')}>
+          <div style={{ width: 32, height: 32, background: '#fffbeb', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10, fontSize: 15 }}>⭐</div>
+          <div style={{ fontSize: 10, color: '#6b7280', marginBottom: 4, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>VIP Subscriptions</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: '#1a1a2e', marginBottom: 4 }}>{fmt(vipRev)}</div>
+          <div style={{ fontSize: 10, color: '#d97706', fontWeight: 500 }}>
+            {vipStats.today_enrollments || 0} enrolled today · {vipStats.total_enrollments || 0} total
+          </div>
+        </div>
+      </div>
+
+      {/* Low Stock alert row */}
+      <div className="grid grid-cols-1 mb-3">
+        <div style={{ background: 'white', borderRadius: 16, padding: '14px 20px', border: '1.5px solid #fee2e2', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }} onClick={() => router.push('/reports?report=low_stock')}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 36, height: 36, background: '#fee2e2', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626', fontSize: 16, flexShrink: 0 }}>⚠</div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1a2e' }}>Low Stock Alert</div>
+              <div style={{ fontSize: 11, color: '#6b7280' }}>{lowStock?.length || 0} items below reorder level</div>
+            </div>
+          </div>
+          <div style={{ fontSize: 12, color: '#dc2626', fontWeight: 600 }}>View Report →</div>
         </div>
       </div>
 

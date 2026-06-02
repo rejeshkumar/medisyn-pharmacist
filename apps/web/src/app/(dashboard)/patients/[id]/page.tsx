@@ -6,7 +6,7 @@ import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import {
   ArrowLeft, Save, Loader2, Star, User,
-  Phone, Calendar, MapPin, AlertTriangle,
+  Phone, Calendar, MapPin, AlertTriangle, CreditCard, X,
 } from 'lucide-react';
 
 const VIP_TIERS = [
@@ -23,6 +23,9 @@ export default function PatientEditPage() {
   const [loading, setLoading]   = useState(true);
   const [saving, setSaving]     = useState(false);
   const [vipSaving, setVipSaving] = useState(false);
+  const [showVipPayment, setShowVipPayment] = useState(false);
+  const [vipPayment, setVipPayment] = useState({ method: 'cash', amount: '', upi_txn_id: '' });
+  const [savingVipPayment, setSavingVipPayment] = useState(false);
   const [patient, setPatient]   = useState<any>(null);
   const [vipInfo, setVipInfo]   = useState<any>(null);
   const [tierDiscounts, setTierDiscounts] = useState<Record<string, any>>({});
@@ -107,6 +110,12 @@ export default function PatientEditPage() {
       const r = await api.get(`/patients/${id}/vip`);
       setVipInfo(r.data);
       toast.success('VIP status updated');
+      // Prompt to collect payment if a VIP tier was set
+      if (vipForm.vip_tier) {
+        const tierFees: Record<string, number> = { individual: 1000, family: 1800, extended_family: 2500 };
+        setVipPayment({ method: 'cash', amount: String(tierFees[vipForm.vip_tier] || ''), upi_txn_id: '' });
+        setShowVipPayment(true);
+      }
     } catch (e: any) {
       toast.error(e.response?.data?.message || 'Failed to update VIP');
     } finally {
@@ -116,6 +125,28 @@ export default function PatientEditPage() {
 
   const set = (field: string, value: string) =>
     setForm(p => ({ ...p, [field]: value }));
+
+  const saveVipPayment = async () => {
+    if (!vipPayment.amount || Number(vipPayment.amount) <= 0) {
+      toast.error('Enter a valid payment amount'); return;
+    }
+    setSavingVipPayment(true);
+    try {
+      await api.post('/patients/vip-payment', {
+        patient_id:     id,
+        vip_category:   vipForm.vip_tier,
+        payment_method: vipPayment.method,
+        payment_amount: Number(vipPayment.amount),
+        upi_txn_id:     vipPayment.upi_txn_id || undefined,
+      });
+      toast.success('VIP payment recorded');
+      setShowVipPayment(false);
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Failed to record payment');
+    } finally {
+      setSavingVipPayment(false);
+    }
+  };
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-64">
@@ -360,5 +391,78 @@ export default function PatientEditPage() {
         </button>
       </div>
     </div>
+    {/* ── VIP Payment Modal ── */}
+      {showVipPayment && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+            <div className="p-5 border-b flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-amber-600" />
+                <h3 className="font-semibold text-gray-900">Collect VIP Subscription Fee</h3>
+              </div>
+              <button onClick={() => setShowVipPayment(false)}><X className="w-5 h-5 text-gray-400" /></button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800">
+                <p className="font-semibold capitalize">{vipForm.vip_tier?.replace('_', ' ')} VIP Pass</p>
+                <p className="text-xs mt-0.5 text-amber-600">Annual subscription — record the fee collected from patient</p>
+              </div>
+
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Amount (₹) *</label>
+                <input
+                  type="number"
+                  value={vipPayment.amount}
+                  onChange={e => setVipPayment(p => ({ ...p, amount: e.target.value }))}
+                  className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#00475a]"
+                  placeholder="e.g. 1000"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Payment Method</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['cash','upi','card'] as const).map(m => (
+                    <button key={m} type="button"
+                      onClick={() => setVipPayment(p => ({ ...p, method: m }))}
+                      className={`py-2 rounded-xl border-2 text-xs font-semibold capitalize transition-all ${
+                        vipPayment.method === m
+                          ? 'border-amber-500 bg-amber-50 text-amber-800'
+                          : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                      }`}>
+                      {m === 'upi' ? 'UPI' : m.charAt(0).toUpperCase() + m.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {vipPayment.method === 'upi' && (
+                <div>
+                  <label className="text-xs text-slate-500 mb-1 block">UPI Transaction ID</label>
+                  <input
+                    type="text"
+                    value={vipPayment.upi_txn_id}
+                    onChange={e => setVipPayment(p => ({ ...p, upi_txn_id: e.target.value }))}
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#00475a]"
+                    placeholder="e.g. TXN123456789"
+                  />
+                </div>
+              )}
+            </div>
+            <div className="p-5 border-t flex gap-3">
+              <button onClick={() => setShowVipPayment(false)} className="flex-1 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-600 hover:bg-slate-50">
+                Skip for now
+              </button>
+              <button
+                onClick={saveVipPayment}
+                disabled={savingVipPayment}
+                className="flex-1 py-2.5 bg-amber-600 text-white rounded-xl text-sm font-semibold hover:bg-amber-700 disabled:opacity-50 flex items-center justify-center gap-2">
+                {savingVipPayment ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+                Record Payment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
   );
 }

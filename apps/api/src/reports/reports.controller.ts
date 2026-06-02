@@ -43,7 +43,7 @@ export class ReportsController {
     const todayEnd   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
     const d90 = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
 
-    const [todaySales, todayCount, lowStock, nearExpiry, topMeds, dailySales, recentBills] = await Promise.all([
+    const [todaySales, todayCount, lowStock, nearExpiry, topMeds, dailySales, recentBills, consultationRevenue, vipRevenue] = await Promise.all([
       this.ds.query(
         `SELECT
            COALESCE(SUM(total_amount),0) AS total,
@@ -101,18 +101,59 @@ export class ReportsController {
          ORDER BY created_at DESC LIMIT 5`,
         [tenantId]
       ),
+      // Consultation revenue from clinic_bills (today)
+      this.ds.query(
+        `SELECT COALESCE(SUM(total_amount),0) AS total
+         FROM clinic_bills
+         WHERE tenant_id=$1
+           AND status IN ('confirmed','paid')
+           AND DATE(created_at + INTERVAL '5 hours 30 minutes')=CURRENT_DATE`,
+        [tenantId]
+      ),
+      // VIP subscription revenue (all time + today)
+      this.ds.query(
+        `SELECT
+           COALESCE(SUM(payment_amount),0) AS total_all_time,
+           COALESCE(SUM(CASE WHEN DATE(registered_at + INTERVAL '5 hours 30 minutes')=CURRENT_DATE THEN payment_amount END),0) AS today,
+           COUNT(*)::int AS total_enrollments,
+           COUNT(CASE WHEN DATE(registered_at + INTERVAL '5 hours 30 minutes')=CURRENT_DATE THEN 1 END)::int AS today_enrollments
+         FROM vip_registrations
+         WHERE tenant_id=$1`,
+        [tenantId]
+      ),
     ]);
 
+    const pharmacyRevenue  = parseFloat(todaySales[0]?.total || '0');
+    const consultRevenue   = parseFloat(consultationRevenue[0]?.total || '0');
+    const vipToday         = parseFloat(vipRevenue[0]?.today || '0');
+    const totalRevenue     = pharmacyRevenue + consultRevenue + vipToday;
+
     return {
-      today_sales: parseFloat(todaySales[0]?.total || "0"),
-      today_cash: parseFloat(todaySales[0]?.cash || "0"),
-      today_upi: parseFloat(todaySales[0]?.upi || "0"),
+      // Legacy fields (keep for backward compat)
+      today_sales:       totalRevenue,
+      today_cash:        parseFloat(todaySales[0]?.cash || '0'),
+      today_upi:         parseFloat(todaySales[0]?.upi  || '0'),
       today_bill_count:  todayCount[0]?.cnt || 0,
       low_stock_count:   lowStock[0]?.cnt || 0,
       near_expiry_count: nearExpiry[0]?.cnt || 0,
       top_medicines:     topMeds,
       daily_sales:       dailySales.map((d: any) => ({ day: d.day, total: parseFloat(d.total), bills: d.bill_count })),
       recent_bills:      recentBills,
+      // Revenue breakdown
+      revenue_breakdown: {
+        total:        totalRevenue,
+        pharmacy:     pharmacyRevenue,
+        consultation: consultRevenue,
+        lab:          0,  // placeholder — lab module coming soon
+        vip:          vipToday,
+      },
+      // VIP subscription stats
+      vip_stats: {
+        today_revenue:      vipToday,
+        alltime_revenue:    parseFloat(vipRevenue[0]?.total_all_time || '0'),
+        total_enrollments:  vipRevenue[0]?.total_enrollments || 0,
+        today_enrollments:  vipRevenue[0]?.today_enrollments || 0,
+      },
     };
   }
 
