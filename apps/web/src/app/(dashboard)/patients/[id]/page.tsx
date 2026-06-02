@@ -161,6 +161,7 @@ export default function PatientEditPage() {
   const selectedTierConfig = tierDiscounts[vipForm.vip_tier];
 
   return (
+    <>
     <div className="p-6 max-w-2xl">
       <button
         onClick={() => router.back()}
@@ -464,5 +465,6 @@ export default function PatientEditPage() {
           </div>
         </div>
       )}
+    </>
   );
 }
