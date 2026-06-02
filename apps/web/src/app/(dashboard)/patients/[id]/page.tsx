@@ -65,8 +65,8 @@ export default function PatientEditPage() {
       if (vipRes.data) {
         setVipInfo(vipRes.data);
         setVipForm({
-          vip_tier:       p.vip_tier         ?? '',
-          vip_valid_until: p.vip_valid_until  ?? '',
+          vip_tier:       vipRes.data.tier   ?? '',
+          vip_valid_until: p.vip_valid_until  ?? vipRes.data.valid_until ?? '',
           vip_since:      p.vip_since         ?? '',
         });
       }

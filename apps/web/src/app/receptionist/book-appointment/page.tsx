@@ -277,7 +277,7 @@ export default function BookAppointmentPage() {
             <div className="flex items-center justify-end mb-2">
               <button
                 onClick={() => setShowNewPatient(true)}
-                className="flex items-center gap-1.5 text-xs font-medium text-[#00475a] hover:text-[#00b8a0] transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#00b8a0] text-white text-xs font-semibold hover:bg-[#009688] transition-colors"
               >
                 <UserPlus className="w-3.5 h-3.5" />
                 Register new patient
