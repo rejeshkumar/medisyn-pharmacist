@@ -13,7 +13,7 @@ const GENDERS = ['male','female','other'];
 const CATEGORIES = ['general','insurance','corporate','senior'];
 const today = () => new Date().toISOString().split('T')[0];
 const oneYearFromDate = (d: string) => { const dt=new Date(d); dt.setFullYear(dt.getFullYear()+1); return dt.toISOString().split('T')[0]; };
-const EMPTY_FORM = { salutation:'Mr',first_name:'',last_name:'',gender:'male',dob:'',age:'',mobile:'',email:'',area:'',address:'',category:'general',ref_by:'',residence_number:'',is_first_visit:true,notes:'',is_vip:false,vip_start_date:'',vip_end_date:'',consent_given:false,consent_version:'1.0' };
+const EMPTY_FORM = { salutation:'Mr',first_name:'',last_name:'',gender:'male',dob:'',age:'',mobile:'',email:'',area:'',address:'',category:'general',ref_by:'',residence_number:'',is_first_visit:true,notes:'',is_vip:false,vip_tier:'',vip_start_date:'',vip_end_date:'',consent_given:false,consent_version:'1.0' };
 
 export default function PatientsPage() {
   const [search, setSearch] = useState('');
@@ -38,7 +38,8 @@ export default function PatientsPage() {
 
   const handleSubmit = () => {
     if (!form.first_name || !form.mobile) { toast.error('Name and mobile are required'); return; }
-    createMutation.mutate({ ...form, age:form.age?Number(form.age):undefined, dob:form.dob||undefined, vip_start_date:form.is_vip?(form.vip_start_date||today()):undefined, vip_end_date:form.is_vip?(form.vip_end_date||oneYearFromDate(today())):undefined });
+    if (form.is_vip && !form.vip_tier) { toast.error('Please select a VIP category'); return; }
+    createMutation.mutate({ ...form, age:form.age?Number(form.age):undefined, dob:form.dob||undefined, vip_start_date:form.is_vip?(form.vip_start_date||today()):undefined, vip_end_date:form.is_vip?(form.vip_end_date||oneYearFromDate(today())):undefined, vip_tier:form.is_vip?form.vip_tier:undefined });
   };
 
   const vipUrl = typeof window !== 'undefined' ? `${window.location.origin}/vip-register` : '/vip-register';
@@ -167,8 +168,36 @@ export default function PatientsPage() {
               </div>
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
                 <p className="text-xs font-semibold text-amber-700 uppercase tracking-wider flex items-center gap-1.5"><Crown className="w-3.5 h-3.5" /> SimpliRx VIP Pass</p>
-                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={form.is_vip} onChange={(e) => { const c=e.target.checked; const s=c?today():''; const en=c?oneYearFromDate(today()):''; setForm((p: any) => ({...p,is_vip:c,vip_start_date:s,vip_end_date:en})); }} className="w-4 h-4 accent-amber-600" /><span className="text-sm font-medium text-amber-800">Enroll as VIP Member</span></label>
-                {form.is_vip && <div className="grid grid-cols-2 gap-3"><div><label className="label text-amber-700 text-xs">VIP Start</label><input type="date" className="input border-amber-200" value={form.vip_start_date} onChange={(e) => { const s=e.target.value; setForm((p: any) => ({...p,vip_start_date:s,vip_end_date:s?oneYearFromDate(s):''})); }} /></div><div><label className="label text-amber-700 text-xs">VIP End (1 year)</label><input type="date" className="input border-amber-300 bg-amber-100/60 text-amber-900 font-semibold" value={form.vip_end_date} onChange={(e) => set('vip_end_date',e.target.value)} /></div></div>}
+                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={form.is_vip} onChange={(e) => { const c=e.target.checked; const s=c?today():''; const en=c?oneYearFromDate(today()):''; setForm((p: any) => ({...p,is_vip:c,vip_tier:c?p.vip_tier:'',vip_start_date:s,vip_end_date:en})); }} className="w-4 h-4 accent-amber-600" /><span className="text-sm font-medium text-amber-800">Enroll as VIP Member</span></label>
+                {form.is_vip && (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="label text-amber-700 text-xs font-semibold">VIP Category <span className="text-red-500">*</span></label>
+                      <div className="grid grid-cols-3 gap-2 mt-1.5">
+                        {([
+                          { value: 'individual', label: 'Individual', desc: 'Single person' },
+                          { value: 'family', label: 'Family', desc: 'Immediate family' },
+                          { value: 'extended_family', label: 'Extended', desc: 'Highest benefits' },
+                        ] as const).map((t) => (
+                          <button
+                            key={t.value}
+                            type="button"
+                            onClick={() => set('vip_tier', t.value)}
+                            className={`rounded-xl border-2 p-2.5 text-left transition-all ${form.vip_tier === t.value ? 'border-amber-500 bg-amber-100' : 'border-amber-200 bg-white hover:border-amber-300'}`}
+                          >
+                            <p className={`text-xs font-semibold ${form.vip_tier === t.value ? 'text-amber-800' : 'text-gray-700'}`}>{t.label}</p>
+                            <p className={`text-[10px] mt-0.5 ${form.vip_tier === t.value ? 'text-amber-600' : 'text-gray-400'}`}>{t.desc}</p>
+                          </button>
+                        ))}
+                      </div>
+                      {!form.vip_tier && <p className="text-xs text-amber-600 mt-1.5">⚠️ Select a VIP category to continue</p>}
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><label className="label text-amber-700 text-xs">VIP Start</label><input type="date" className="input border-amber-200" value={form.vip_start_date} onChange={(e) => { const s=e.target.value; setForm((p: any) => ({...p,vip_start_date:s,vip_end_date:s?oneYearFromDate(s):''})); }} /></div>
+                      <div><label className="label text-amber-700 text-xs">VIP End (1 year)</label><input type="date" className="input border-amber-300 bg-amber-100/60 text-amber-900 font-semibold" value={form.vip_end_date} onChange={(e) => set('vip_end_date',e.target.value)} /></div>
+                    </div>
+                  </div>
+                )}
               </div>
               <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={form.is_first_visit} onChange={(e) => set('is_first_visit',e.target.checked)} className="w-4 h-4 accent-primary-600" /><span className="text-sm text-gray-700">Is First Visit</span></label>
               <div><label className="label">Notes</label><textarea className="input resize-none" rows={2} value={form.notes} onChange={(e) => set('notes',e.target.value)} placeholder="Any notes..." /></div>
@@ -205,7 +234,7 @@ export default function PatientsPage() {
             </div>
             <div className="p-5 border-t flex gap-3 flex-shrink-0">
               <button onClick={() => setShowForm(false)} className="btn-secondary flex-1">Cancel</button>
-              <button onClick={handleSubmit} disabled={createMutation.isPending || !form.consent_given} className="btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed">{createMutation.isPending?<Loader2 className="w-4 h-4 animate-spin inline mr-1" />:null}Register Patient</button>
+              <button onClick={handleSubmit} disabled={createMutation.isPending || !form.consent_given || (form.is_vip && !form.vip_tier)} className="btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed">{createMutation.isPending?<Loader2 className="w-4 h-4 animate-spin inline mr-1" />:null}Register Patient</button>
             </div>
           </div>
         </div>
