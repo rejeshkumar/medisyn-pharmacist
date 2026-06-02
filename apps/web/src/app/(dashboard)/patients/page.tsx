@@ -6,7 +6,7 @@ import api from '@/lib/api';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
-import { Search, Plus, Users, Crown, CalendarClock, AlertCircle, Eye, MapPin, Loader2 } from 'lucide-react';
+import { Search, Plus, Users, Crown, CalendarClock, AlertCircle, Eye, MapPin, Loader2, Phone } from 'lucide-react';
 import { PatientRegistrationModal } from '@/components/patients/PatientRegistrationModal';
 
 const SALUTATIONS = ['Mr','Mrs','Ms','Dr','Baby','Other'];
