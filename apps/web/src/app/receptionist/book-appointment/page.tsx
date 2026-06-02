@@ -258,6 +258,7 @@ export default function BookAppointmentPage() {
 
   // ── MAIN RENDER — two-column layout on desktop, single column on mobile ───
   return (
+    <>
     <div className="p-4 lg:p-6 max-w-5xl">
       <h1 className="text-xl font-bold text-slate-800 mb-0.5">Book appointment</h1>
       <p className="text-sm text-slate-400 mb-5">Register a patient into the queue</p>
@@ -603,7 +604,6 @@ export default function BookAppointmentPage() {
       </div>
     </div>
 
-      {/* Shared patient registration modal */}
       <PatientRegistrationModal
         open={showNewPatient}
         onClose={() => setShowNewPatient(false)}
@@ -613,5 +613,6 @@ export default function BookAppointmentPage() {
         }}
         invalidateKeys={[['queue-today']]}
       />
+    </>
   );
 }
