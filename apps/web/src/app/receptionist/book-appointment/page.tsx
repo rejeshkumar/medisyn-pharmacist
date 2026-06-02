@@ -6,8 +6,9 @@ import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import {
   Search, ChevronLeft, ChevronRight, CheckCircle,
-  User, Clock, Loader2, X, Calendar,
+  User, Clock, Loader2, X, Calendar, UserPlus,
 } from 'lucide-react';
+import { PatientRegistrationModal } from '@/components/patients/PatientRegistrationModal';
 
 // ── Helpers — IDENTICAL to original ──────────────────────────────────────────
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -70,8 +71,6 @@ export default function BookAppointmentPage() {
   const [searchingPatients, setSearchingPatients]   = useState(false);
   const [selectedPatient, setSelectedPatient]       = useState<any>(null);
   const [showNewPatient, setShowNewPatient]         = useState(false);
-  const [newPatientForm, setNewPatientForm]         = useState({ salutation: 'Mr', first_name: '', last_name: '', mobile: '', age: '', gender: 'male', area: '', ref_by: '', consent_given: false, is_vip: false });
-  const [savingPatient, setSavingPatient]           = useState(false);
   const [allDoctors, setAllDoctors]                 = useState<any[]>([]);
   const [docSearch, setDocSearch]                   = useState('');
   const [selSpecialty, setSelSpecialty]             = useState('All');
@@ -273,6 +272,16 @@ export default function BookAppointmentPage() {
             <h2 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
               <User className="w-4 h-4 text-[#00475a]" /> Patient
             </h2>
+            {/* Register Patient button — always visible */}
+            <div className="flex items-center justify-end mb-2">
+              <button
+                onClick={() => setShowNewPatient(true)}
+                className="flex items-center gap-1.5 text-xs font-medium text-[#00475a] hover:text-[#00b8a0] transition-colors"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                Register new patient
+              </button>
+            </div>
             {selectedPatient ? (
               <div className="flex items-center gap-3 bg-teal-50 rounded-xl px-4 py-3 border border-teal-100">
                 <div className="w-9 h-9 rounded-full bg-[#00b8a0] text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
@@ -311,7 +320,7 @@ export default function BookAppointmentPage() {
                       </button>
                     ))}
                     <button
-                      onClick={() => { setShowNewPatient(true); setPatients([]); setNewPatientForm(f => ({ ...f, first_name: patientSearch, mobile: /^\d+$/.test(patientSearch) ? patientSearch : '' })); }}
+                      onClick={() => { setShowNewPatient(true); setPatients([]); }}
                       className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-teal-50 text-left bg-teal-50/50 border-t border-slate-100">
                       <div className="w-8 h-8 rounded-full bg-[#00b8a0]/10 text-[#00475a] flex items-center justify-center text-xs font-bold">+</div>
                       <div>
@@ -322,71 +331,7 @@ export default function BookAppointmentPage() {
                   </div>
                 )}
 
-                {/* New patient form */}
-                {showNewPatient && (
-                  <div className="mt-3 border border-slate-200 rounded-xl p-4 space-y-3 bg-slate-50">
-                    <p className="text-sm font-semibold text-slate-700">Register new patient</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <select value={newPatientForm.salutation} onChange={e => setNewPatientForm(f => ({ ...f, salutation: e.target.value }))}
-                        className="col-span-2 sm:col-span-1 px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:border-[#00475a]">
-                        {['Mr','Mrs','Ms','Dr','Baby'].map(s => <option key={s}>{s}</option>)}
-                      </select>
-                      <input placeholder="First name *" value={newPatientForm.first_name} onChange={e => setNewPatientForm(f => ({ ...f, first_name: e.target.value }))}
-                        className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00475a]" />
-                      <input placeholder="Last name" value={newPatientForm.last_name} onChange={e => setNewPatientForm(f => ({ ...f, last_name: e.target.value }))}
-                        className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00475a]" />
-                      <input placeholder="Mobile *" value={newPatientForm.mobile} onChange={e => setNewPatientForm(f => ({ ...f, mobile: e.target.value }))}
-                        className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00475a]" />
-                      <input placeholder="Age" type="number" value={newPatientForm.age} onChange={e => setNewPatientForm(f => ({ ...f, age: e.target.value }))}
-                        className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00475a]" />
-                      <select value={newPatientForm.gender} onChange={e => setNewPatientForm(f => ({ ...f, gender: e.target.value }))}
-                        className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:border-[#00475a]">
-                        <option value="male">Male</option>
-                        <option value="female">Female</option>
-                        <option value="other">Other</option>
-                      </select>
-                      <input placeholder="Area" value={newPatientForm.area} onChange={e => setNewPatientForm(f => ({ ...f, area: e.target.value }))}
-                        className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00475a]" />
-                      <input placeholder="Referred by" value={newPatientForm.ref_by} onChange={e => setNewPatientForm(f => ({ ...f, ref_by: e.target.value }))}
-                        className="col-span-2 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00475a]" />
-                    </div>
-                    <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
-                      <input type="checkbox" checked={newPatientForm.consent_given} onChange={e => setNewPatientForm(f => ({ ...f, consent_given: e.target.checked }))} className="rounded" />
-                      Consent given
-                    </label>
-                    <div className="flex gap-2">
-                      <button
-                        disabled={savingPatient || !newPatientForm.first_name || !newPatientForm.mobile}
-                        onClick={async () => {
-                          setSavingPatient(true);
-                          try {
-                            const { data } = await api.post('/patients', {
-                              salutation: newPatientForm.salutation,
-                              first_name: newPatientForm.first_name,
-                              last_name:  newPatientForm.last_name,
-                              mobile:     newPatientForm.mobile,
-                              age:        newPatientForm.age ? Number(newPatientForm.age) : undefined,
-                              gender:     newPatientForm.gender,
-                              area:       newPatientForm.area,
-                              ref_by:     newPatientForm.ref_by,
-                              consent_given: newPatientForm.consent_given,
-                              is_vip:     newPatientForm.is_vip,
-                            });
-                            setSelectedPatient(data);
-                            setShowNewPatient(false);
-                            setPatientSearch('');
-                            toast.success('Patient registered successfully');
-                          } catch (e: any) {
-                            toast.error(e.response?.data?.message || 'Failed to register');
-                          } finally { setSavingPatient(false); }
-                        }}
-                        className="flex-1 py-2 bg-[#00b8a0] text-white rounded-lg text-sm font-semibold disabled:opacity-50">
-                        {savingPatient ? 'Saving...' : 'Register & Select'}
-                      </button>
-                      <button onClick={() => setShowNewPatient(false)} className="px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600">Cancel</button>
-                    </div>
-                  </div>
-                )}
+
               </div>
             )}
           </div>
@@ -657,5 +602,16 @@ export default function BookAppointmentPage() {
         </div>
       </div>
     </div>
+
+      {/* Shared patient registration modal */}
+      <PatientRegistrationModal
+        open={showNewPatient}
+        onClose={() => setShowNewPatient(false)}
+        onSuccess={(patient) => {
+          setSelectedPatient(patient);
+          setPatientSearch('');
+        }}
+        invalidateKeys={[['queue-today']]}
+      />
   );
 }
