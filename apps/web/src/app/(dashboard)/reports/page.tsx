@@ -540,6 +540,68 @@ export default function ReportsPage() {
                   </select>
                 </div>
               )}
+              {currentReport.params.includes('payment_mode') && (
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-slate-500">Payment</label>
+                  <select value={filters.payment_mode || ''}
+                    onChange={e => setFilters(p => ({ ...p, payment_mode: e.target.value || undefined! }))}
+                    className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white focus:outline-none">
+                    <option value="">All modes</option>
+                    <option value="cash">Cash</option>
+                    <option value="upi">UPI</option>
+                    <option value="card">Card</option>
+                    <option value="credit">Credit</option>
+                  </select>
+                </div>
+              )}
+              {currentReport.params.includes('category') && (
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-slate-500">Category</label>
+                  <select value={filters.category || ''}
+                    onChange={e => setFilters(p => ({ ...p, category: e.target.value || undefined! }))}
+                    className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white focus:outline-none">
+                    <option value="">All categories</option>
+                    {['Tablet','Capsule','Syrup','Injection','Cream','Drops','Inhaler','Gel','Powder','Other'].map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {currentReport.params.includes('status') && (
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-slate-500">Status</label>
+                  <select value={filters.status || ''}
+                    onChange={e => setFilters(p => ({ ...p, status: e.target.value || undefined! }))}
+                    className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white focus:outline-none">
+                    <option value="">All statuses</option>
+                    <option value="pending">Pending</option>
+                    <option value="received">Received</option>
+                    <option value="partial">Partial</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
+              )}
+              {currentReport.params.includes('supplier') && (
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-slate-500">Supplier</label>
+                  <input type="text" value={filters.supplier || ''}
+                    onChange={e => setFilters(p => ({ ...p, supplier: e.target.value }))}
+                    placeholder="Filter by supplier..."
+                    className="text-xs border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:border-[#00b8a0] w-36" />
+                </div>
+              )}
+              {currentReport.params.includes('staff') && (
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-slate-500">Staff</label>
+                  <input type="text" value={filters.staff || ''}
+                    onChange={e => setFilters(p => ({ ...p, staff: e.target.value }))}
+                    placeholder="Filter by name..."
+                    className="text-xs border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:border-[#00b8a0] w-36" />
+                </div>
+              )}
+              {currentReport.params.filter((p: string) => p !== 'date_range').length === 0 && (
+                <p className="text-xs text-slate-400 italic">No additional filters. Use the date range above.</p>
+              )}
               {Object.keys(filters).length > 0 && (
                 <button onClick={() => setFilters({})}
                   className="text-xs text-red-500 hover:underline">Clear filters</button>
