@@ -227,91 +227,82 @@ export class ReportsController {
     this.checkRole(req.user, ['owner','pharmacist']);
     const { start, end } = this.dateRange(q.range||'30d', q.from, q.to);
     const tid = req.user.tenant_id;
-    const src = q.source || 'all'; // all | pharmacy | consultation | lab | vip
-    const pmFilter = q.payment_mode ? `AND payment_mode = '${q.payment_mode}'` : '';
+    const src = q.source || 'all';
+    const pm  = q.payment_mode || null;
 
-    // Build UNION query based on source filter
-    const sourceParts: string[] = [];
+    // Fetch each source separately then merge in JS — avoids complex UNION typing issues
+    const [pharmRows, consultRows, vipRows] = await Promise.all([
+      (src === 'all' || src === 'pharmacy') ? this.ds.query(
+        `SELECT
+           DATE(created_at AT TIME ZONE 'Asia/Kolkata') AS date,
+           total_amount::float, discount_amount::float AS discount_amt,
+           subtotal::float, payment_mode, 'pharmacy' AS source
+         FROM sales
+         WHERE tenant_id=$1 AND is_voided=false
+           AND created_at BETWEEN $2 AND $3
+           ${pm ? "AND payment_mode=$4" : ''}`,
+        pm ? [tid, start, end, pm] : [tid, start, end]
+      ) : Promise.resolve([]),
 
-    if (src === 'all' || src === 'pharmacy') {
-      sourceParts.push(`
-        SELECT
-          DATE(created_at AT TIME ZONE 'Asia/Kolkata') AS date,
-          total_amount, discount_amount AS discount_amt,
-          subtotal, payment_mode, 'pharmacy' AS source
-        FROM sales
-        WHERE tenant_id = '${tid}'
-          AND is_voided = false
-          AND created_at BETWEEN '${start}' AND '${end}'
-          ${pmFilter}
-      `);
+      (src === 'all' || src === 'consultation') ? this.ds.query(
+        `SELECT
+           DATE(created_at AT TIME ZONE 'Asia/Kolkata') AS date,
+           total_amount::float, 0::float AS discount_amt,
+           subtotal::float, payment_mode::text AS payment_mode, 'consultation' AS source
+         FROM clinic_bills
+         WHERE tenant_id=$1 AND status IN ('confirmed','paid')
+           AND created_at BETWEEN $2 AND $3
+           ${pm ? "AND payment_mode::text=$4" : ''}`,
+        pm ? [tid, start, end, pm] : [tid, start, end]
+      ) : Promise.resolve([]),
+
+      (src === 'all' || src === 'vip') ? this.ds.query(
+        `SELECT
+           DATE(registered_at AT TIME ZONE 'Asia/Kolkata') AS date,
+           payment_amount::float AS total_amount, 0::float AS discount_amt,
+           payment_amount::float AS subtotal, payment_method AS payment_mode, 'vip' AS source
+         FROM vip_registrations
+         WHERE tenant_id=$1 AND registered_at BETWEEN $2 AND $3
+           ${pm ? "AND payment_method=$4" : ''}`,
+        pm ? [tid, start, end, pm] : [tid, start, end]
+      ) : Promise.resolve([]),
+    ]);
+
+    // Merge all rows and aggregate by date
+    const all = [...pharmRows, ...consultRows, ...vipRows];
+    const byDate: Record<string, any> = {};
+    for (const r of all) {
+      const d = r.date instanceof Date ? r.date.toISOString().split('T')[0] : String(r.date).split('T')[0];
+      if (!byDate[d]) byDate[d] = { date: d, bill_count: 0, gross_amount: 0, discount: 0, net_amount: 0, cash: 0, card: 0, upi: 0, pharmacy_revenue: 0, consultation_revenue: 0, vip_revenue: 0, _total_for_avg: 0, _count_for_avg: 0 };
+      const row = byDate[d];
+      const amt = parseFloat(r.total_amount) || 0;
+      row.bill_count++;
+      row.gross_amount    = +(row.gross_amount + (parseFloat(r.subtotal) || 0)).toFixed(2);
+      row.discount        = +(row.discount + (parseFloat(r.discount_amt) || 0)).toFixed(2);
+      row.net_amount      = +(row.net_amount + amt).toFixed(2);
+      row._total_for_avg += amt; row._count_for_avg++;
+      if (r.payment_mode === 'cash') row.cash = +(row.cash + amt).toFixed(2);
+      if (r.payment_mode === 'card') row.card = +(row.card + amt).toFixed(2);
+      if (r.payment_mode === 'upi')  row.upi  = +(row.upi  + amt).toFixed(2);
+      if (r.source === 'pharmacy')     row.pharmacy_revenue     = +(row.pharmacy_revenue + amt).toFixed(2);
+      if (r.source === 'consultation') row.consultation_revenue = +(row.consultation_revenue + amt).toFixed(2);
+      if (r.source === 'vip')          row.vip_revenue          = +(row.vip_revenue + amt).toFixed(2);
     }
+    const rows = Object.values(byDate)
+      .map((r: any) => ({ ...r, avg_bill: r._count_for_avg ? +(r._total_for_avg / r._count_for_avg).toFixed(2) : 0 }))
+      .sort((a: any, b: any) => b.date.localeCompare(a.date));
 
-    if (src === 'all' || src === 'consultation') {
-      sourceParts.push(`
-        SELECT
-          DATE(created_at AT TIME ZONE 'Asia/Kolkata') AS date,
-          total_amount, 0 AS discount_amt,
-          subtotal, payment_mode::text, 'consultation' AS source
-        FROM clinic_bills
-        WHERE tenant_id = '${tid}'
-          AND status IN ('confirmed','paid')
-          AND created_at BETWEEN '${start}' AND '${end}'
-          ${pmFilter}
-      `);
-    }
+    const totals = {
+      total_bills:          all.length,
+      total_revenue:        +all.reduce((s, r) => s + (parseFloat(r.total_amount)||0), 0).toFixed(2),
+      total_discount:       +all.reduce((s, r) => s + (parseFloat(r.discount_amt)||0), 0).toFixed(2),
+      avg_bill:             all.length ? +(all.reduce((s, r) => s + (parseFloat(r.total_amount)||0), 0) / all.length).toFixed(2) : 0,
+      pharmacy_revenue:     +pharmRows.reduce((s: number, r: any) => s + (parseFloat(r.total_amount)||0), 0).toFixed(2),
+      consultation_revenue: +consultRows.reduce((s: number, r: any) => s + (parseFloat(r.total_amount)||0), 0).toFixed(2),
+      vip_revenue:          +vipRows.reduce((s: number, r: any) => s + (parseFloat(r.total_amount)||0), 0).toFixed(2),
+    };
 
-    if (src === 'all' || src === 'vip') {
-      sourceParts.push(`
-        SELECT
-          DATE(registered_at AT TIME ZONE 'Asia/Kolkata') AS date,
-          payment_amount AS total_amount, 0 AS discount_amt,
-          payment_amount AS subtotal, payment_method AS payment_mode, 'vip' AS source
-        FROM vip_registrations
-        WHERE tenant_id = '${tid}'
-          AND registered_at BETWEEN '${start}' AND '${end}'
-          ${q.payment_mode ? `AND payment_method = '${q.payment_mode}'` : ''}
-      `);
-    }
-
-    if (sourceParts.length === 0) {
-      return { rows: [], totals: { total_bills: 0, total_revenue: 0, total_discount: 0, avg_bill: 0 }, period: { start, end } };
-    }
-
-    const unionSql = sourceParts.join(' UNION ALL ');
-
-    const rows = await this.ds.query(`
-      SELECT
-        date,
-        COUNT(*)::int                                                AS bill_count,
-        ROUND(SUM(subtotal)::numeric, 2)                            AS gross_amount,
-        ROUND(SUM(discount_amt)::numeric, 2)                        AS discount,
-        ROUND(SUM(total_amount)::numeric, 2)                        AS net_amount,
-        ROUND(SUM(CASE WHEN payment_mode='cash' THEN total_amount ELSE 0 END)::numeric,2) AS cash,
-        ROUND(SUM(CASE WHEN payment_mode='card' THEN total_amount ELSE 0 END)::numeric,2) AS card,
-        ROUND(SUM(CASE WHEN payment_mode='upi'  THEN total_amount ELSE 0 END)::numeric,2) AS upi,
-        ROUND(AVG(total_amount)::numeric, 2)                        AS avg_bill,
-        ROUND(SUM(CASE WHEN source='pharmacy'     THEN total_amount ELSE 0 END)::numeric,2) AS pharmacy_revenue,
-        ROUND(SUM(CASE WHEN source='consultation' THEN total_amount ELSE 0 END)::numeric,2) AS consultation_revenue,
-        ROUND(SUM(CASE WHEN source='vip'          THEN total_amount ELSE 0 END)::numeric,2) AS vip_revenue
-      FROM (${unionSql}) AS combined
-      GROUP BY date
-      ORDER BY date DESC
-    `);
-
-    const totals = await this.ds.query(`
-      SELECT
-        COUNT(*)::int                              AS total_bills,
-        ROUND(SUM(total_amount)::numeric,2)        AS total_revenue,
-        ROUND(SUM(discount_amt)::numeric,2)        AS total_discount,
-        ROUND(AVG(total_amount)::numeric,2)        AS avg_bill,
-        ROUND(SUM(CASE WHEN source='pharmacy'     THEN total_amount ELSE 0 END)::numeric,2) AS pharmacy_revenue,
-        ROUND(SUM(CASE WHEN source='consultation' THEN total_amount ELSE 0 END)::numeric,2) AS consultation_revenue,
-        ROUND(SUM(CASE WHEN source='vip'          THEN total_amount ELSE 0 END)::numeric,2) AS vip_revenue
-      FROM (${unionSql}) AS combined
-    `);
-
-    return { rows, totals: totals[0], period: { start, end } };
+    return { rows, totals, period: { start, end } };
   }
 
   // ── Medicine-wise sales ────────────────────────────────────
