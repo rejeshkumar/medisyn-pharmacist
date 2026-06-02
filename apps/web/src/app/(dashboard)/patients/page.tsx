@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { formatDate, formatCurrency } from '@/lib/utils';
+import { getUser } from '@/lib/auth';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 import { Search, Plus, Users, Crown, CalendarClock, AlertCircle, Eye, MapPin, Loader2, Phone } from 'lucide-react';
@@ -18,6 +19,13 @@ export default function PatientsPage() {
   const [filter, setFilter] = useState<'all'|'vip'>('all');
   const [showForm, setShowForm] = useState(false);
   const qc = useQueryClient();
+
+  const currentRole = typeof window !== 'undefined' ? (getUser()?.role || '') : '';
+  const CAN_SEE_FULL_MOBILE = ['owner', 'admin', 'receptionist', 'pharmacist', 'doctor'].includes(currentRole);
+  const maskMobile = (mobile: string) => {
+    if (CAN_SEE_FULL_MOBILE || !mobile) return mobile;
+    return mobile.slice(0, 2) + 'X'.repeat(Math.max(0, mobile.length - 5)) + mobile.slice(-3);
+  };
 
   const { data: stats } = useQuery({ queryKey: ['patient-stats'], queryFn: () => api.get('/patients/stats').then((r) => r.data) });
   const { data: patients, isLoading } = useQuery({
@@ -83,7 +91,7 @@ export default function PatientsPage() {
                     </div>
                     <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 flex-wrap">
                       <span className="font-mono">{p.uhid}</span>
-                      <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{p.mobile}</span>
+                      <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{maskMobile(p.mobile)}</span>
                       {p.area && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{p.area}</span>}
                     </div>
                   </div>
@@ -113,7 +121,7 @@ export default function PatientsPage() {
                   <tr key={p.id} className="table-row">
                     <td className="px-4 py-3"><div className="flex items-center gap-2"><div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center text-primary-700 font-bold text-xs flex-shrink-0">{p.first_name?.[0]?.toUpperCase()}</div><div><p className="font-medium text-gray-900">{p.salutation} {p.first_name} {p.last_name||''}</p><p className="text-xs text-gray-400">{p.gender}{p.age?` · ${p.age}y`:''}</p></div></div></td>
                     <td className="px-4 py-3 font-mono text-xs text-gray-600">{p.uhid}</td>
-                    <td className="px-4 py-3 text-gray-700"><div className="flex items-center gap-1"><Phone className="w-3 h-3 text-gray-400" />{p.mobile}</div></td>
+                    <td className="px-4 py-3 text-gray-700"><div className="flex items-center gap-1"><Phone className="w-3 h-3 text-gray-400" />{maskMobile(p.mobile)}</div></td>
                     <td className="px-4 py-3 text-gray-500 text-xs">{p.area?<div className="flex items-center gap-1"><MapPin className="w-3 h-3 text-gray-400" />{p.area}</div>:'—'}</td>
                     <td className="px-4 py-3"><span className="badge bg-gray-100 text-gray-600 border-gray-200 capitalize text-xs">{p.category}</span></td>
                     <td className="px-4 py-3">{p.is_vip?<span className="badge bg-amber-100 text-amber-700 border-amber-200 flex items-center gap-1 w-fit"><Crown className="w-3 h-3" />VIP</span>:<span className="text-gray-300 text-xs">—</span>}</td>
