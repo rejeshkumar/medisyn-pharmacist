@@ -105,10 +105,6 @@ export class CreatePatientDto {
   @IsOptional()
   vip_tier?: string;
 
-  @ApiPropertyOptional({ description: 'VIP tier: individual | family | extended_family' })
-  @IsOptional()
-  vip_tier?: string;
-
   // ── DPDPA Consent ─────────────────────────────────────────────────────────
   @ApiPropertyOptional({ description: 'DPDPA 2023 — patient consent to data processing' })
   @IsBoolean()
