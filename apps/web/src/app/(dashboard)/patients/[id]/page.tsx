@@ -44,7 +44,7 @@ export default function PatientEditPage() {
   useEffect(() => {
     Promise.all([
       api.get(`/patients/${id}`),
-      api.get(`/billing/patients/${id}/vip`).catch(() => ({ data: null })),
+      api.get(`/patients/${id}/vip`).catch(() => ({ data: null })),
       api.get('/vip-tiers').catch(() => ({ data: [] })),
     ]).then(([patRes, vipRes, tiersRes]) => {
       const p = patRes.data;
@@ -98,13 +98,13 @@ export default function PatientEditPage() {
   const saveVip = async () => {
     setVipSaving(true);
     try {
-      await api.patch(`/billing/patients/${id}/vip`, {
+      await api.patch(`/patients/${id}/vip`, {
         vip_tier:        vipForm.vip_tier || null,
         vip_valid_until: vipForm.vip_valid_until || null,
         vip_since:       vipForm.vip_since || null,
       });
       // Reload VIP info
-      const r = await api.get(`/billing/patients/${id}/vip`);
+      const r = await api.get(`/patients/${id}/vip`);
       setVipInfo(r.data);
       toast.success('VIP status updated');
     } catch (e: any) {
