@@ -227,38 +227,89 @@ export class ReportsController {
     this.checkRole(req.user, ['owner','pharmacist']);
     const { start, end } = this.dateRange(q.range||'30d', q.from, q.to);
     const tid = req.user.tenant_id;
+    const src = q.source || 'all'; // all | pharmacy | consultation | lab | vip
+    const pmFilter = q.payment_mode ? `AND payment_mode = '${q.payment_mode}'` : '';
+
+    // Build UNION query based on source filter
+    const sourceParts: string[] = [];
+
+    if (src === 'all' || src === 'pharmacy') {
+      sourceParts.push(`
+        SELECT
+          DATE(created_at AT TIME ZONE 'Asia/Kolkata') AS date,
+          total_amount, discount_amount AS discount_amt,
+          subtotal, payment_mode, 'pharmacy' AS source
+        FROM sales
+        WHERE tenant_id = '${tid}'
+          AND is_voided = false
+          AND created_at BETWEEN '${start.toISOString()}' AND '${end.toISOString()}'
+          ${pmFilter}
+      `);
+    }
+
+    if (src === 'all' || src === 'consultation') {
+      sourceParts.push(`
+        SELECT
+          DATE(created_at AT TIME ZONE 'Asia/Kolkata') AS date,
+          total_amount, 0 AS discount_amt,
+          subtotal, payment_mode::text, 'consultation' AS source
+        FROM clinic_bills
+        WHERE tenant_id = '${tid}'
+          AND status IN ('confirmed','paid')
+          AND created_at BETWEEN '${start.toISOString()}' AND '${end.toISOString()}'
+          ${pmFilter}
+      `);
+    }
+
+    if (src === 'all' || src === 'vip') {
+      sourceParts.push(`
+        SELECT
+          DATE(registered_at AT TIME ZONE 'Asia/Kolkata') AS date,
+          payment_amount AS total_amount, 0 AS discount_amt,
+          payment_amount AS subtotal, payment_method AS payment_mode, 'vip' AS source
+        FROM vip_registrations
+        WHERE tenant_id = '${tid}'
+          AND registered_at BETWEEN '${start.toISOString()}' AND '${end.toISOString()}'
+          ${q.payment_mode ? `AND payment_method = '${q.payment_mode}'` : ''}
+      `);
+    }
+
+    if (sourceParts.length === 0) {
+      return { rows: [], totals: { total_bills: 0, total_revenue: 0, total_discount: 0, avg_bill: 0 }, period: { start, end } };
+    }
+
+    const unionSql = sourceParts.join(' UNION ALL ');
 
     const rows = await this.ds.query(`
       SELECT
-        DATE(s.created_at AT TIME ZONE 'Asia/Kolkata') AS date,
-        COUNT(*)::int                                   AS bill_count,
-        ROUND(SUM(s.subtotal)::numeric, 2)             AS gross_amount,
-        ROUND(SUM(s.discount_amount)::numeric, 2)      AS discount,
-        ROUND(SUM(s.total_amount)::numeric, 2)         AS net_amount,
-        ROUND(SUM(CASE WHEN s.payment_mode='cash' THEN s.total_amount ELSE 0 END)::numeric,2) AS cash,
-        ROUND(SUM(CASE WHEN s.payment_mode='card' THEN s.total_amount ELSE 0 END)::numeric,2) AS card,
-        ROUND(SUM(CASE WHEN s.payment_mode='upi'  THEN s.total_amount ELSE 0 END)::numeric,2) AS upi,
-        ROUND(AVG(s.total_amount)::numeric, 2)         AS avg_bill,
-        COUNT(DISTINCT s.customer_name)::int           AS patient_count
-      FROM sales s
-      WHERE s.tenant_id = $1
-        AND s.created_at BETWEEN $2 AND $3
-        ${q.payment_mode ? `AND s.payment_mode = '${q.payment_mode}'` : ''}
-      GROUP BY DATE(s.created_at AT TIME ZONE 'Asia/Kolkata')
-      ORDER BY date DESC`,
-      [tid, start, end],
-    );
+        date,
+        COUNT(*)::int                                                AS bill_count,
+        ROUND(SUM(subtotal)::numeric, 2)                            AS gross_amount,
+        ROUND(SUM(discount_amt)::numeric, 2)                        AS discount,
+        ROUND(SUM(total_amount)::numeric, 2)                        AS net_amount,
+        ROUND(SUM(CASE WHEN payment_mode='cash' THEN total_amount ELSE 0 END)::numeric,2) AS cash,
+        ROUND(SUM(CASE WHEN payment_mode='card' THEN total_amount ELSE 0 END)::numeric,2) AS card,
+        ROUND(SUM(CASE WHEN payment_mode='upi'  THEN total_amount ELSE 0 END)::numeric,2) AS upi,
+        ROUND(AVG(total_amount)::numeric, 2)                        AS avg_bill,
+        ROUND(SUM(CASE WHEN source='pharmacy'     THEN total_amount ELSE 0 END)::numeric,2) AS pharmacy_revenue,
+        ROUND(SUM(CASE WHEN source='consultation' THEN total_amount ELSE 0 END)::numeric,2) AS consultation_revenue,
+        ROUND(SUM(CASE WHEN source='vip'          THEN total_amount ELSE 0 END)::numeric,2) AS vip_revenue
+      FROM (${unionSql}) AS combined
+      GROUP BY date
+      ORDER BY date DESC
+    `);
 
     const totals = await this.ds.query(`
       SELECT
         COUNT(*)::int                              AS total_bills,
-        ROUND(SUM(s.total_amount)::numeric,2)     AS total_revenue,
-        ROUND(SUM(s.discount_amount)::numeric,2)  AS total_discount,
-        ROUND(AVG(s.total_amount)::numeric,2)     AS avg_bill
-      FROM sales s
-      WHERE s.tenant_id=$1 AND s.created_at BETWEEN $2 AND $3`,
-      [tid, start, end],
-    );
+        ROUND(SUM(total_amount)::numeric,2)        AS total_revenue,
+        ROUND(SUM(discount_amt)::numeric,2)        AS total_discount,
+        ROUND(AVG(total_amount)::numeric,2)        AS avg_bill,
+        ROUND(SUM(CASE WHEN source='pharmacy'     THEN total_amount ELSE 0 END)::numeric,2) AS pharmacy_revenue,
+        ROUND(SUM(CASE WHEN source='consultation' THEN total_amount ELSE 0 END)::numeric,2) AS consultation_revenue,
+        ROUND(SUM(CASE WHEN source='vip'          THEN total_amount ELSE 0 END)::numeric,2) AS vip_revenue
+      FROM (${unionSql}) AS combined
+    `);
 
     return { rows, totals: totals[0], period: { start, end } };
   }

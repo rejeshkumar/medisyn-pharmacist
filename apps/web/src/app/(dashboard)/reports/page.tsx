@@ -540,6 +540,20 @@ export default function ReportsPage() {
                   </select>
                 </div>
               )}
+              {currentReport.params.includes('source') && (
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-slate-500">Source</label>
+                  <select value={filters.source || ''}
+                    onChange={e => setFilters(p => ({ ...p, source: e.target.value || undefined! }))}
+                    className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white focus:outline-none">
+                    <option value="">All sources</option>
+                    <option value="pharmacy">💊 Pharmacy</option>
+                    <option value="consultation">🩺 Consultation</option>
+                    <option value="lab">🔬 Lab</option>
+                    <option value="vip">⭐ VIP Subscriptions</option>
+                  </select>
+                </div>
+              )}
               {currentReport.params.includes('payment_mode') && (
                 <div className="flex items-center gap-2">
                   <label className="text-xs text-slate-500">Payment</label>
