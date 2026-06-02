@@ -44,7 +44,7 @@ export default function PatientEditPage() {
   useEffect(() => {
     Promise.all([
       api.get(`/patients/${id}`),
-      api.get(`/patients/${id}/vip`).catch(() => ({ data: null })),
+      api.get(`/billing/patients/${id}/vip`).catch(() => ({ data: null })),
       api.get('/vip-tiers').catch(() => ({ data: [] })),
     ]).then(([patRes, vipRes, tiersRes]) => {
       const p = patRes.data;
@@ -98,13 +98,13 @@ export default function PatientEditPage() {
   const saveVip = async () => {
     setVipSaving(true);
     try {
-      await api.patch(`/patients/${id}/vip`, {
+      await api.patch(`/billing/patients/${id}/vip`, {
         vip_tier:        vipForm.vip_tier || null,
         vip_valid_until: vipForm.vip_valid_until || null,
         vip_since:       vipForm.vip_since || null,
       });
       // Reload VIP info
-      const r = await api.get(`/patients/${id}/vip`);
+      const r = await api.get(`/billing/patients/${id}/vip`);
       setVipInfo(r.data);
       toast.success('VIP status updated');
     } catch (e: any) {
@@ -277,7 +277,12 @@ export default function PatientEditPage() {
           {VIP_TIERS.map(tier => (
             <button
               key={tier.value}
-              onClick={() => setVipForm(p => ({ ...p, vip_tier: tier.value }))}
+              onClick={() => setVipForm(p => {
+                const since = p.vip_since || new Date().toISOString().split('T')[0];
+                const dt = new Date(since); dt.setFullYear(dt.getFullYear() + 1);
+                const until = p.vip_valid_until || dt.toISOString().split('T')[0];
+                return { ...p, vip_tier: tier.value, vip_since: since, vip_valid_until: until };
+              })}
               className={`p-3 rounded-xl border-2 text-left transition-all ${
                 vipForm.vip_tier === tier.value
                   ? tier.value
@@ -319,7 +324,17 @@ export default function PatientEditPage() {
               <input
                 type="date"
                 value={vipForm.vip_since}
-                onChange={e => setVipForm(p => ({ ...p, vip_since: e.target.value }))}
+                onChange={e => {
+                  const s = e.target.value;
+                  const dt = s ? new Date(s) : null;
+                  if (dt) dt.setFullYear(dt.getFullYear() + 1);
+                  const autoEnd = dt ? dt.toISOString().split('T')[0] : '';
+                  setVipForm(p => ({
+                    ...p,
+                    vip_since: s,
+                    vip_valid_until: p.vip_valid_until ? p.vip_valid_until : autoEnd,
+                  }));
+                }}
                 className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#00475a]"
               />
             </div>
