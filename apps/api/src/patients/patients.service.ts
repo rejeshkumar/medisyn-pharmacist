@@ -89,6 +89,14 @@ export class PatientsService {
     });
     const saved = await this.patientRepo.save(patient) as Patient;
 
+    // Save vip_tier separately (enum column not mapped in entity)
+    if (dto.is_vip && (dto as any).vip_tier) {
+      await this.patientRepo.query(
+        `UPDATE patients SET vip_tier = $1::vip_tier_enum, vip_valid_until = $2, vip_since = $3 WHERE id = $4`,
+        [(dto as any).vip_tier, vip_end || null, vip_start || null, saved.id],
+      );
+    }
+
     await this.auditService.log({
       tenantId, userId,
       userName:  user.full_name,
