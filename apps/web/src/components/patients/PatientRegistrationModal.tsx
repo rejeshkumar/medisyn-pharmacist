@@ -83,6 +83,7 @@ export function PatientRegistrationModal({ open, onClose, onSuccess, invalidateK
     if (!form.mobile.trim())     { toast.error('Mobile number is required'); return; }
     if (!form.consent_given)     { toast.error('Data privacy consent is required'); return; }
     if (form.is_vip && !form.vip_tier) { toast.error('Please select a VIP category'); return; }
+    if (form.is_vip && !form.vip_start_date) { toast.error('VIP start date is required'); return; }
 
     mutation.mutate({
       ...form,
@@ -269,14 +270,14 @@ export function PatientRegistrationModal({ open, onClose, onSuccess, invalidateK
                 {/* VIP dates */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="label text-amber-700 text-xs">VIP Start</label>
+                    <label className="label text-amber-700 text-xs">VIP Start <span className="text-red-500">*</span></label>
                     <input
                       type="date"
                       className="input border-amber-200"
                       value={form.vip_start_date}
                       onChange={e => {
                         const s = e.target.value;
-                        setForm(p => ({ ...p, vip_start_date: s, vip_end_date: s ? oneYearFrom(s) : '' }));
+                        setForm(p => ({ ...p, vip_start_date: s, vip_end_date: s ? oneYearFrom(s) : '' })); // always auto-update end date
                       }}
                     />
                   </div>

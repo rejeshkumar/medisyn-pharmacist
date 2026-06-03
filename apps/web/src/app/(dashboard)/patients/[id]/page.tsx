@@ -69,8 +69,8 @@ export default function PatientEditPage() {
         setVipInfo(vipRes.data);
         setVipForm({
           vip_tier:       vipRes.data.tier   ?? '',
-          vip_valid_until: p.vip_valid_until  ?? vipRes.data.valid_until ?? '',
-          vip_since:      p.vip_since         ?? '',
+          vip_valid_until: vipRes.data.valid_until ?? p.vip_valid_until ?? '',
+          vip_since:      vipRes.data.since    ?? p.vip_since         ?? new Date().toISOString().split('T')[0],
         });
       }
 
@@ -99,6 +99,9 @@ export default function PatientEditPage() {
   };
 
   const saveVip = async () => {
+    if (vipForm.vip_tier && !vipForm.vip_since) {
+      toast.error('VIP start date is required'); return;
+    }
     setVipSaving(true);
     try {
       await api.patch(`/patients/${id}/vip`, {
@@ -352,7 +355,7 @@ export default function PatientEditPage() {
         {vipForm.vip_tier && (
           <div className="grid grid-cols-2 gap-3 mb-4">
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">Member since</label>
+              <label className="text-xs text-slate-500 mb-1 block">Member since <span className="text-red-500">*</span></label>
               <input
                 type="date"
                 value={vipForm.vip_since}
@@ -364,14 +367,14 @@ export default function PatientEditPage() {
                   setVipForm(p => ({
                     ...p,
                     vip_since: s,
-                    vip_valid_until: p.vip_valid_until ? p.vip_valid_until : autoEnd,
+                    vip_valid_until: autoEnd, // always auto-update to 1yr from start
                   }));
                 }}
                 className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#00475a]"
               />
             </div>
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">Valid until</label>
+              <label className="text-xs text-slate-500 mb-1 block">Valid until <span className="text-slate-400 text-[10px]">(auto)</span></label>
               <input
                 type="date"
                 value={vipForm.vip_valid_until}
