@@ -2,7 +2,6 @@
 
 import Image from 'next/image';
 import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 import { Crown, CheckCircle2, Loader2, Share2, Smartphone, Banknote, QrCode } from 'lucide-react';
 import QRCode from 'qrcode';
@@ -21,15 +20,15 @@ const PRICES: Record<string, number> = {
 };
 
 function VipRegisterContent() {
-  const searchParams = useSearchParams();
   const [step, setStep]       = useState<Step>('form');
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
   const [patient, setPatient] = useState<any>(null);
   const [qrDataUrl, setQrDataUrl] = useState('');
 
-  const agentCode   = searchParams?.get('agent') || '';
-  const accessToken = searchParams?.get('token') || '';
+  const params      = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams('');
+  const agentCode   = params.get('agent') || '';
+  const accessToken = params.get('token') || '';
 
   const [form, setForm] = useState({
     salutation:     'Mr',
