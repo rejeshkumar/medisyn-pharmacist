@@ -267,6 +267,80 @@ function BottomTabLayout({
   );
 }
 
+
+// ── Breadcrumb config ──────────────────────────────────────────────────────
+const BREADCRUMB_MAP: Record<string, { label: string; parent?: string }> = {
+  '/dashboard':          { label: 'Dashboard' },
+  '/patients':           { label: 'Patients' },
+  '/dispensing':         { label: 'Dispense' },
+  '/billing':            { label: 'Bills' },
+  '/medicines':          { label: 'Medicines',        parent: '/inventory' },
+  '/stock':              { label: 'Stock',             parent: '/inventory' },
+  '/stock-adjustments':  { label: 'Adjustments',      parent: '/inventory' },
+  '/returns':            { label: 'Returns',           parent: '/inventory' },
+  '/procurement':        { label: 'Procurement',       parent: '/inventory' },
+  '/inventory/intelligence': { label: 'Intelligence', parent: '/inventory' },
+  '/reports':            { label: 'Reports Hub',       parent: '/reports' },
+  '/reports/gst-summary':         { label: 'GST Summary',         parent: '/reports' },
+  '/reports/schedule-h-register': { label: 'Schedule H Register', parent: '/reports' },
+  '/reports/ar-aging':            { label: 'AR Aging',            parent: '/reports' },
+  '/reports/profit-loss':         { label: 'Profit & Loss',       parent: '/reports' },
+  '/reports/stock-ledger':        { label: 'Stock Ledger',        parent: '/reports' },
+  '/compliance':         { label: 'Compliance',        parent: '/reports' },
+  '/financial':          { label: 'Financial',         parent: '/reports' },
+  '/day-close':          { label: 'End of Day',        parent: '/reports' },
+  '/analytics':          { label: 'Behaviour',         parent: '/reports' },
+  '/users':              { label: 'Users',             parent: '/admin' },
+  '/bulk':               { label: 'Bulk Upload',       parent: '/admin' },
+  '/barcode-mapping':    { label: 'Barcode Mapping',   parent: '/admin' },
+  '/audit':              { label: 'Audit Log',         parent: '/admin' },
+  '/settings':           { label: 'Settings',          parent: '/admin' },
+  '/attendance':         { label: 'Attendance',        parent: '/hr' },
+  '/hr/roster':          { label: 'Roster',            parent: '/hr' },
+  '/hr/leaves':          { label: 'Leave & Payroll',   parent: '/hr' },
+  '/my-leave':           { label: 'My Leave',          parent: '/hr' },
+  '/ai-care':            { label: 'AI Care Engine' },
+};
+
+const PARENT_LABELS: Record<string, string> = {
+  '/inventory': 'Inventory',
+  '/reports':   'Reports',
+  '/admin':     'Administration',
+  '/hr':        'HR',
+};
+
+function LayoutBreadcrumb({ pathname }: { pathname: string }) {
+  // Find best matching route (handle dynamic routes like /patients/[id])
+  const exactMatch = BREADCRUMB_MAP[pathname];
+  const prefixMatch = !exactMatch
+    ? Object.keys(BREADCRUMB_MAP)
+        .filter(k => pathname.startsWith(k + '/'))
+        .sort((a, b) => b.length - a.length)[0]
+    : null;
+  const route = exactMatch || (prefixMatch ? BREADCRUMB_MAP[prefixMatch] : null);
+  if (!route || pathname === '/dashboard') return null;
+
+  const parentKey = route.parent;
+  const parentLabel = parentKey ? PARENT_LABELS[parentKey] : null;
+
+  return (
+    <div className="flex items-center gap-1.5 px-6 py-2 border-b border-gray-100 bg-gray-50/80 text-xs text-gray-400">
+      <Link href="/dashboard" className="hover:text-[#00475a] transition-colors flex items-center gap-1">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        Home
+      </Link>
+      {parentLabel && (
+        <>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+          <span>{parentLabel}</span>
+        </>
+      )}
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+      <span className="text-gray-600 font-medium">{route.label}</span>
+    </div>
+  );
+}
+
 // ── Owner sidebar layout (labelled, grouped) ───────────────────
 function SidebarLayout({
   user, children, pathname,
@@ -275,6 +349,17 @@ function SidebarLayout({
 }) {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Sync browser tab title from pathname
+  useEffect(() => {
+    const route = BREADCRUMB_MAP[pathname] ||
+      Object.entries(BREADCRUMB_MAP)
+        .filter(([k]) => pathname.startsWith(k + '/'))
+        .sort((a, b) => b[0].length - a[0].length)[0]?.[1];
+    if (route) document.title = `${route.label} — SimpliRx`;
+    else document.title = 'SimpliRx';
+  }, [pathname]);
+
+
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
 
   const handleLogout = () => {
@@ -453,6 +538,7 @@ function SidebarLayout({
           </div>
         </header>
 
+        <LayoutBreadcrumb pathname={pathname} />
         <main className="flex-1 overflow-y-auto scrollbar-thin">
           {children}
         </main>
