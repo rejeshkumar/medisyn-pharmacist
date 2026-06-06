@@ -11,7 +11,7 @@ import {
   BarChart3, Users, DollarSign, Upload, Shield, LogOut, ChevronRight,
   Menu, X, HeartPulse, ClipboardList, Settings, Briefcase,
   RefreshCcw, ShoppingBag, Clock, Calendar, Bell,
-  Stethoscope, ReceiptText, ArrowLeftRight, ChevronUp, Cpu, Scan, ClipboardCheck
+  Stethoscope, ReceiptText, ArrowLeftRight, ChevronUp, Cpu, Scan, ClipboardCheck, BookOpen
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
