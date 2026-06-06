@@ -3,7 +3,6 @@ import Link from 'next/link';
 import { ChevronRight, Home } from 'lucide-react';
 
 interface Crumb { label: string; href?: string; }
-
 interface PageHeaderProps {
   title: string;
   subtitle?: string;
@@ -13,8 +12,7 @@ interface PageHeaderProps {
 
 export default function PageHeader({ title, subtitle, crumbs = [], actions }: PageHeaderProps) {
   return (
-    <div className="px-6 pt-5 pb-4 border-b border-gray-100 bg-white">
-      {/* Breadcrumb */}
+    <div className="px-6 pt-5 pb-4 border-b border-gray-100 bg-white mb-6">
       {crumbs.length > 0 && (
         <nav className="flex items-center gap-1 mb-2 text-xs text-gray-400">
           <Link href="/dashboard" className="hover:text-[#00475a] transition-colors flex items-center gap-1">
@@ -31,7 +29,6 @@ export default function PageHeader({ title, subtitle, crumbs = [], actions }: Pa
           ))}
         </nav>
       )}
-      {/* Title row */}
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold text-gray-900 leading-tight">{title}</h1>

@@ -1,20 +1,6 @@
-import { FileText, Package, BarChart3, AlertCircle, Search } from 'lucide-react';
-
-const ICONS: Record<string, any> = {
-  report: BarChart3,
-  stock: Package,
-  search: Search,
-  default: FileText,
-  warning: AlertCircle,
-};
-
-interface EmptyStateProps {
-  icon?: keyof typeof ICONS;
-  title: string;
-  subtitle?: string;
-  action?: React.ReactNode;
-}
-
+import { FileText, Package, BarChart3, Search } from 'lucide-react';
+const ICONS: Record<string, any> = { report: BarChart3, stock: Package, search: Search, default: FileText };
+interface EmptyStateProps { icon?: string; title: string; subtitle?: string; action?: React.ReactNode; }
 export default function EmptyState({ icon = 'default', title, subtitle, action }: EmptyStateProps) {
   const Icon = ICONS[icon] || ICONS.default;
   return (

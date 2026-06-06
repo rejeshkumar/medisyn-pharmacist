@@ -1,8 +1,7 @@
 'use client';
-import EmptyState from '@/components/common/EmptyState';
 import { TableSkeleton } from '@/components/common/Skeleton';
-import toast from 'react-hot-toast';
 import PageHeader from '@/components/common/PageHeader';
+import toast from 'react-hot-toast';
 import { useState, useEffect, useCallback } from 'react';
 import { Download, Search, BookOpen, AlertCircle } from 'lucide-react';
 
@@ -18,7 +17,6 @@ export default function StockLedgerPage() {
   const [to, setTo] = useState(today);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  useEffect(() => { document.title = 'Stock Ledger — SimpliRx'; }, []);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -45,7 +43,7 @@ export default function StockLedgerPage() {
       );
       if (!res.ok) throw new Error(await res.text());
       setData(await res.json());
-    } catch (e: any) { setError(e.message); toast.error('Export failed'); }
+    } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
   }, [selectedId, from, to]);
 
@@ -84,45 +82,14 @@ export default function StockLedgerPage() {
   }
 
   return (
+    
     <div className="max-w-6xl mx-auto">
       <PageHeader
         title="Stock Ledger"
-        subtitle="Per-drug running stock register — purchases, sales, adjustments"
+        subtitle="Per-drug running stock register"
         crumbs={[{ label: 'Reports', href: '/reports' }, { label: 'Stock Ledger' }]}
-        actions={
-          <button onClick={exportExcel} disabled={!data} className="flex items-center gap-2 px-4 py-2 bg-[#00475a] text-white rounded-lg text-sm font-medium disabled:opacity-40 hover:bg-[#003d4d]">
-            <Download size={16}/> Export Excel
-          </button>
-        }
       />
-          <p className="text-sm text-gray-500">Per-drug running stock register — purchases, sales, adjustments</p>
-        </div>
-        <button onClick={exportExcel} disabled={!data} className="flex items-center gap-2 px-4 py-2 bg-[#00475a] text-white rounded-lg text-sm font-medium disabled:opacity-40 hover:bg-[#003d4d]">
-          <Download size={16}/> Export Excel
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        {/* Medicine selector */}
-        <div className="md:col-span-1 bg-white border border-gray-200 rounded-xl p-4 max-h-[420px] overflow-y-auto">
-          <div className="relative mb-3">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
-            <input
-              type="text" value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search medicine..." className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm"
-            />
-          </div>
-          <div className="space-y-1">
-            {filtered.slice(0, 100).map(m => (
-              <button key={m.id} onClick={() => setSelectedId(m.id)}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${selectedId === m.id ? 'bg-[#00475a] text-white' : 'hover:bg-gray-50 text-gray-700'}`}>
-                <div className="font-medium truncate">{m.name}</div>
-                <div className={`text-xs truncate ${selectedId === m.id ? 'text-teal-200' : 'text-gray-400'}`}>{m.manufacturer}</div>
-              </button>
-            ))}
-            {filtered.length === 0 && <p className="text-sm text-gray-400 text-center py-4">No medicines found</p>}
-          </div>
-        </div>
+      <div className="px-6 pb-6">
 
         {/* Ledger */}
         <div className="md:col-span-2">
@@ -202,6 +169,8 @@ export default function StockLedgerPage() {
             </>
           )}
         </div>
+      </div>
+    </div>
       </div>
     </div>
   );

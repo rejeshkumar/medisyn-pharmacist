@@ -1,8 +1,7 @@
 'use client';
-import EmptyState from '@/components/common/EmptyState';
 import { TableSkeleton } from '@/components/common/Skeleton';
-import toast from 'react-hot-toast';
 import PageHeader from '@/components/common/PageHeader';
+import toast from 'react-hot-toast';
 import { useState, useEffect, useCallback } from 'react';
 import { Download, TrendingUp, TrendingDown, AlertCircle } from 'lucide-react';
 
@@ -16,7 +15,7 @@ export default function ProfitLossPage() {
   const [year, setYear] = useState(today.getFullYear());
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  useEffect(() => { document.title = 'Profit & Loss Statement — SimpliRx'; }, []);
+  useEffect(() => { document.title = 'Profit and Loss — SimpliRx'; }, []);
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
@@ -28,7 +27,7 @@ export default function ProfitLossPage() {
       });
       if (!res.ok) throw new Error(await res.text());
       setData(await res.json());
-    } catch (e: any) { setError(e.message); toast.error('Export failed'); }
+    } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
   }, [month, year]);
 
@@ -71,56 +70,14 @@ export default function ProfitLossPage() {
   const isProfit = (data?.net_profit || 0) >= 0;
 
   return (
-    <div className="max-w-3xl mx-auto">
+    
+    <div className="max-w-6xl mx-auto">
       <PageHeader
         title="Profit & Loss Statement"
         subtitle="Monthly revenue, costs and net profit"
         crumbs={[{ label: 'Reports', href: '/reports' }, { label: 'Profit & Loss' }]}
-        actions={
-          <button onClick={exportExcel} disabled={!data} className="flex items-center gap-2 px-4 py-2 bg-[#00475a] text-white rounded-lg text-sm font-medium disabled:opacity-40 hover:bg-[#003d4d]">
-            <Download size={16}/> Export Excel
-          </button>
-        }
       />
-        <button onClick={exportExcel} disabled={!data} className="flex items-center gap-2 px-4 py-2 bg-[#00475a] text-white rounded-lg text-sm font-medium disabled:opacity-40 hover:bg-[#003d4d]">
-          <Download size={16}/> Export Excel
-        </button>
-      </div>
-
-      <div className="flex gap-3 mb-6">
-        <select value={month} onChange={e => setMonth(+e.target.value)} className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">
-          {MONTHS.map((m, i) => <option key={i} value={i+1}>{m}</option>)}
-        </select>
-        <select value={year} onChange={e => setYear(+e.target.value)} className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">
-          {[2024,2025,2026,2027].map(y => <option key={y} value={y}>{y}</option>)}
-        </select>
-      </div>
-
-      {error && <div className="flex items-center gap-2 p-4 bg-red-50 text-red-700 rounded-lg mb-4 text-sm"><AlertCircle size={16}/>{error}</div>}
-
-      {loading && <TableSkeleton rows={6} />}
-
-      {data && (
-        <div className="space-y-4">
-          {/* KPI row */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="bg-white border border-gray-200 rounded-xl p-4">
-              <p className="text-xs text-gray-500 mb-1">Total Revenue</p>
-              <p className="text-xl font-semibold text-[#00475a]">{fmt(rev.total)}</p>
-            </div>
-            <div className="bg-white border border-gray-200 rounded-xl p-4">
-              <p className="text-xs text-gray-500 mb-1">Gross Margin</p>
-              <p className="text-xl font-semibold text-gray-900">{pct(data.gross_margin_pct)}</p>
-            </div>
-            <div className={`border rounded-xl p-4 ${isProfit ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-              <p className="text-xs text-gray-500 mb-1">Net {isProfit ? 'Profit' : 'Loss'}</p>
-              <div className="flex items-center gap-1">
-                {isProfit ? <TrendingUp size={16} className="text-green-600"/> : <TrendingDown size={16} className="text-red-600"/>}
-                <p className={`text-xl font-semibold ${isProfit ? 'text-green-700' : 'text-red-700'}`}>{fmt(Math.abs(data.net_profit))}</p>
-              </div>
-              <p className="text-xs text-gray-400 mt-0.5">{pct(data.net_margin_pct)} margin</p>
-            </div>
-          </div>
+      <div className="px-6 pb-6">
 
           {/* P&L Statement */}
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
@@ -182,6 +139,8 @@ export default function ProfitLossPage() {
           <p className="text-xs text-gray-400">COGS calculated from purchase cost price. If cost price unavailable, estimated at 70% of MRP. Review with your accountant for audit purposes.</p>
         </div>
       )}
+    </div>
+      </div>
     </div>
   );
 }

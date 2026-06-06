@@ -1,8 +1,7 @@
 'use client';
-import EmptyState from '@/components/common/EmptyState';
 import { TableSkeleton } from '@/components/common/Skeleton';
-import toast from 'react-hot-toast';
 import PageHeader from '@/components/common/PageHeader';
+import toast from 'react-hot-toast';
 import { useState, useEffect, useCallback } from 'react';
 import { Download, Shield, AlertCircle, Printer } from 'lucide-react';
 
@@ -16,7 +15,7 @@ export default function ScheduleHRegisterPage() {
   const [schedule, setSchedule] = useState('H');
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  useEffect(() => { document.title = 'Schedule H/H1 Prescription Register — SimpliRx'; }, []);
+  useEffect(() => { document.title = 'Schedule H Register — SimpliRx'; }, []);
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
@@ -29,7 +28,7 @@ export default function ScheduleHRegisterPage() {
       );
       if (!res.ok) throw new Error(await res.text());
       setData(await res.json());
-    } catch (e: any) { setError(e.message); toast.error('Export failed'); }
+    } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
   }, [from, to, schedule]);
 
@@ -76,31 +75,14 @@ export default function ScheduleHRegisterPage() {
   }
 
   return (
+    
     <div className="max-w-6xl mx-auto">
       <PageHeader
         title="Schedule H/H1 Prescription Register"
         subtitle="Statutory register under Drugs & Cosmetics Rules"
         crumbs={[{ label: 'Reports', href: '/reports' }, { label: 'Schedule H Register' }]}
-        actions={
-          <button onClick={() => window.print()} className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50">
-            <Printer size={16}/> Print
-          </button>
-          <button onClick={exportExcel} disabled={!data} className="flex items-center gap-2 px-4 py-2 bg-[#00475a] text-white rounded-lg text-sm font-medium disabled:opacity-40 hover:bg-[#003d4d]">
-            <Download size={16}/> Export Excel
-          </button>
-        }
       />
-          <p className="text-sm text-gray-500">Statutory register under Drugs & Cosmetics Rules — must be produced on inspector demand</p>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={() => window.print()} className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50">
-            <Printer size={16}/> Print
-          </button>
-          <button onClick={exportExcel} disabled={!data} className="flex items-center gap-2 px-4 py-2 bg-[#00475a] text-white rounded-lg text-sm font-medium disabled:opacity-40 hover:bg-[#003d4d]">
-            <Download size={16}/> Export Excel
-          </button>
-        </div>
-      </div>
+      <div className="px-6 pb-6">
 
       <div className="flex flex-wrap gap-3 mb-6">
         <div className="flex items-center gap-2">
@@ -162,6 +144,8 @@ export default function ScheduleHRegisterPage() {
             </table>
           </div>
         )}
+      </div>
+    </div>
       </div>
     </div>
   );
