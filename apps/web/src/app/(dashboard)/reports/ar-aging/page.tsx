@@ -23,7 +23,7 @@ export default function ArAgingPage() {
     setLoading(true); setError('');
     try {
       const token = localStorage.getItem('medisyn_token');
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/report/ar-aging?as_of=${asOf}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reports/ar-aging?as_of=${asOf}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error(await res.text());

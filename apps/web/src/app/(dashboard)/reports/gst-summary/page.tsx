@@ -17,7 +17,7 @@ export default function GstSummaryPage() {
     setLoading(true); setError('');
     try {
       const token = localStorage.getItem('medisyn_token');
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/report/gst-summary?month=${month}&year=${year}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reports/gst-summary?month=${month}&year=${year}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error(await res.text());
