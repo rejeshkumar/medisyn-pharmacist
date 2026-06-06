@@ -146,8 +146,10 @@ function BottomTabLayout({
     router.push('/login');
   };
 
-  const isActive = (href: string) =>
-    pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
+  const isActive = (href: string) => {
+    if (href === '/reports') return pathname === '/reports';
+    return pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
+  };
 
   return (
     <div className="flex flex-col h-screen bg-slate-50">
@@ -275,8 +277,10 @@ function SidebarLayout({
     router.push('/login');
   };
 
-  const isActive = (href: string) =>
-    pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
+  const isActive = (href: string) => {
+    if (href === '/reports') return pathname === '/reports';
+    return pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
+  };
 
   return (
     <div className="flex h-screen bg-gray-50">
