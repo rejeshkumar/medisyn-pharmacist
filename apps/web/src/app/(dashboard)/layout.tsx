@@ -82,11 +82,16 @@ const OWNER_NAV_SECTIONS = [
   {
     section: 'Reports & Compliance',
     items: [
-      { href: '/compliance',         label: 'Compliance',    icon: Shield      },
-      { href: '/reports',            label: 'Reports',       icon: BarChart3   },
-      { href: '/financial', label: 'Financial', icon: DollarSign },
-      { href: '/day-close', label: 'End of Day', icon: DollarSign },
-      { href: '/analytics',          label: 'Behaviour',     icon: Users         },
+      { href: '/compliance',                    label: 'Compliance',          icon: Shield      },
+      { href: '/reports',                       label: 'Reports',             icon: BarChart3   },
+      { href: '/reports/gst-summary',           label: 'GST Summary',         icon: FileText    },
+      { href: '/reports/schedule-h-register',   label: 'Schedule H Register', icon: ClipboardCheck },
+      { href: '/reports/ar-aging',              label: 'AR Aging',            icon: Clock       },
+      { href: '/reports/profit-loss',           label: 'Profit & Loss',       icon: BarChart3   },
+      { href: '/reports/stock-ledger',          label: 'Stock Ledger',        icon: BookOpen    },
+      { href: '/financial',                     label: 'Financial',           icon: DollarSign  },
+      { href: '/day-close',                     label: 'End of Day',          icon: DollarSign  },
+      { href: '/analytics',                     label: 'Behaviour',           icon: Users       },
     ],
   },
   {
