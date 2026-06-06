@@ -140,34 +140,6 @@ function AdjustmentModal({
     else if (adjType !== 'count_correction') setDirection('decrease');
   }, [adjType]);
 
-
-  // ── Bulk write-off handler ───────────────────────────────────────────────
-  const handleBulkWriteOff = async () => {
-    if (bulkSelected.size === 0) { toast.error('Select at least one batch'); return; }
-    if (!bulkReason.trim()) { toast.error('Reason is required'); return; }
-    setBulkSaving(true);
-    let success = 0, failed = 0;
-    for (const batchId of Array.from(bulkSelected)) {
-      try {
-        await api.post('/stock-adjustments', {
-          batch_id:        batchId,
-          adjustment_type: bulkType,
-          direction:       'decrease',
-          qty_adjusted:    -1, // will be entire batch qty — API handles 0/-1 as full batch
-          reason:          bulkReason,
-          notes:           `Bulk write-off — ${new Date().toLocaleDateString('en-IN')}`,
-        });
-        success++;
-      } catch { failed++; }
-    }
-    setBulkSaving(false);
-    if (success > 0) toast.success(`${success} batch${success > 1 ? 'es' : ''} written off`);
-    if (failed > 0) toast.error(`${failed} failed — check individually`);
-    setBulkSelected(new Set());
-    setShowBulkPanel(false);
-    loadBatches();
-  };
-
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -481,11 +453,6 @@ export default function StockAdjustmentPage() {
   const [loading, setLoading]         = useState(true);
   const [selectedBatch, setSelectedBatch] = useState<any>(null);
   const [selectedMed, setSelectedMed]     = useState<any>(null);
-  const [bulkSelected, setBulkSelected]   = useState<Set<string>>(new Set());
-  const [bulkType, setBulkType]           = useState('expired');
-  const [bulkReason, setBulkReason]       = useState('');
-  const [bulkSaving, setBulkSaving]       = useState(false);
-  const [showBulkPanel, setShowBulkPanel] = useState(false);
   const [typeFilter, setTypeFilter]   = useState('all');
   const [tab, setTab]                 = useState<'adjust' | 'history'>('adjust');
 
@@ -511,34 +478,6 @@ export default function StockAdjustmentPage() {
     !search || b.brand_name?.toLowerCase().includes(search.toLowerCase())
       || b.batch_number?.toLowerCase().includes(search.toLowerCase())
   );
-
-
-  // ── Bulk write-off handler ───────────────────────────────────────────────
-  const handleBulkWriteOff = async () => {
-    if (bulkSelected.size === 0) { toast.error('Select at least one batch'); return; }
-    if (!bulkReason.trim()) { toast.error('Reason is required'); return; }
-    setBulkSaving(true);
-    let success = 0, failed = 0;
-    for (const batchId of Array.from(bulkSelected)) {
-      try {
-        await api.post('/stock-adjustments', {
-          batch_id:        batchId,
-          adjustment_type: bulkType,
-          direction:       'decrease',
-          qty_adjusted:    -1, // will be entire batch qty — API handles 0/-1 as full batch
-          reason:          bulkReason,
-          notes:           `Bulk write-off — ${new Date().toLocaleDateString('en-IN')}`,
-        });
-        success++;
-      } catch { failed++; }
-    }
-    setBulkSaving(false);
-    if (success > 0) toast.success(`${success} batch${success > 1 ? 'es' : ''} written off`);
-    if (failed > 0) toast.error(`${failed} failed — check individually`);
-    setBulkSelected(new Set());
-    setShowBulkPanel(false);
-    loadBatches();
-  };
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -688,47 +627,6 @@ export default function StockAdjustmentPage() {
           onSuccess={() => { loadBatches(); if (tab === 'history') loadHistory(); }}
         />
       )}
-      {/* Bulk action panel */}
-      {showBulkPanel && bulkSelected.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#00475a] text-white rounded-2xl shadow-2xl px-5 py-4 flex items-center gap-4 min-w-[480px] max-w-[600px]">
-          <div className="flex-1">
-            <p className="text-sm font-bold">{bulkSelected.size} batch{bulkSelected.size > 1 ? 'es' : ''} selected</p>
-            <div className="flex items-center gap-2 mt-2">
-              <select
-                value={bulkType}
-                onChange={e => setBulkType(e.target.value)}
-                className="text-xs bg-white/10 border border-white/20 rounded-lg px-2 py-1.5 text-white"
-              >
-                <option value="expired">Expired</option>
-                <option value="breakage">Damaged / Breakage</option>
-                <option value="theft_loss">Theft / Loss</option>
-                <option value="correction">Stock Correction</option>
-              </select>
-              <input
-                type="text"
-                placeholder="Reason (required)"
-                value={bulkReason}
-                onChange={e => setBulkReason(e.target.value)}
-                className="flex-1 text-xs bg-white/10 border border-white/20 rounded-lg px-2 py-1.5 text-white placeholder-white/50"
-              />
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleBulkWriteOff}
-              disabled={bulkSaving || !bulkReason.trim()}
-              className="px-4 py-2 bg-red-500 hover:bg-red-600 disabled:opacity-40 text-white text-xs font-bold rounded-lg transition-colors"
-            >
-              {bulkSaving ? 'Writing off...' : 'Write Off All'}
-            </button>
-            <button
-              onClick={() => { setBulkSelected(new Set()); setShowBulkPanel(false); setBulkReason(''); }}
-              className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-medium rounded-lg"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
+    </div>
   );
 }
