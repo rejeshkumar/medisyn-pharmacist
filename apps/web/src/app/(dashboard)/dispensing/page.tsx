@@ -13,7 +13,7 @@ import {
   Search, Plus, Minus, Trash2, ShoppingCart, Check,
   AlertTriangle, X, FileText, Loader2, Camera,
   ChevronUp, ClipboardList, MapPin, Tag, Info,
-  RefreshCw, UserPlus, Stethoscope, Merge, Heart, Scan,, ShoppingBag} from 'lucide-react';
+  RefreshCw, UserPlus, Stethoscope, Merge, Heart, Scan, ShoppingBag} from 'lucide-react';
 import BillDocument, { type BillData } from '@/components/billing/BillDocument';
 import { cn } from '@/lib/utils';
 import ExpiryWarningModal from '@/components/ExpiryWarningModal';
