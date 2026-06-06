@@ -1,6 +1,6 @@
 import {
   IsString,
-  IsOptional,
+  IsOptional, IsUUID,
   IsArray,
   ValidateNested,
   IsNumber,
