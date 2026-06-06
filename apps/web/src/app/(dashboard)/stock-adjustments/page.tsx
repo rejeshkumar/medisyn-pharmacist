@@ -688,7 +688,6 @@ export default function StockAdjustmentPage() {
           onSuccess={() => { loadBatches(); if (tab === 'history') loadHistory(); }}
         />
       )}
-    </div>
       {/* Bulk action panel */}
       {showBulkPanel && bulkSelected.size > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#00475a] text-white rounded-2xl shadow-2xl px-5 py-4 flex items-center gap-4 min-w-[480px] max-w-[600px]">
