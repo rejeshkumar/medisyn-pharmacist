@@ -19,7 +19,7 @@ export function TableSkeleton({ rows = 8 }: { rows?: number }) {
 
 export function CardSkeleton({ count = 4 }: { count?: number }) {
   return (
-    <div className={`grid grid-cols-${Math.min(count, 4)} gap-4 p-4`}>
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4">
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} className="bg-white border border-gray-200 rounded-xl p-4 space-y-2">
           <SkeletonBar w="60%" h="12px" />

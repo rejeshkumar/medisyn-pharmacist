@@ -1,6 +1,6 @@
 'use client';
-import { TableSkeleton } from '@/components/common/Skeleton';
 import PageHeader from '@/components/common/PageHeader';
+import { TableSkeleton } from '@/components/common/Skeleton';
 import toast from 'react-hot-toast';
 import { useState, useEffect, useCallback } from 'react';
 import { Download, Shield, AlertCircle, Printer } from 'lucide-react';
@@ -75,14 +75,24 @@ export default function ScheduleHRegisterPage() {
   }
 
   return (
-    
-    <div className="max-w-6xl mx-auto">
-      <PageHeader
-        title="Schedule H/H1 Prescription Register"
-        subtitle="Statutory register under Drugs & Cosmetics Rules"
-        crumbs={[{ label: 'Reports', href: '/reports' }, { label: 'Schedule H Register' }]}
-      />
-      <div className="px-6 pb-6">
+    <div className="p-6 max-w-6xl mx-auto">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <Shield size={20} className="text-[#00475a]"/>
+            <h1 className="text-2xl font-semibold text-gray-900">Schedule H/H1 Prescription Register</h1>
+          </div>
+          <p className="text-sm text-gray-500">Statutory register under Drugs & Cosmetics Rules — must be produced on inspector demand</p>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => window.print()} className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50">
+            <Printer size={16}/> Print
+          </button>
+          <button onClick={exportExcel} disabled={!data} className="flex items-center gap-2 px-4 py-2 bg-[#00475a] text-white rounded-lg text-sm font-medium disabled:opacity-40 hover:bg-[#003d4d]">
+            <Download size={16}/> Export Excel
+          </button>
+        </div>
+      </div>
 
       <div className="flex flex-wrap gap-3 mb-6">
         <div className="flex items-center gap-2">
@@ -144,8 +154,6 @@ export default function ScheduleHRegisterPage() {
             </table>
           </div>
         )}
-      </div>
-    </div>
       </div>
     </div>
   );

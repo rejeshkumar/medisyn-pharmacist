@@ -16,11 +16,11 @@ export default function PageHeader({ title, subtitle, crumbs = [], actions }: Pa
       {crumbs.length > 0 && (
         <nav className="flex items-center gap-1 mb-2 text-xs text-gray-400">
           <Link href="/dashboard" className="hover:text-[#00475a] transition-colors flex items-center gap-1">
-            <Home size={12}/> Home
+            <Home size={12} /> Home
           </Link>
           {crumbs.map((crumb, i) => (
             <span key={i} className="flex items-center gap-1">
-              <ChevronRight size={10}/>
+              <ChevronRight size={10} />
               {crumb.href
                 ? <Link href={crumb.href} className="hover:text-[#00475a] transition-colors">{crumb.label}</Link>
                 : <span className="text-gray-600 font-medium">{crumb.label}</span>
