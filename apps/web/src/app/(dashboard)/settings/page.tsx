@@ -1,6 +1,6 @@
 'use client';
 import { useRouter } from 'next/navigation';
-import { Star, Stethoscope, FlaskConical, ChevronRight, AlertTriangle, Settings, Shield, Package } from 'lucide-react';
+import { Star, Stethoscope, FlaskConical, ChevronRight, AlertTriangle, Settings, Shield, Package, MessageSquare } from 'lucide-react';
 
 const SETTINGS = [
   {
@@ -37,6 +37,13 @@ const SETTINGS = [
     label: 'Expiry warning threshold',
     desc: 'Days before expiry to show stock warnings',
     color: 'text-red-600 bg-red-50',
+  },
+  {
+    href: '/settings/whatsapp-templates',
+    icon: MessageSquare,
+    label: 'WhatsApp templates',
+    desc: 'Manage message templates for bills, registrations and reminders',
+    color: 'text-green-600 bg-green-50',
   },
   {
     href: '/settings/reorder',
