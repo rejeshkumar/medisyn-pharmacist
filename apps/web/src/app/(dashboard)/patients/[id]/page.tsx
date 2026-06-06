@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { ShoppingBag, useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
@@ -26,6 +26,11 @@ export default function PatientEditPage() {
   const [showVipPayment, setShowVipPayment] = useState(false);
   const [vipPayment, setVipPayment] = useState({ method: 'cash', amount: '', upi_txn_id: '' });
   const [savingVipPayment, setSavingVipPayment] = useState(false);
+
+  // Dispensing history
+  const [sales, setSales] = useState<any[]>([]);
+  const [salesLoading, setSalesLoading] = useState(false);
+  const [salesExpanded, setSalesExpanded] = useState(false);
   const [patient, setPatient]   = useState<any>(null);
   const [vipInfo, setVipInfo]   = useState<any>(null);
   const [tierDiscounts, setTierDiscounts] = useState<Record<string, any>>({});
@@ -156,6 +161,20 @@ export default function PatientEditPage() {
       <Loader2 className="w-5 h-5 animate-spin text-[#00475a]" />
     </div>
   );
+
+  const fetchSales = async () => {
+    if (!patient?.id) return;
+    setSalesLoading(true);
+    try {
+      const res = await api.get(`/sales/patient/${patient.id}`);
+      setSales(res.data || []);
+    } catch {}
+    finally { setSalesLoading(false); }
+  };
+
+  useEffect(() => {
+    if (patient?.id) fetchSales();
+  }, [patient?.id]);
 
   if (!patient) return (
     <div className="p-6 text-center text-slate-500">Patient not found</div>
@@ -468,6 +487,63 @@ export default function PatientEditPage() {
           </div>
         </div>
       )}
+
+      {/* ── Dispensing History ──────────────────────────────────── */}
+      <div className="bg-white border border-slate-100 rounded-xl p-5 mt-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <ShoppingBag className="w-4 h-4 text-[#00475a]" />
+            <h3 className="font-semibold text-slate-800 text-sm">Dispensing History</h3>
+            {sales.length > 0 && (
+              <span className="text-xs bg-[#e1f5ee] text-[#00475a] px-2 py-0.5 rounded-full font-medium">
+                {sales.length} bills
+              </span>
+            )}
+          </div>
+          <button onClick={() => setSalesExpanded(e => !e)}
+            className="text-xs text-[#00475a] font-medium hover:underline">
+            {salesExpanded ? 'Show less' : 'Show all'}
+          </button>
+        </div>
+
+        {salesLoading ? (
+          <div className="flex justify-center py-4">
+            <Loader2 className="w-5 h-5 animate-spin text-[#00475a]" />
+          </div>
+        ) : sales.length === 0 ? (
+          <p className="text-sm text-slate-400 text-center py-4">No dispensing history found</p>
+        ) : (
+          <div className="space-y-2">
+            {(salesExpanded ? sales : sales.slice(0, 3)).map((sale: any) => (
+              <div key={sale.id} className="border border-slate-100 rounded-xl p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono font-bold text-[#00475a]">{sale.bill_number}</span>
+                    <span className="text-xs text-slate-400">
+                      {new Date(sale.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{sale.payment_mode}</span>
+                    <span className="text-sm font-bold text-slate-800">₹{Number(sale.total_amount).toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {(sale.items || []).slice(0, 4).map((item: any, idx: number) => (
+                    <span key={idx} className="text-[10px] bg-slate-50 border border-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
+                      {item.medicine_name} × {item.qty}
+                    </span>
+                  ))}
+                  {(sale.items || []).length > 4 && (
+                    <span className="text-[10px] text-slate-400">+{sale.items.length - 4} more</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
     </>
   );
 }

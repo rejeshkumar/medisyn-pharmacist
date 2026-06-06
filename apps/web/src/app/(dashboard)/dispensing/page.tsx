@@ -13,8 +13,7 @@ import {
   Search, Plus, Minus, Trash2, ShoppingCart, Check,
   AlertTriangle, X, FileText, Loader2, Camera,
   ChevronUp, ClipboardList, MapPin, Tag, Info,
-  RefreshCw, UserPlus, Stethoscope, Merge, Heart, Scan,
-} from 'lucide-react';
+  RefreshCw, UserPlus, Stethoscope, Merge, Heart, Scan,, ShoppingBag} from 'lucide-react';
 import BillDocument, { type BillData } from '@/components/billing/BillDocument';
 import { cn } from '@/lib/utils';
 import ExpiryWarningModal from '@/components/ExpiryWarningModal';
@@ -490,6 +489,17 @@ export default function DispensingPage() {
     referring_doctor: '',
   });
   const [patientSearch, setPatientSearch] = useState('');
+  const [patientSales, setPatientSales] = useState<any[]>([]);
+  const [salesLoading, setSalesLoading] = useState(false);
+
+  useEffect(() => {
+    if (!compliance.patient_id) { setPatientSales([]); return; }
+    setSalesLoading(true);
+    api.get(`/sales/patient/${compliance.patient_id}`)
+      .then(r => setPatientSales(r.data || []))
+      .catch(() => {})
+      .finally(() => setSalesLoading(false));
+  }, [compliance.patient_id]);
 
   // Payment
   const [paymentMode, setPaymentMode] = useState('');
@@ -1253,6 +1263,36 @@ export default function DispensingPage() {
             <span className="hidden sm:inline">Scan</span> Label
           </button>
         </div>
+        {/* Dispensing history mini panel */}
+        {compliance.patient_id && (
+          <div className="mt-2 border border-teal-100 rounded-xl bg-teal-50/40 p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <ShoppingBag className="w-3.5 h-3.5 text-[#00475a]" />
+              <span className="text-xs font-semibold text-[#00475a]">Last purchases</span>
+              {salesLoading && <Loader2 className="w-3 h-3 animate-spin text-[#00475a]" />}
+            </div>
+            {!salesLoading && patientSales.length === 0 && (
+              <p className="text-xs text-slate-400">No previous purchases</p>
+            )}
+            {patientSales.slice(0, 3).map((sale: any) => (
+              <div key={sale.id} className="mb-2 last:mb-0">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono text-[#00475a] font-bold">{sale.bill_number}</span>
+                  <span className="text-[10px] text-slate-400">{new Date(sale.created_at).toLocaleDateString('en-IN', { day:'2-digit', month:'short' })}</span>
+                  <span className="text-[10px] font-bold text-slate-700">₹{Number(sale.total_amount).toLocaleString('en-IN')}</span>
+                </div>
+                <div className="flex flex-wrap gap-1 mt-0.5">
+                  {(sale.items || []).slice(0, 3).map((item: any, i: number) => (
+                    <span key={i} className="text-[9px] bg-white border border-slate-200 text-slate-500 px-1.5 py-0.5 rounded-full">
+                      {item.medicine_name} ×{item.qty}
+                    </span>
+                  ))}
+                  {(sale.items || []).length > 3 && <span className="text-[9px] text-slate-400">+{sale.items.length - 3}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
         {/* Row 2: Ref. Dr + Date (always visible, stacked on mobile) */}
         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
           <span className="text-xs font-semibold text-slate-500 whitespace-nowrap flex-shrink-0">Ref. Dr:</span>
