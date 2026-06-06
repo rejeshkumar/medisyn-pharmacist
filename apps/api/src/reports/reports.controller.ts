@@ -124,6 +124,13 @@ export class ReportsController {
     ]);
 
     const pharmacyRevenue  = parseFloat(todaySales[0]?.total || '0');
+
+      const yPharmacy = parseFloat(yesterdaySales?.[0]?.total || '0');
+      const yConsult  = parseFloat(yesterdayConsult?.[0]?.total || '0');
+      const yVip      = parseFloat(yesterdayVip?.[0]?.total || '0');
+      const yTotal    = yPharmacy + yConsult + yVip;
+      const trendPct  = (today: number, yesterday: number): number | null =>
+        yesterday > 0 ? Math.round(((today - yesterday) / yesterday) * 100) : null;
     const consultRevenue   = parseFloat(consultationRevenue[0]?.total || '0');
     const vipToday         = parseFloat(vipRevenue[0]?.today || '0');
     const totalRevenue     = pharmacyRevenue + consultRevenue + vipToday;
@@ -140,14 +147,6 @@ export class ReportsController {
       daily_sales:       dailySales.map((d: any) => ({ day: d.day, total: parseFloat(d.total), bills: d.bill_count })),
       recent_bills:      recentBills,
       // Revenue breakdown
-      // Trend calculation
-      const yPharmacy     = parseFloat(yesterdaySales?.[0]?.total || '0');
-      const yConsult      = parseFloat(yesterdayConsult?.[0]?.total || '0');
-      const yVip          = parseFloat(yesterdayVip?.[0]?.total || '0');
-      const yTotal        = yPharmacy + yConsult + yVip;
-      const trendPct = (today: number, yesterday: number) =>
-        yesterday > 0 ? Math.round(((today - yesterday) / yesterday) * 100) : null;
-
       revenue_breakdown: {
         total:        totalRevenue,
         pharmacy:     pharmacyRevenue,
