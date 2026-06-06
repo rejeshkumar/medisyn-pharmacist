@@ -1091,7 +1091,7 @@ export class ReportsController {
         s.created_at::date AS sale_date, s.bill_number,
         COALESCE(p.name,'Walk-in') AS patient_name, COALESCE(p.mobile,'') AS patient_mobile,
         COALESCE(p.address,'') AS patient_address, COALESCE(s.referred_by,'') AS prescriber_name,
-        m.name AS drug_name, COALESCE(m.manufacturer,'') AS manufacturer,
+        m.brand_name AS drug_name, COALESCE(m.manufacturer,'') AS manufacturer,
         si.batch_no, m.schedule_class::TEXT AS schedule_class, si.qty,
         si.mrp AS unit_mrp, (si.qty*si.mrp) AS total_amount, COALESCE(u.name,'') AS dispensed_by
       FROM sales s
@@ -1169,7 +1169,7 @@ export class ReportsController {
     // Medicine list — use stock_batches (real table) not inventory_batches
     if (!medicineId) {
       const medicines = await this.ds.query(`
-        SELECT DISTINCT m.id, m.name, m.manufacturer
+        SELECT DISTINCT m.id, m.brand_name AS name, m.manufacturer
         FROM medicines m
         WHERE m.tenant_id = $1
           AND EXISTS (
@@ -1281,7 +1281,7 @@ export class ReportsController {
     });
 
     const [med] = await this.ds.query(
-      `SELECT name, manufacturer, schedule_class::TEXT AS schedule_class FROM medicines WHERE id = $1`,
+      `SELECT brand_name AS name, manufacturer, schedule_class::TEXT AS schedule_class FROM medicines WHERE id = $1`,
       [medicineId]
     ).catch(() => [{}]);
 
