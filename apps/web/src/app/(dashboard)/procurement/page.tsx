@@ -117,9 +117,7 @@ function ReorderTab() {
 
   const selectedFlags = flags.filter(f => selected.has(f.id));
 
-  if (loading) return (
-    <div className="flex items-center justify-center py-16"><Loader2 className="w-5 h-5 animate-spin text-[#00475a]" /></div>
-  );
+  if (loading) return <div className="flex items-center justify-center py-16"><Loader2 className="w-5 h-5 animate-spin text-[#00475a]" /></div>;
 
   return (
     <div>
@@ -304,6 +302,12 @@ function ReorderTab() {
       )}
 
       {/* PO Creation Modal */}
+              ))}
+            </div>
+          ))}
+          </>
+        );
+      })()}
 
       {showPOForm && (
         <POCreateModal
@@ -1477,9 +1481,7 @@ function ReceivingTab() {
     }
   };
 
-  if (loading) return (
-    <div className="flex items-center justify-center py-16"><Loader2 className="w-5 h-5 animate-spin text-[#00475a]" /></div>
-  );
+  if (loading) return <div className="flex items-center justify-center py-16"><Loader2 className="w-5 h-5 animate-spin text-[#00475a]" /></div>;
 
   if (batches.length === 0) {
     return (
