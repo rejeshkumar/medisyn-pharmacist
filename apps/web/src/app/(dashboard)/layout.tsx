@@ -82,19 +82,16 @@ const OWNER_NAV_SECTIONS = [
   {
     section: 'Reports & Compliance',
     items: [
-      { href: '/compliance',  label: 'Compliance', icon: Shield     },
-      { href: '/reports',     label: 'Reports',    icon: BarChart3,
-        children: [
-          { href: '/reports/gst-summary',         label: 'GST Summary',         icon: FileText       },
-          { href: '/reports/schedule-h-register', label: 'Schedule H Register', icon: ClipboardCheck },
-          { href: '/reports/ar-aging',            label: 'AR Aging',            icon: Clock          },
-          { href: '/reports/profit-loss',         label: 'Profit & Loss',       icon: BarChart3      },
-          { href: '/reports/stock-ledger',        label: 'Stock Ledger',        icon: BookOpen       },
-        ],
-      },
-      { href: '/financial', label: 'Financial',  icon: DollarSign },
-      { href: '/day-close', label: 'End of Day', icon: DollarSign },
-      { href: '/analytics', label: 'Behaviour',  icon: Users      },
+      { href: '/compliance',                    label: 'Compliance',          icon: Shield      },
+      { href: '/reports',                       label: 'Reports Hub',         icon: BarChart3   },
+      { href: '/reports/gst-summary',           label: 'GST Summary',         icon: FileText    },
+      { href: '/reports/schedule-h-register',   label: 'Schedule H Register', icon: ClipboardCheck },
+      { href: '/reports/ar-aging',              label: 'AR Aging',            icon: Clock       },
+      { href: '/reports/profit-loss',           label: 'Profit & Loss',       icon: BarChart3   },
+      { href: '/reports/stock-ledger',          label: 'Stock Ledger',        icon: BookOpen    },
+      { href: '/financial',                     label: 'Financial',           icon: DollarSign  },
+      { href: '/day-close',                     label: 'End of Day',          icon: DollarSign  },
+      { href: '/analytics',                     label: 'Behaviour',           icon: Users       },
     ],
   },
   {
@@ -278,8 +275,7 @@ function SidebarLayout({
 }) {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [expandedMap, setExpandedMap] = useState<Record<string, boolean>>({});
-  const expandedMenus: [Record<string, boolean>, React.Dispatch<React.SetStateAction<Record<string, boolean>>>] = [expandedMap, setExpandedMap];
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
 
   const handleLogout = () => {
     clearAuth();
@@ -337,80 +333,82 @@ function SidebarLayout({
             if (role === 'receptionist') return !['Administration', 'HR', 'Reports & Compliance'].includes(section.section || '');
             if (role === 'doctor' || role === 'nurse') return section.section === null;
             return true;
-          }).map((section, si) => (
-            <div key={si} className={si > 0 ? 'mt-1' : ''}>
-              {section.section && (
-                <p className="text-xs font-bold text-[#003d30] uppercase tracking-widest px-4 pt-4 pb-2">
-                  {section.section}
-                </p>
-              )}
-              <div className="space-y-0.5 px-2">
-                {section.items.map(item => {
-                  const Icon = item.icon;
-                  const resolvedHref = (item as any).roleOverride?.[user?.role] || item.href;
-                  const active = isActive(resolvedHref);
-                  const children = (item as any).children;
-                  const anyChildActive = children?.some((c: any) => pathname === c.href || pathname.startsWith(c.href));
-                  const [expanded, setExpanded] = expandedMenus;
-
-                  if (children) {
-                    const isExpanded = expanded[resolvedHref] ?? anyChildActive;
+          }).map((section, si) => {
+            const sectionKey = section.section || '__top__';
+            const hasSection = !!section.section;
+            const anyActive = section.items.some(item => {
+              const h = (item as any).roleOverride?.[user?.role] || item.href;
+              return pathname === h || pathname.startsWith(h + '/');
+            });
+            // Top-level (no section header) always visible, never collapsible
+            if (!hasSection) {
+              return (
+                <div key={si} className="space-y-0.5 px-2 mb-1">
+                  {section.items.map(item => {
+                    const Icon = item.icon;
+                    const resolvedHref = (item as any).roleOverride?.[user?.role] || item.href;
+                    const active = pathname === resolvedHref;
                     return (
-                      <div key={item.href}>
-                        <button
-                          onClick={() => setExpanded((prev: any) => ({ ...prev, [resolvedHref]: !isExpanded }))}
+                      <Link key={item.href} href={resolvedHref}
+                        onClick={() => setSidebarOpen(false)}
+                        className={cn(
+                          'flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all',
+                          active ? 'bg-white/95 text-[#00475a] shadow-sm' : 'text-white hover:bg-white/10',
+                        )}>
+                        <Icon className="w-[18px] h-[18px] flex-shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              );
+            }
+
+            // Collapsible section
+            const isExpanded = expandedSections[sectionKey] ?? anyActive;
+            return (
+              <div key={si} className="mt-1">
+                {/* Section header — clickable to collapse */}
+                <button
+                  onClick={() => setExpandedSections(prev => ({ ...prev, [sectionKey]: !isExpanded }))}
+                  className="w-full flex items-center gap-2 px-4 pt-3 pb-2 group"
+                >
+                  <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest flex-1 text-left group-hover:text-white/80 transition-colors">
+                    {section.section}
+                  </p>
+                  <ChevronRight className={cn(
+                    'w-3 h-3 text-white/40 group-hover:text-white/70 transition-all flex-shrink-0',
+                    isExpanded ? 'rotate-90' : ''
+                  )} />
+                </button>
+
+                {/* Section items */}
+                {isExpanded && (
+                  <div className="space-y-0.5 px-2 mb-1">
+                    {section.items.map(item => {
+                      const Icon = item.icon;
+                      const resolvedHref = (item as any).roleOverride?.[user?.role] || item.href;
+                      const active = pathname === resolvedHref || (resolvedHref !== '/reports' && pathname.startsWith(resolvedHref + '/'));
+                      return (
+                        <Link key={item.href} href={resolvedHref}
+                          onClick={() => setSidebarOpen(false)}
                           className={cn(
-                            'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all',
-                            anyChildActive ? 'bg-white/20 text-white' : 'text-white hover:bg-white/8',
+                            'flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all',
+                            active ? 'bg-white/95 text-[#00475a] shadow-sm' : 'text-white hover:bg-white/10',
                           )}>
                           <Icon className="w-[18px] h-[18px] flex-shrink-0" />
-                          <span className="truncate flex-1 text-left">{item.label}</span>
-                          <ChevronRight className={cn('w-3.5 h-3.5 transition-transform flex-shrink-0', isExpanded ? 'rotate-90' : '')} />
-                        </button>
-                        {isExpanded && (
-                          <div className="ml-3 pl-3 border-l border-white/20 mt-0.5 mb-1 space-y-0.5">
-                            {children.map((child: any) => {
-                              const ChildIcon = child.icon;
-                              const childActive = pathname === child.href;
-                              return (
-                                <Link key={child.href} href={child.href}
-                                  onClick={() => setSidebarOpen(false)}
-                                  className={cn(
-                                    'flex items-center gap-2 px-3 py-2 rounded-lg text-[12px] font-medium transition-all',
-                                    childActive
-                                      ? 'bg-white/95 text-[#00475a] shadow-sm'
-                                      : 'text-white/80 hover:bg-white/10 hover:text-white',
-                                  )}>
-                                  <ChildIcon className="w-[15px] h-[15px] flex-shrink-0" />
-                                  <span className="truncate">{child.label}</span>
-                                </Link>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <Link key={item.href} href={resolvedHref}
-                      onClick={() => setSidebarOpen(false)}
-                      className={cn(
-                        'flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-all',
-                        active
-                          ? 'bg-white/95 text-[#00475a] shadow-sm'
-                          : 'text-white hover:bg-white/8',
-                      )}>
-                      <Icon className="w-[18px] h-[18px] flex-shrink-0" />
-                      <span className="truncate">{item.label}</span>
-                      {item.href === '/hr/leaves' && <PendingLeaveBadge />}
-                    </Link>
-                  );
-                })}
+                          <span className="truncate">{item.label}</span>
+                          {item.href === '/hr/leaves' && <PendingLeaveBadge />}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
-          <div className="pt-2 mt-1 border-t border-gray-100">
+            );
+          })}
+
+          <div className="pt-2 mt-1 border-t border-white/10">
             <RoleSwitcher />
           </div>
         </nav>
