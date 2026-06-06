@@ -934,6 +934,7 @@ export default function DispensingPage() {
   const buildPayload = () => ({
     customer_name:    compliance.patient_name,
     customer_mobile:  compliance.patient_mobile || undefined,
+    patient_id:       compliance.patient_id || undefined,
     doctor_name:      compliance.doctor_name,
     doctor_reg_no:    compliance.doctor_reg_no,
     referring_doctor: compliance.referring_doctor,

@@ -95,6 +95,10 @@ export class CreateSaleDto {
   @IsOptional()
   customer_name?: string;
 
+  @IsOptional()
+  @IsUUID()
+  patient_id?: string;
+
   @ApiPropertyOptional()
   @IsString()
   @IsOptional()

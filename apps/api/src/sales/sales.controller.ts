@@ -64,4 +64,10 @@ export class SalesController {
   ) {
     return this.salesService.voidSale(id, body.reason, req.user);
   }
+
+  @Get('patient/:patientId')
+  getPatientSales(@Param('patientId') patientId: string, @Req() req: any) {
+    return this.salesService.getPatientSales(req.user.tenant_id, patientId);
+  }
+
 }

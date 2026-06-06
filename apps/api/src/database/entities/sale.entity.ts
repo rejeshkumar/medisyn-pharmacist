@@ -39,6 +39,9 @@ export class Sale {
   customer_name: string;
 
   @Column({ nullable: true })
+  patient_id: string;
+
+  @Column({ nullable: true })
   doctor_name: string;
 
   @Column({ nullable: true })

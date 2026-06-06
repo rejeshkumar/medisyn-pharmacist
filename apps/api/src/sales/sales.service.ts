@@ -138,6 +138,7 @@ export class SalesService {
       const sale = queryRunner.manager.create(Sale, {
         bill_number: billNumber,
         customer_name: dto.customer_name,
+        patient_id: dto.patient_id || null,
         doctor_name: dto.doctor_name,
         doctor_reg_no: dto.doctor_reg_no,
         subtotal,
@@ -413,4 +414,25 @@ export class SalesService {
     const count = Number(result[0]?.cnt ?? 0);
     return `BILL-${today}-${String(count + 1).padStart(4, '0')}`;
   }
+
+  async getPatientSales(tenantId: string, patientId: string): Promise<any[]> {
+    return this.saleRepo.query(
+      `SELECT s.id, s.bill_number, s.total_amount, s.payment_mode, s.created_at,
+              s.customer_name, s.discount_amount,
+              json_agg(json_build_object(
+                'medicine_name', si.medicine_name,
+                'qty', si.qty,
+                'unit_price', si.unit_price,
+                'total', si.total_price
+              ) ORDER BY si.id) AS items
+       FROM sales s
+       LEFT JOIN sale_items si ON si.sale_id = s.id
+       WHERE s.tenant_id = $1 AND s.patient_id = $2 AND s.is_voided = false
+       GROUP BY s.id
+       ORDER BY s.created_at DESC
+       LIMIT 50`,
+      [tenantId, patientId]
+    );
+  }
+
 }
