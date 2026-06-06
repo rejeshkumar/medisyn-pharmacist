@@ -19,7 +19,7 @@ export default function StockLedgerPage() {
   useEffect(() => {
     (async () => {
       const token = localStorage.getItem('medisyn_token');
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reports/stock-ledger`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/report/stock-ledger`, {
         headers: { Authorization: `Bearer ${token}` },
       }).catch(() => null);
       if (res?.ok) {
@@ -35,7 +35,7 @@ export default function StockLedgerPage() {
     try {
       const token = localStorage.getItem('medisyn_token');
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/reports/stock-ledger?medicine_id=${selectedId}&from=${from}&to=${to}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/report/stock-ledger?medicine_id=${selectedId}&from=${from}&to=${to}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (!res.ok) throw new Error(await res.text());

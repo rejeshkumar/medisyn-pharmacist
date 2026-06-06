@@ -19,7 +19,7 @@ export default function ScheduleHRegisterPage() {
     try {
       const token = localStorage.getItem('medisyn_token');
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/reports/schedule-h-register?from=${from}&to=${to}&schedule=${schedule}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/report/schedule-h-register?from=${from}&to=${to}&schedule=${schedule}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (!res.ok) throw new Error(await res.text());
