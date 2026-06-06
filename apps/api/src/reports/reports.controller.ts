@@ -43,7 +43,7 @@ export class ReportsController {
     const todayEnd   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
     const d90 = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
 
-    const [todaySales, todayCount, lowStock, nearExpiry, topMeds, dailySales, recentBills, consultationRevenue, vipRevenue, yesterdaySales, yesterdayConsult, yesterdayVip] = await Promise.all([
+    const [todaySales, todayCount, lowStock, nearExpiry, topMeds, dailySales, recentBills, consultationRevenue, vipRevenue] = await Promise.all([
       this.ds.query(
         `SELECT
            COALESCE(SUM(total_amount),0) AS total,
@@ -125,9 +125,9 @@ export class ReportsController {
 
     const pharmacyRevenue  = parseFloat(todaySales[0]?.total || '0');
 
-      const yPharmacy = parseFloat(yesterdaySales?.[0]?.total || '0');
-      const yConsult  = parseFloat(yesterdayConsult?.[0]?.total || '0');
-      const yVip      = parseFloat(yesterdayVip?.[0]?.total || '0');
+      const yPharmacy = parseFloat(ySalesRow?.total || '0');
+      const yConsult  = parseFloat(yConsultRow?.total || '0');
+      const yVip      = parseFloat(yVipRow?.total || '0');
       const yTotal    = yPharmacy + yConsult + yVip;
       const trendPct  = (today: number, yesterday: number): number | null =>
         yesterday > 0 ? Math.round(((today - yesterday) / yesterday) * 100) : null;
