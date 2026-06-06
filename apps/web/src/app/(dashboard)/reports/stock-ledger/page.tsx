@@ -1,4 +1,8 @@
 'use client';
+import EmptyState from '@/components/common/EmptyState';
+import { TableSkeleton } from '@/components/common/Skeleton';
+import toast from 'react-hot-toast';
+import PageHeader from '@/components/common/PageHeader';
 import { useState, useEffect, useCallback } from 'react';
 import { Download, Search, BookOpen, AlertCircle } from 'lucide-react';
 
@@ -14,6 +18,7 @@ export default function StockLedgerPage() {
   const [to, setTo] = useState(today);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  useEffect(() => { document.title = 'Stock Ledger — SimpliRx'; }, []);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -40,7 +45,7 @@ export default function StockLedgerPage() {
       );
       if (!res.ok) throw new Error(await res.text());
       setData(await res.json());
-    } catch (e: any) { setError(e.message); }
+    } catch (e: any) { setError(e.message); toast.error('Export failed'); }
     finally { setLoading(false); }
   }, [selectedId, from, to]);
 
@@ -79,12 +84,17 @@ export default function StockLedgerPage() {
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <div className="flex items-center gap-2 mb-1"><BookOpen size={20} className="text-[#00475a]"/>
-            <h1 className="text-2xl font-semibold text-gray-900">Stock Ledger</h1>
-          </div>
+    <div className="max-w-6xl mx-auto">
+      <PageHeader
+        title="Stock Ledger"
+        subtitle="Per-drug running stock register — purchases, sales, adjustments"
+        crumbs={[{ label: 'Reports', href: '/reports' }, { label: 'Stock Ledger' }]}
+        actions={
+          <button onClick={exportExcel} disabled={!data} className="flex items-center gap-2 px-4 py-2 bg-[#00475a] text-white rounded-lg text-sm font-medium disabled:opacity-40 hover:bg-[#003d4d]">
+            <Download size={16}/> Export Excel
+          </button>
+        }
+      />
           <p className="text-sm text-gray-500">Per-drug running stock register — purchases, sales, adjustments</p>
         </div>
         <button onClick={exportExcel} disabled={!data} className="flex items-center gap-2 px-4 py-2 bg-[#00475a] text-white rounded-lg text-sm font-medium disabled:opacity-40 hover:bg-[#003d4d]">
@@ -143,7 +153,7 @@ export default function StockLedgerPage() {
               </div>
               <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
                 {loading ? (
-                  <div className="py-12 text-center text-gray-400 text-sm">Loading...</div>
+                  <TableSkeleton rows={6} />
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs">

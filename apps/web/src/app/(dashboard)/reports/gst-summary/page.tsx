@@ -1,4 +1,8 @@
 'use client';
+import EmptyState from '@/components/common/EmptyState';
+import toast from 'react-hot-toast';
+import PageHeader from '@/components/common/PageHeader';
+import { TableSkeleton, CardSkeleton } from '@/components/common/Skeleton';
 import { useState, useEffect, useCallback } from 'react';
 import { Download, FileText, AlertCircle } from 'lucide-react';
 
@@ -11,6 +15,7 @@ export default function GstSummaryPage() {
   const [year, setYear] = useState(today.getFullYear());
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  useEffect(() => { document.title = 'GST Summary — SimpliRx'; }, []);
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
@@ -22,7 +27,7 @@ export default function GstSummaryPage() {
       });
       if (!res.ok) throw new Error(await res.text());
       setData(await res.json());
-    } catch (e: any) { setError(e.message); }
+    } catch (e: any) { setError(e.message); toast.error('Export failed'); }
     finally { setLoading(false); }
   }, [month, year]);
 
@@ -60,16 +65,18 @@ export default function GstSummaryPage() {
 
   const t = data?.totals;
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">GST Summary — GSTR-3B</h1>
-          <p className="text-sm text-gray-500 mt-1">Output tax and input credit — share with your CA for monthly filing</p>
-        </div>
-        <button onClick={exportExcel} disabled={!data} className="flex items-center gap-2 px-4 py-2 bg-[#00475a] text-white rounded-lg text-sm font-medium disabled:opacity-40 hover:bg-[#003d4d] transition-colors">
-          <Download size={16} /> Export Excel
-        </button>
-      </div>
+    <div className="max-w-5xl mx-auto">
+      <div className="px-6 pb-6">
+      <PageHeader
+        title="GST Summary — GSTR-3B"
+        subtitle="Output tax and input credit — share with your CA for monthly filing"
+        crumbs={[{ label: 'Reports', href: '/reports' }, { label: 'GST Summary' }]}
+        actions={
+          <button onClick={exportExcel} disabled={!data} className="flex items-center gap-2 px-4 py-2 bg-[#00475a] text-white rounded-lg text-sm font-medium disabled:opacity-40 hover:bg-[#003d4d] transition-colors">
+            <Download size={16} /> Export Excel
+          </button>
+        }
+      />
 
       <div className="flex gap-3 mb-6">
         <select value={month} onChange={e => setMonth(+e.target.value)} className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">
@@ -104,7 +111,7 @@ export default function GstSummaryPage() {
           <span className="text-sm font-medium text-gray-700">Rate-wise Breakdown — {MONTHS[month-1]} {year}</span>
         </div>
         {loading ? (
-          <div className="py-12 text-center text-gray-400 text-sm">Loading...</div>
+          <CardSkeleton count={4} /><TableSkeleton rows={6} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
