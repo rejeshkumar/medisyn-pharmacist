@@ -302,12 +302,6 @@ function ReorderTab() {
       )}
 
       {/* PO Creation Modal */}
-              ))}
-            </div>
-          ))}
-          </>
-        );
-      })()}
 
       {showPOForm && (
         <POCreateModal
