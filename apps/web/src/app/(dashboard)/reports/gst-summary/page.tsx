@@ -105,7 +105,7 @@ export default function GstSummaryPage() {
           <span className="text-sm font-medium text-gray-700">Rate-wise Breakdown — {MONTHS[month-1]} {year}</span>
         </div>
         {loading ? (
-          <CardSkeleton count={4} /><TableSkeleton rows={6} />
+          <><CardSkeleton count={4} /><TableSkeleton rows={6} /></>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
