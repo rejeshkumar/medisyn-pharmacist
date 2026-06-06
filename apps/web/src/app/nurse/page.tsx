@@ -9,7 +9,7 @@ export default function NursePage() {
   const router = useRouter();
   const { data: queue, refetch } = useQuery({
     queryKey: ['nurse-queue'],
-    queryFn: () => api.get('/queue?date=today&limit=50').then(r => r.data).catch(() => []),
+    queryFn: () => api.get('/queue/today').then(r => r.data).catch(() => []),
     refetchInterval: 15000,
   });
 
