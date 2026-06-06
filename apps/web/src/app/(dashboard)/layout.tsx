@@ -147,8 +147,13 @@ function BottomTabLayout({
   };
 
   const isActive = (href: string) => {
-    if (href === '/reports') return pathname === '/reports';
-    return pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
+    // Sub-route parents — use startsWith
+    const subRouteParents = ['/settings', '/hr', '/reports', '/patients', '/inventory'];
+    if (subRouteParents.some(p => href === p)) return pathname === href;
+    if (subRouteParents.some(p => href.startsWith(p + '/') || href === p)) {
+      return pathname === href || pathname.startsWith(href + '/');
+    }
+    return pathname === href;
   };
 
   return (
@@ -278,8 +283,13 @@ function SidebarLayout({
   };
 
   const isActive = (href: string) => {
-    if (href === '/reports') return pathname === '/reports';
-    return pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
+    // Sub-route parents — use startsWith
+    const subRouteParents = ['/settings', '/hr', '/reports', '/patients', '/inventory'];
+    if (subRouteParents.some(p => href === p)) return pathname === href;
+    if (subRouteParents.some(p => href.startsWith(p + '/') || href === p)) {
+      return pathname === href || pathname.startsWith(href + '/');
+    }
+    return pathname === href;
   };
 
   return (
