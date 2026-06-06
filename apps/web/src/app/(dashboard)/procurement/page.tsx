@@ -36,6 +36,58 @@ interface PO {
   created_at: string;
 }
 
+
+// ── PO Status Pipeline Stepper ────────────────────────────────────────────
+const PO_STEPS = [
+  { key: 'draft',              label: 'Draft',      icon: '📝' },
+  { key: 'sent',               label: 'Sent',       icon: '📤' },
+  { key: 'partially_received', label: 'Partial',    icon: '📦' },
+  { key: 'received',           label: 'Received',   icon: '✅' },
+];
+
+function POStatusStepper({ status }: { status: string }) {
+  if (status === 'cancelled') {
+    return (
+      <div className="flex items-center gap-2 px-4 py-3 bg-red-50 rounded-xl border border-red-100 mb-4">
+        <span className="text-red-500 text-sm font-semibold">🚫 This PO has been cancelled</span>
+      </div>
+    );
+  }
+  const currentIdx = PO_STEPS.findIndex(s => s.key === status);
+  return (
+    <div className="flex items-center gap-0 mb-4 bg-gray-50 rounded-xl px-3 py-3 border border-gray-100">
+      {PO_STEPS.map((step, i) => {
+        const isDone    = i < currentIdx;
+        const isCurrent = i === currentIdx;
+        const isPending = i > currentIdx;
+        return (
+          <div key={step.key} className="flex items-center flex-1 min-w-0">
+            <div className="flex flex-col items-center flex-1 min-w-0">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all ${
+                isDone    ? 'bg-[#00475a] border-[#00475a] text-white' :
+                isCurrent ? 'bg-white border-[#00475a] text-[#00475a] shadow-sm' :
+                            'bg-white border-gray-200 text-gray-300'
+              }`}>
+                {isDone ? '✓' : step.icon}
+              </div>
+              <span className={`text-[9px] font-semibold mt-1 text-center truncate w-full px-1 ${
+                isDone    ? 'text-[#00475a]' :
+                isCurrent ? 'text-[#00475a]' :
+                            'text-gray-300'
+              }`}>{step.label}</span>
+            </div>
+            {i < PO_STEPS.length - 1 && (
+              <div className={`h-0.5 flex-shrink-0 w-4 mx-1 rounded ${
+                i < currentIdx ? 'bg-[#00475a]' : 'bg-gray-200'
+              }`} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   draft:              { label: 'Draft',              color: 'bg-slate-100 text-slate-600' },
   sent:               { label: 'Sent',               color: 'bg-blue-50 text-blue-700' },
@@ -621,6 +673,9 @@ function POTab() {
           </div>
 
           <div className="flex-1 overflow-y-auto p-5 space-y-4">
+            {/* Status Pipeline */}
+            <POStatusStepper status={poDetail.status} />
+
             {/* Actions */}
             <div className="flex gap-2 flex-wrap">
               {poDetail.status === 'draft' && (

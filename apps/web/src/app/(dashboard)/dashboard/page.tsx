@@ -57,6 +57,7 @@ function OwnerDashboard() {
   const consultRev  = dash?.revenue_breakdown?.consultation ?? 0;
   const labRev      = dash?.revenue_breakdown?.lab ?? 0;
   const vipRev      = dash?.revenue_breakdown?.vip ?? 0;
+  const trends      = dash?.revenue_breakdown?.trends ?? {};
   const cashTotal = dash?.today_cash || 0;
   const upiTotal = dash?.today_upi || 0;
   const billCount = dash?.today_bill_count || 0;
@@ -98,6 +99,7 @@ function OwnerDashboard() {
           <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', gap: 4 }}>
             <span style={{ background: 'rgba(255,255,255,0.2)', color: 'white', fontSize: 10, padding: '1px 6px', borderRadius: 6, fontWeight: 600 }}>{billCount} bills</span>
             <span>Today</span>
+            <TrendBadge pct={trends.total} />
           </div>
         </div>
 
@@ -108,6 +110,7 @@ function OwnerDashboard() {
           <div style={{ fontSize: 22, fontWeight: 700, color: '#1a1a2e', marginBottom: 4 }}>{fmt(pharmacyRev)}</div>
           <div style={{ fontSize: 10, color: '#00b8a0', fontWeight: 500 }}>
             {totalSales > 0 ? Math.round((pharmacyRev / totalSales) * 100) : 0}% of total
+            <TrendBadge pct={trends.pharmacy} />
           </div>
         </div>
 
@@ -118,6 +121,7 @@ function OwnerDashboard() {
           <div style={{ fontSize: 22, fontWeight: 700, color: '#1a1a2e', marginBottom: 4 }}>{fmt(consultRev)}</div>
           <div style={{ fontSize: 10, color: consultRev > 0 ? '#3b82f6' : '#9ca3af', fontWeight: 500 }}>
             {totalSales > 0 ? Math.round((consultRev / totalSales) * 100) : 0}% of total
+            <TrendBadge pct={trends.consultation} />
           </div>
         </div>
 
@@ -136,6 +140,7 @@ function OwnerDashboard() {
           <div style={{ fontSize: 22, fontWeight: 700, color: '#1a1a2e', marginBottom: 4 }}>{fmt(vipRev)}</div>
           <div style={{ fontSize: 10, color: '#d97706', fontWeight: 500 }}>
             {vipStats.today_enrollments || 0} enrolled today · {vipStats.total_enrollments || 0} total
+            <TrendBadge pct={trends.vip} />
           </div>
         </div>
       </div>
@@ -683,6 +688,20 @@ function NurseDashboard() {
 }
 
 // ── Root Dashboard — routes by role ──────────────────────────────────────────
+
+// Trend badge component
+function TrendBadge({ pct }: { pct: number | null }) {
+  if (pct === null || pct === undefined) return null;
+  const isUp = pct >= 0;
+  return (
+    <span className={`inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+      isUp ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+    }`}>
+      {isUp ? '↑' : '↓'} {Math.abs(pct)}% vs yesterday
+    </span>
+  );
+}
+
 export default function DashboardPage() {
   const [role, setRole] = useState<string | null>(null);
 
