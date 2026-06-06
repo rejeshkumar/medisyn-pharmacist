@@ -1165,18 +1165,134 @@ export class ReportsController {
   @Get('stock-ledger')
   async getStockLedger(@Query('medicine_id') medicineId: string, @Query('from') from: string, @Query('to') to: string, @Req() req: any) {
     const tenantId = req.user.tenant_id;
+
+    // Medicine list — use stock_batches (real table) not inventory_batches
     if (!medicineId) {
-      const medicines = await this.ds.query(`SELECT DISTINCT m.id,m.name,m.manufacturer FROM medicines m JOIN inventory_batches ib ON ib.medicine_id=m.id WHERE m.tenant_id=$1 ORDER BY m.name LIMIT 300`,[tenantId]).catch(()=>[]);
+      const medicines = await this.ds.query(`
+        SELECT DISTINCT m.id, m.name, m.manufacturer
+        FROM medicines m
+        WHERE m.tenant_id = $1
+          AND EXISTS (
+            SELECT 1 FROM stock_batches sb
+            WHERE sb.medicine_id = m.id
+              AND sb.tenant_id = $1
+              AND sb.quantity > 0
+              AND sb.is_active = true
+          )
+        ORDER BY m.name
+        LIMIT 500
+      `, [tenantId]).catch(() => []);
       return { medicines };
     }
-    const fromDate = from||new Date(new Date().getFullYear(),new Date().getMonth(),1).toISOString().split('T')[0];
-    const toDate   = to  ||new Date().toISOString().split('T')[0];
-    const [opening] = await this.ds.query(`SELECT COALESCE(SUM(CASE WHEN type='in' THEN qty ELSE -qty END),0) AS qty FROM (SELECT poi.quantity AS qty,'in' AS type FROM purchase_order_items poi JOIN purchase_orders po ON po.id=poi.po_id WHERE po.tenant_id=$1 AND poi.medicine_id=$2 AND po.order_date<$3::date UNION ALL SELECT si.qty,'out' FROM sale_items si JOIN sales s ON s.id=si.sale_id WHERE s.tenant_id=$1 AND si.medicine_id=$2 AND s.is_voided=false AND s.created_at::date<$3::date UNION ALL SELECT ABS(sa.quantity_change),CASE WHEN sa.quantity_change>0 THEN 'in' ELSE 'out' END FROM stock_adjustments sa WHERE sa.tenant_id=$1 AND sa.medicine_id=$2 AND sa.created_at::date<$3::date) t`,[tenantId,medicineId,fromDate]).catch(()=>[{qty:0}]);
-    const txns = await this.ds.query(`SELECT * FROM (SELECT po.order_date AS txn_date,'Purchase' AS txn_type,po.invoice_number AS reference,COALESCE(sup.name,'') AS party,poi.batch_no,poi.expiry_date::TEXT AS expiry_date,poi.quantity AS qty_in,0 AS qty_out,poi.cost_price AS unit_price,'' AS notes FROM purchase_order_items poi JOIN purchase_orders po ON po.id=poi.po_id LEFT JOIN suppliers sup ON sup.id=po.supplier_id WHERE po.tenant_id=$1 AND poi.medicine_id=$2 AND po.order_date BETWEEN $3 AND $4 UNION ALL SELECT s.created_at::date,'Sale',s.bill_number,COALESCE(p.name,'Walk-in'),si.batch_no,NULL::TEXT,0,si.qty,si.mrp,'' FROM sale_items si JOIN sales s ON s.id=si.sale_id LEFT JOIN patients p ON p.id=s.patient_id WHERE s.tenant_id=$1 AND si.medicine_id=$2 AND s.is_voided=false AND s.created_at::date BETWEEN $3 AND $4 UNION ALL SELECT sa.created_at::date,CASE sa.adjustment_type WHEN 'supplier_return' THEN 'Supplier Return' WHEN 'damage_write_off' THEN 'Write-off' ELSE 'Adjustment' END,NULL,NULL,sa.batch_no,NULL::TEXT,CASE WHEN sa.quantity_change>0 THEN sa.quantity_change ELSE 0 END,CASE WHEN sa.quantity_change<0 THEN ABS(sa.quantity_change) ELSE 0 END,NULL,COALESCE(sa.reason,'') FROM stock_adjustments sa WHERE sa.tenant_id=$1 AND sa.medicine_id=$2 AND sa.created_at::date BETWEEN $3 AND $4) t ORDER BY txn_date,txn_type`,[tenantId,medicineId,fromDate,toDate]).catch(()=>[]);
-    let balance = parseFloat(opening?.[0]?.qty||0);
-    const entries = txns.map((t:any)=>{ const qi=parseInt(t.qty_in)||0,qo=parseInt(t.qty_out)||0; balance+=qi-qo; return {...t,qty_in:qi,qty_out:qo,balance}; });
-    const [med] = await this.ds.query(`SELECT name,manufacturer,schedule_class::TEXT AS schedule_class FROM medicines WHERE id=$1`,[medicineId]).catch(()=>[{}]);
-    return { medicine:med||{}, from:fromDate, to:toDate, opening_balance:parseFloat(opening?.[0]?.qty||0), closing_balance:balance, entries };
+
+    const fromDate = from || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+    const toDate   = to   || new Date().toISOString().split('T')[0];
+
+    // Opening balance: stock_batches purchases + sale_items out before fromDate
+    const [opening] = await this.ds.query(`
+      SELECT COALESCE(SUM(CASE WHEN type='in' THEN qty ELSE -qty END), 0) AS qty FROM (
+        SELECT sb.quantity AS qty, 'in' AS type
+        FROM stock_batches sb
+        WHERE sb.tenant_id = $1 AND sb.medicine_id = $2
+          AND sb.created_at::date < $3::date AND sb.is_active = true
+        UNION ALL
+        SELECT si.qty, 'out'
+        FROM sale_items si JOIN sales s ON s.id = si.sale_id
+        WHERE s.tenant_id = $1 AND si.medicine_id = $2
+          AND s.is_voided = false AND s.created_at::date < $3::date
+        UNION ALL
+        SELECT ABS(sa.quantity_change),
+               CASE WHEN sa.quantity_change > 0 THEN 'in' ELSE 'out' END
+        FROM stock_adjustments sa
+        WHERE sa.tenant_id = $1 AND sa.medicine_id = $2
+          AND sa.created_at::date < $3::date
+      ) t
+    `, [tenantId, medicineId, fromDate]).catch(() => [{ qty: 0 }]);
+
+    // Transactions in range — use stock_batches for purchases
+    const txns = await this.ds.query(`
+      SELECT * FROM (
+        SELECT
+          sb.created_at::date AS txn_date,
+          'Purchase' AS txn_type,
+          COALESCE(sb.purchase_invoice_no, '') AS reference,
+          COALESCE(sup.name, '') AS party,
+          sb.batch_number AS batch_no,
+          sb.expiry_date::TEXT AS expiry_date,
+          sb.quantity AS qty_in,
+          0 AS qty_out,
+          sb.purchase_price AS unit_price,
+          COALESCE(sb.notes, '') AS notes
+        FROM stock_batches sb
+        LEFT JOIN suppliers sup ON sup.id = sb.supplier_id
+        WHERE sb.tenant_id = $1 AND sb.medicine_id = $2
+          AND sb.is_active = true
+          AND sb.created_at::date BETWEEN $3 AND $4
+
+        UNION ALL
+
+        SELECT
+          s.created_at::date,
+          'Sale',
+          s.bill_number,
+          COALESCE(p.name, 'Walk-in'),
+          si.batch_no,
+          NULL::TEXT,
+          0,
+          si.qty,
+          si.mrp,
+          ''
+        FROM sale_items si
+        JOIN sales s ON s.id = si.sale_id
+        LEFT JOIN patients p ON p.id = s.patient_id
+        WHERE s.tenant_id = $1 AND si.medicine_id = $2
+          AND s.is_voided = false
+          AND s.created_at::date BETWEEN $3 AND $4
+
+        UNION ALL
+
+        SELECT
+          sa.created_at::date,
+          CASE sa.adjustment_type
+            WHEN 'supplier_return' THEN 'Supplier Return'
+            WHEN 'damage_write_off' THEN 'Write-off'
+            ELSE 'Adjustment'
+          END,
+          NULL, NULL,
+          sa.batch_no,
+          NULL::TEXT,
+          CASE WHEN sa.quantity_change > 0 THEN sa.quantity_change ELSE 0 END,
+          CASE WHEN sa.quantity_change < 0 THEN ABS(sa.quantity_change) ELSE 0 END,
+          NULL,
+          COALESCE(sa.reason, '')
+        FROM stock_adjustments sa
+        WHERE sa.tenant_id = $1 AND sa.medicine_id = $2
+          AND sa.created_at::date BETWEEN $3 AND $4
+      ) t
+      ORDER BY txn_date, txn_type
+    `, [tenantId, medicineId, fromDate, toDate]).catch(() => []);
+
+    let balance = parseFloat(opening?.[0]?.qty || 0);
+    const entries = txns.map((t: any) => {
+      const qi = parseInt(t.qty_in) || 0;
+      const qo = parseInt(t.qty_out) || 0;
+      balance += qi - qo;
+      return { ...t, qty_in: qi, qty_out: qo, balance };
+    });
+
+    const [med] = await this.ds.query(
+      `SELECT name, manufacturer, schedule_class::TEXT AS schedule_class FROM medicines WHERE id = $1`,
+      [medicineId]
+    ).catch(() => [{}]);
+
+    return {
+      medicine: med || {},
+      from: fromDate,
+      to: toDate,
+      opening_balance: parseFloat(opening?.[0]?.qty || 0),
+      closing_balance: balance,
+      entries,
+    };
   }
 
 }
