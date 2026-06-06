@@ -123,6 +123,28 @@ export class ReportsController {
       ),
     ]);
 
+    // Yesterday revenue queries for trend calculation
+    const [[ySalesRow], [yConsultRow], [yVipRow]] = await Promise.all([
+      this.ds.query(
+        `SELECT COALESCE(SUM(total_amount),0) AS total FROM sales
+         WHERE tenant_id=$1 AND is_voided=false
+           AND DATE(created_at + INTERVAL '5 hours 30 minutes')=CURRENT_DATE - INTERVAL '1 day'`,
+        [tenantId]
+      ).catch(() => [{ total: '0' }]),
+      this.ds.query(
+        `SELECT COALESCE(SUM(total_amount),0) AS total FROM clinic_bills
+         WHERE tenant_id=$1 AND is_voided=false
+           AND DATE(created_at + INTERVAL '5 hours 30 minutes')=CURRENT_DATE - INTERVAL '1 day'`,
+        [tenantId]
+      ).catch(() => [{ total: '0' }]),
+      this.ds.query(
+        `SELECT COALESCE(SUM(amount_paid),0) AS total FROM vip_registrations
+         WHERE tenant_id=$1
+           AND DATE(start_date + INTERVAL '5 hours 30 minutes')=CURRENT_DATE - INTERVAL '1 day'`,
+        [tenantId]
+      ).catch(() => [{ total: '0' }]),
+    ]);
+
     const pharmacyRevenue  = parseFloat(todaySales[0]?.total || '0');
 
       const yPharmacy = parseFloat(ySalesRow?.total || '0');
