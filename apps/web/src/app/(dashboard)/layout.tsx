@@ -415,7 +415,8 @@ function SidebarLayout({
           {OWNER_NAV_SECTIONS.filter(section => {
             const role = user?.role;
             if (role === 'owner' || role === 'office_manager') return true;
-            if (role === 'receptionist') return !['Administration', 'HR', 'Reports & Compliance'].includes(section.section || '');
+            if (role === 'pharmacist') return !['Administration', 'HR'].includes(section.section || '');
+            if (role === 'receptionist') return !['Administration', 'HR', 'Reports'].includes(section.section || '');
             if (role === 'doctor' || role === 'nurse') return section.section === null;
             return true;
           }).map((section, si) => {
@@ -473,6 +474,44 @@ function SidebarLayout({
                     {section.items.map(item => {
                       const Icon = item.icon;
                       const resolvedHref = (item as any).roleOverride?.[user?.role] || item.href;
+                      const itemRoles = (item as any).roles as string[] | undefined;
+                      const children = (item as any).children as any[] | undefined;
+
+                      // Role filter — hide item if role not in allowed list
+                      if (itemRoles && !itemRoles.includes(user?.role)) return null;
+
+                      // Sub-group with label (groupLabel items render as a labeled cluster)
+                      if ((item as any).groupLabel && children) {
+                        const visible = children.filter((c: any) => !c.roles || c.roles.includes(user?.role));
+                        if (visible.length === 0) return null;
+                        return (
+                          <div key={item.href} className="mt-2 first:mt-0">
+                            <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest px-2 pb-1 pt-1">
+                              {item.label}
+                            </p>
+                            {visible.map((child: any) => {
+                              const ChildIcon = child.icon;
+                              const childActive = pathname === child.href ||
+                                (child.href !== '/reports' && pathname.startsWith(child.href + '/'));
+                              return (
+                                <Link key={child.href} href={child.href}
+                                  onClick={() => setSidebarOpen(false)}
+                                  className={cn(
+                                    'flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12px] font-medium transition-all',
+                                    childActive
+                                      ? 'bg-white/95 text-[#00475a] shadow-sm'
+                                      : 'text-white hover:bg-white/10',
+                                  )}>
+                                  <ChildIcon className="w-[15px] h-[15px] flex-shrink-0" />
+                                  <span className="truncate">{child.label}</span>
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        );
+                      }
+
+                      // Regular flat item
                       const active = pathname === resolvedHref || (resolvedHref !== '/reports' && pathname.startsWith(resolvedHref + '/'));
                       return (
                         <Link key={item.href} href={resolvedHref}
