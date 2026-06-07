@@ -87,7 +87,25 @@ export default function PatientsPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-semibold text-gray-900 text-sm">{p.salutation} {p.first_name} {p.last_name||''}</p>
-                      {p.is_vip && <span className="badge bg-amber-100 text-amber-700 border-amber-200 text-xs flex items-center gap-1"><Crown className="w-3 h-3" />VIP</span>}
+                      {p.is_vip && (() => {
+                        const daysLeft = p.vip_end_date
+                          ? Math.ceil((new Date(p.vip_end_date).getTime() - Date.now()) / 86400000)
+                          : null;
+                        const isExpired = daysLeft !== null && daysLeft < 0;
+                        const isExpiringSoon = daysLeft !== null && daysLeft >= 0 && daysLeft <= 30;
+                        return (
+                          <span className={`badge text-xs flex items-center gap-1 ${
+                            isExpired ? 'bg-red-100 text-red-700 border-red-200' :
+                            isExpiringSoon ? 'bg-orange-100 text-orange-700 border-orange-200' :
+                            'bg-amber-100 text-amber-700 border-amber-200'
+                          }`}>
+                            <Crown className="w-3 h-3" />
+                            VIP
+                            {isExpired && <span className="font-bold">· Expired</span>}
+                            {isExpiringSoon && <span className="font-bold">· {daysLeft}d left</span>}
+                          </span>
+                        );
+                      })()}
                     </div>
                     <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 flex-wrap">
                       <span className="font-mono">{p.uhid}</span>
