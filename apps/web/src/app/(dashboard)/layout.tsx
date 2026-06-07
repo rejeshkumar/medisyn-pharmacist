@@ -510,7 +510,7 @@ function SidebarLayout({
                         if (visible.length === 0) return null;
                         return (
                           <div key={item.href} className="mt-2 first:mt-0">
-                            <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest px-2 pb-1 pt-1">
+                            <p className="text-[9px] font-bold text-white/75 uppercase tracking-widest px-2 pb-1 pt-1 border-t border-white/10 mt-1">
                               {item.label}
                             </p>
                             {visible.map((child: any) => {
