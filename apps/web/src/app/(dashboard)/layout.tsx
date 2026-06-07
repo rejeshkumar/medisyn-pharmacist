@@ -80,18 +80,42 @@ const OWNER_NAV_SECTIONS = [
     ],
   },
   {
-    section: 'Reports & Compliance',
+    section: 'Reports',
     items: [
-      { href: '/compliance',                    label: 'Compliance',          icon: Shield      },
-      { href: '/reports',                       label: 'Reports Hub',         icon: BarChart3   },
-      { href: '/reports/gst-summary',           label: 'GST Summary',         icon: FileText    },
-      { href: '/reports/schedule-h-register',   label: 'Schedule H Register', icon: ClipboardCheck },
-      { href: '/reports/ar-aging',              label: 'AR Aging',            icon: Clock       },
-      { href: '/reports/profit-loss',           label: 'Profit & Loss',       icon: BarChart3   },
-      { href: '/reports/stock-ledger',          label: 'Stock Ledger',        icon: BookOpen    },
-      { href: '/financial',                     label: 'Financial',           icon: DollarSign  },
-      { href: '/day-close',                     label: 'End of Day',          icon: DollarSign  },
-      { href: '/analytics',                     label: 'Behaviour',           icon: Users       },
+      {
+        href: '/reports-operational', label: 'Operational', icon: BarChart3, groupLabel: true,
+        roles: ['owner','office_manager','pharmacist'],
+        children: [
+          { href: '/reports',              label: 'Reports Hub',  icon: BarChart3, roles: ['owner','office_manager','pharmacist'] },
+          { href: '/reports/stock-ledger', label: 'Stock Ledger', icon: BookOpen,  roles: ['owner','office_manager','pharmacist'] },
+        ],
+      },
+      {
+        href: '/reports-financial', label: 'Financial', icon: DollarSign, groupLabel: true,
+        roles: ['owner','office_manager'],
+        children: [
+          { href: '/reports/gst-summary',  label: 'GST Summary',  icon: FileText,  roles: ['owner','office_manager'] },
+          { href: '/reports/profit-loss',  label: 'Profit & Loss', icon: BarChart3, roles: ['owner','office_manager'] },
+          { href: '/reports/ar-aging',     label: 'AR Aging',     icon: Clock,     roles: ['owner','office_manager'] },
+          { href: '/financial',            label: 'Financial',    icon: DollarSign, roles: ['owner','office_manager'] },
+        ],
+      },
+      {
+        href: '/reports-compliance', label: 'Compliance', icon: Shield, groupLabel: true,
+        roles: ['owner','office_manager','pharmacist'],
+        children: [
+          { href: '/reports/schedule-h-register', label: 'Schedule H', icon: ClipboardCheck, roles: ['owner','office_manager','pharmacist'] },
+          { href: '/compliance',                  label: 'Compliance Log', icon: Shield,     roles: ['owner','office_manager','pharmacist'] },
+        ],
+      },
+      {
+        href: '/reports-analytics', label: 'Analytics', icon: Users, groupLabel: true,
+        roles: ['owner','office_manager','pharmacist'],
+        children: [
+          { href: '/analytics',  label: 'Behaviour',  icon: Users,     roles: ['owner','office_manager'] },
+          { href: '/day-close',  label: 'End of Day', icon: DollarSign, roles: ['owner','office_manager','pharmacist'] },
+        ],
+      },
     ],
   },
   {
