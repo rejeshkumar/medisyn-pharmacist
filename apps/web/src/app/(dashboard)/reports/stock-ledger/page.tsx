@@ -87,7 +87,6 @@ export default function StockLedgerPage() {
       <PageHeader
         title="Stock Ledger"
         subtitle="Per-drug running stock register — purchases, sales, adjustments"
-        crumbs={[{ label: 'Reports', href: '/reports' }, { label: 'Stock Ledger' }]}
         actions={<button onClick={exportExcel} disabled={!data} className="flex items-center gap-2 px-4 py-2 bg-[#00475a] text-white rounded-lg text-sm font-medium disabled:opacity-40 hover:bg-[#003d4d]"><Download size={16}/> Export Excel</button>}
       />
 

@@ -68,7 +68,6 @@ export default function GstSummaryPage() {
       <PageHeader
         title="GST Summary — GSTR-3B"
         subtitle="Output tax and input credit — share with your CA for monthly filing"
-        crumbs={[{ label: 'Reports', href: '/reports' }, { label: 'GST Summary' }]}
         actions={<button onClick={exportExcel} disabled={!data} className="flex items-center gap-2 px-4 py-2 bg-[#00475a] text-white rounded-lg text-sm font-medium disabled:opacity-40 hover:bg-[#003d4d] transition-colors"><Download size={16} /> Export Excel</button>}
       />
 
