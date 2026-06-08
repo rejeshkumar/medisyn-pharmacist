@@ -77,6 +77,8 @@ export default function RosterPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkShiftId, setBulkShiftId] = useState('');
   const [bulkDaySet, setBulkDaySet] = useState('All days');
+  const [perDayMode, setPerDayMode] = useState(false);
+  const [perDayShifts, setPerDayShifts] = useState<Record<number, string>>({}); // index 0-6 → shiftId
   const [bulkSaving, setBulkSaving] = useState(false);
   const [search, setSearch] = useState('');
 
@@ -176,6 +178,35 @@ export default function RosterPage() {
       await load();
     } catch {
       toast.error('Failed to apply bulk assignment');
+    } finally {
+      setBulkSaving(false);
+    }
+  };
+
+  const applyPerDay = async () => {
+    if (selected.size === 0) { toast.error('Select at least one staff member'); return; }
+    const assignedDays = Object.entries(perDayShifts).filter(([, v]) => v);
+    if (assignedDays.length === 0) { toast.error('Set at least one day shift'); return; }
+    setBulkSaving(true);
+    try {
+      const entries: any[] = [];
+      selected.forEach(userId => {
+        assignedDays.forEach(([di, shiftId]) => {
+          entries.push({
+            user_id:     userId,
+            shift_id:    shiftId === 'off' ? null : shiftId,
+            roster_date: dateStr(weekDates[Number(di)]),
+            is_week_off: shiftId === 'off',
+          });
+        });
+      });
+      await api.post('/hr/roster/bulk', { entries });
+      toast.success(`Applied to ${selected.size} staff · ${entries.length} entries saved`);
+      setSelected(new Set());
+      setPerDayShifts({});
+      await load();
+    } catch {
+      toast.error('Failed to apply');
     } finally {
       setBulkSaving(false);
     }
@@ -425,35 +456,82 @@ export default function RosterPage() {
                 : 'bg-slate-50 border-slate-200'
             }`}>
               {selected.size > 0 ? (
-                <div className="flex items-center gap-3 flex-wrap">
-                  <p className="text-sm font-semibold text-teal-800 flex-shrink-0">
-                    {selected.size} staff selected
-                  </p>
-                  <select value={bulkShiftId} onChange={e => setBulkShiftId(e.target.value)}
-                    className="h-8 border border-teal-300 rounded-lg px-2 text-sm bg-white text-slate-700 focus:outline-none focus:border-[#00475a]">
-                    <option value="">Select shift…</option>
-                    {shifts.map((s: any) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name} ({s.start_time?.slice(0,5)}–{s.end_time?.slice(0,5)})
-                      </option>
-                    ))}
-                    <option value="off">Day off</option>
-                  </select>
-                  <select value={bulkDaySet} onChange={e => setBulkDaySet(e.target.value)}
-                    className="h-8 border border-teal-300 rounded-lg px-2 text-sm bg-white text-slate-700 focus:outline-none focus:border-[#00475a]">
-                    {Object.keys(DAY_SETS).map(k => (
-                      <option key={k} value={k}>{k}</option>
-                    ))}
-                  </select>
-                  <button onClick={applyBulk} disabled={bulkSaving || !bulkShiftId}
-                    className="flex items-center gap-2 px-4 py-1.5 bg-[#00475a] text-white text-sm font-semibold rounded-lg hover:bg-[#003d4d] disabled:opacity-50">
-                    {bulkSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-                    Apply to {selected.size} staff →
-                  </button>
-                  <button onClick={() => setSelected(new Set())}
-                    className="text-xs text-teal-600 hover:text-teal-800 underline">
-                    Clear selection
-                  </button>
+                <div className="space-y-3">
+                  {/* Row 1: header + mode toggle */}
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <p className="text-sm font-semibold text-teal-800 flex-shrink-0">
+                      {selected.size} staff selected
+                    </p>
+                    <div className="flex gap-1 bg-teal-100 p-0.5 rounded-lg ml-auto">
+                      <button onClick={() => setPerDayMode(false)}
+                        className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                          !perDayMode ? 'bg-white text-slate-900 shadow-sm' : 'text-teal-700 hover:text-teal-900'
+                        }`}>Same shift all days</button>
+                      <button onClick={() => setPerDayMode(true)}
+                        className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                          perDayMode ? 'bg-white text-slate-900 shadow-sm' : 'text-teal-700 hover:text-teal-900'
+                        }`}>Different per day</button>
+                    </div>
+                    <button onClick={() => { setSelected(new Set()); setPerDayShifts({}); }}
+                      className="text-xs text-teal-600 hover:text-teal-800 underline flex-shrink-0">
+                      Clear selection
+                    </button>
+                  </div>
+
+                  {!perDayMode ? (
+                    /* ── Same shift for selected days ── */
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <select value={bulkShiftId} onChange={e => setBulkShiftId(e.target.value)}
+                        className="h-8 border border-teal-300 rounded-lg px-2 text-sm bg-white text-slate-700 focus:outline-none focus:border-[#00475a]">
+                        <option value="">Select shift…</option>
+                        {shifts.map((s: any) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name} ({s.start_time?.slice(0,5)}–{s.end_time?.slice(0,5)})
+                          </option>
+                        ))}
+                        <option value="off">Day off</option>
+                      </select>
+                      <select value={bulkDaySet} onChange={e => setBulkDaySet(e.target.value)}
+                        className="h-8 border border-teal-300 rounded-lg px-2 text-sm bg-white text-slate-700 focus:outline-none focus:border-[#00475a]">
+                        {Object.keys(DAY_SETS).map(k => (
+                          <option key={k} value={k}>{k}</option>
+                        ))}
+                      </select>
+                      <button onClick={applyBulk} disabled={bulkSaving || !bulkShiftId}
+                        className="flex items-center gap-2 px-4 py-1.5 bg-[#00475a] text-white text-sm font-semibold rounded-lg hover:bg-[#003d4d] disabled:opacity-50">
+                        {bulkSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                        Apply to {selected.size} staff →
+                      </button>
+                    </div>
+                  ) : (
+                    /* ── Different shift per day ── */
+                    <div className="space-y-2">
+                      <p className="text-xs text-teal-700">Set a shift for each day — leave blank to skip that day</p>
+                      <div className="grid grid-cols-7 gap-2">
+                        {DAYS.map((day, di) => (
+                          <div key={di} className="flex flex-col gap-1">
+                            <span className="text-xs font-medium text-teal-800 text-center">{day}</span>
+                            <select
+                              value={perDayShifts[di] ?? ''}
+                              onChange={e => setPerDayShifts(prev => ({ ...prev, [di]: e.target.value }))}
+                              className="h-8 border border-teal-200 rounded-lg px-1 text-xs bg-white text-slate-700 focus:outline-none focus:border-[#00475a] w-full"
+                            >
+                              <option value="">—</option>
+                              {shifts.map((s: any) => (
+                                <option key={s.id} value={s.id}>{s.name}</option>
+                              ))}
+                              <option value="off">Day off</option>
+                            </select>
+                          </div>
+                        ))}
+                      </div>
+                      <button onClick={applyPerDay} disabled={bulkSaving}
+                        className="flex items-center gap-2 px-4 py-1.5 bg-[#00475a] text-white text-sm font-semibold rounded-lg hover:bg-[#003d4d] disabled:opacity-50 mt-1">
+                        {bulkSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                        Apply per-day pattern to {selected.size} staff →
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <p className="text-sm text-slate-500">
@@ -557,4 +635,3 @@ export default function RosterPage() {
     </div>
   );
 }
-
