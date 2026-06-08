@@ -212,9 +212,10 @@ export default function RosterPage() {
                 </th>
                 {weekDates.map((d, i) => {
                   const isToday = dateStr(d) === today;
+                  const isWeekend = i >= 5;
                   return (
                     <th key={i} className={`px-2 py-3 text-xs font-semibold uppercase tracking-wide border-b border-slate-100 min-w-[110px] ${
-                      isToday ? 'text-[#00475a] bg-teal-50' : 'text-slate-500'
+                      isToday ? 'text-[#00475a] bg-teal-50' : isWeekend ? 'text-slate-400 bg-slate-50/80' : 'text-slate-500'
                     }`}>
                       <div>{DAYS[i]}</div>
                       <div className={`font-bold text-sm mt-0.5 ${isToday ? 'text-[#00475a]' : 'text-slate-700'}`}>
@@ -250,10 +251,11 @@ export default function RosterPage() {
                     const isDirty = dirty.has(key);
                     const isEditing = editCell === key;
                     const isToday = ds === today;
+                    const isWeekendCell = di >= 5;
 
                     return (
                       <td key={di} className={`px-2 py-2 border-b border-slate-50 text-center relative ${
-                        isToday ? 'bg-teal-50/30' : ''
+                        isToday ? 'bg-teal-50/30' : isWeekendCell ? 'bg-slate-50/60' : ''
                       }`}>
                         {isEditing ? (
                           // Shift picker
@@ -299,7 +301,7 @@ export default function RosterPage() {
                             {shift ? (
                               <div>
                                 <div className="font-semibold">{shift.name}</div>
-                                <div className="text-[10px] opacity-70">{shift.start_time}</div>
+                                <div className="text-[10px] opacity-70">{shift.start_time?.slice(0,5)}</div>
                               </div>
                             ) : (
                               <span className="text-[11px]">+ Assign</span>
