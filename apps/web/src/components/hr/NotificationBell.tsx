@@ -32,7 +32,7 @@ export default function NotificationBell({ role }: { role: string }) {
   // Poll unread count every 30 seconds
   useEffect(() => {
     const load = () => {
-      api.get('/hr/notifications/unread-count')
+      api.get('/notifications/unread-count')
         .then(r => setCount(r.data?.count ?? 0))
         .catch(() => {});
     };
