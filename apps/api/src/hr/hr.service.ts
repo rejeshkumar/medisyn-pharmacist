@@ -91,7 +91,7 @@ export class HrService {
               l.leave_type, l.status AS leave_status
        FROM staff_rosters r
        JOIN users u ON u.id = r.user_id
-       JOIN staff_shifts s ON s.id = r.shift_id
+       LEFT JOIN staff_shifts s ON s.id = r.shift_id
        LEFT JOIN staff_attendance a
          ON a.user_id = r.user_id AND a.attend_date = r.roster_date AND a.tenant_id = $1
        LEFT JOIN staff_leaves l
@@ -523,7 +523,7 @@ export class HrService {
       this.dataSource.query(
         `SELECT r.*, s.name, s.start_time, s.end_time, s.color
          FROM staff_rosters r
-         JOIN staff_shifts s ON s.id = r.shift_id
+         LEFT JOIN staff_shifts s ON s.id = r.shift_id
          WHERE r.tenant_id=$1 AND r.user_id=$2 AND r.roster_date=$3`,
         [tenantId, userId, today],
       ),
