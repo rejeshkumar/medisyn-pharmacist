@@ -190,7 +190,7 @@ export default function RosterPage() {
         {shifts.map((s: any) => (
           <span key={s.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium text-white shrink-0"
             style={{ background: s.color }}>
-            {s.name} ({s.start_time}–{s.end_time})
+            {s.name} ({s.start_time?.slice(0,5)}–{s.end_time?.slice(0,5)})
           </span>
         ))}
         <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-200 text-slate-500 rounded-md text-xs">
@@ -264,15 +264,21 @@ export default function RosterPage() {
                                 <X className="w-3.5 h-3.5" />
                               </button>
                             </div>
-                            {shifts.map((s: any) => (
+                            {shifts
+                              .filter((s: any) =>
+                                member.role === 'pharmacist'
+                                  ? s.shift_type === 'pharmacist'
+                                  : s.shift_type === 'regular'
+                              )
+                              .map((s: any) => (
                               <button key={s.id}
                                 onClick={() => setCell(member.id, ds, s.id)}
                                 className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 text-left mb-0.5"
                               >
                                 <span className="w-2 h-2 rounded-full flex-shrink-0"
-                                  style={{ background: s.color }} />
+                                  style={{ background: s.color ?? '#00475a' }} />
                                 <span className="text-xs font-medium text-slate-700">{s.name}</span>
-                                <span className="text-[10px] text-slate-400 ml-auto">{s.start_time}</span>
+                                <span className="text-[10px] text-slate-400 ml-auto">{s.start_time?.slice(0,5)}</span>
                               </button>
                             ))}
                             <button onClick={() => setCell(member.id, ds, null)}
