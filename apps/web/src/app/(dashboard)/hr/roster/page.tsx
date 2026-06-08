@@ -90,7 +90,7 @@ export default function RosterPage() {
     setLoading(true);
     try {
       const [staffRes, shiftsRes, rosterRes] = await Promise.all([
-        api.get('/users?limit=200'),
+        api.get('/users?limit=200&is_active=true'),
         api.get('/hr/shifts'),
         api.get(`/hr/roster?from=${fromDate}&to=${toDate}`),
       ]);

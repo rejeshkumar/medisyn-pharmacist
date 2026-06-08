@@ -21,17 +21,20 @@ export class UsersService {
     private auditService: AuditService,
   ) {}
 
-  async findAll(tenantId: string, role?: string) {
+  async findAll(tenantId: string, role?: string, activeOnly = false) {
     const all = await this.usersRepo.find({
       where: { tenant_id: tenantId },
       order: { created_at: 'DESC' },
     });
-    if (!role) return all;
-    // Filter by role: check both primary role and multi-role array
-    return all
+    // Always filter inactive when activeOnly=true, or when filtering by role
+    const filtered = (activeOnly || role)
+      ? all.filter(u => u.status === UserStatus.ACTIVE)
+      : all;
+    if (!role) return filtered;
+    return filtered
       .filter(u => {
         const userRoles: string[] = (u.roles?.length) ? u.roles : [u.role];
-        return userRoles.includes(role) && u.status === UserStatus.ACTIVE;
+        return userRoles.includes(role);
       })
       .sort((a, b) => a.full_name.localeCompare(b.full_name));
   }

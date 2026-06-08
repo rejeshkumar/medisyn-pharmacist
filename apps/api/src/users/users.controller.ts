@@ -17,8 +17,8 @@ export class UsersController {
   @Get()
   @Roles(UserRole.OWNER, UserRole.RECEPTIONIST, UserRole.OFFICE_MANAGER, UserRole.NURSE, UserRole.DOCTOR, UserRole.PHARMACIST)
   @ApiOperation({ summary: 'List users; supports ?role=doctor filter' })
-  findAll(@Request() req, @Query('role') role?: string) {
-    return this.usersService.findAll(req.tenantId, role);
+  findAll(@Request() req, @Query('role') role?: string, @Query('is_active') isActive?: string) {
+    return this.usersService.findAll(req.tenantId, role, isActive === 'true');
   }
 
   @Post()
