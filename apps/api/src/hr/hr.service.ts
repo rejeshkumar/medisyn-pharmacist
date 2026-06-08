@@ -124,15 +124,27 @@ export class HrService {
     await qr.connect(); await qr.startTransaction();
     try {
       for (const e of entries) {
-        await qr.query(
-          `INSERT INTO staff_rosters
-             (tenant_id, user_id, shift_id, roster_date, is_week_off, notes, created_by)
-           VALUES ($1,$2,$3,$4,$5,$6,$7)
-           ON CONFLICT (tenant_id, user_id, roster_date)
-           DO UPDATE SET shift_id=$3, is_week_off=$5, updated_at=NOW()`,
-          [tenantId, e.user_id, e.shift_id, e.roster_date, e.is_week_off ?? false,
-           e.notes ?? null, createdBy],
-        );
+        const isOff = e.is_week_off || !e.shift_id;
+        if (isOff) {
+          await qr.query(
+            `INSERT INTO staff_rosters
+               (tenant_id, user_id, shift_id, roster_date, is_week_off, notes, created_by)
+             VALUES ($1,$2,NULL,$3,true,$4,$5)
+             ON CONFLICT (tenant_id, user_id, roster_date)
+             DO UPDATE SET shift_id=NULL, is_week_off=true, updated_at=NOW()`,
+            [tenantId, e.user_id, e.roster_date, e.notes ?? null, createdBy],
+          );
+        } else {
+          await qr.query(
+            `INSERT INTO staff_rosters
+               (tenant_id, user_id, shift_id, roster_date, is_week_off, notes, created_by)
+             VALUES ($1,$2,$3,$4,$5,$6,$7)
+             ON CONFLICT (tenant_id, user_id, roster_date)
+             DO UPDATE SET shift_id=$3, is_week_off=$5, updated_at=NOW()`,
+            [tenantId, e.user_id, e.shift_id, e.roster_date, e.is_week_off ?? false,
+             e.notes ?? null, createdBy],
+          );
+        }
       }
       await qr.commitTransaction();
       return { saved: entries.length };
