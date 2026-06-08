@@ -18,10 +18,45 @@ export class HrService {
   // ── Shift templates ───────────────────────────────────────────────────────
   async getShifts(tenantId: string) {
     return this.dataSource.query(
-      `SELECT * FROM staff_shifts WHERE tenant_id = $1 AND is_active = true
-       ORDER BY start_time ASC`,
+      `SELECT id, name, start_time, end_time, crosses_midnight, shift_type, is_active, color
+       FROM staff_shifts
+       WHERE tenant_id = $1 AND is_active = true
+       ORDER BY shift_type ASC, start_time ASC`,
       [tenantId],
     );
+  }
+
+  async saveShifts(tenantId: string, body: {
+    regular: { start_time: string; end_time: string };
+    pharmacist: { name: string; start_time: string; end_time: string }[];
+  }) {
+    await this.dataSource.query(
+      `INSERT INTO staff_shifts (tenant_id, name, start_time, end_time, crosses_midnight, shift_type)
+       VALUES ($1, 'Regular', $2, $3, false, 'regular')
+       ON CONFLICT (tenant_id, name)
+       DO UPDATE SET start_time = $2, end_time = $3, shift_type = 'regular', updated_at = NOW()`,
+      [tenantId, body.regular.start_time, body.regular.end_time],
+    );
+
+    await this.dataSource.query(
+      `UPDATE staff_shifts SET is_active = false, updated_at = NOW()
+       WHERE tenant_id = $1 AND shift_type = 'pharmacist'`,
+      [tenantId],
+    );
+
+    for (const s of body.pharmacist) {
+      const crosses = s.end_time < s.start_time;
+      await this.dataSource.query(
+        `INSERT INTO staff_shifts (tenant_id, name, start_time, end_time, crosses_midnight, shift_type, is_active)
+         VALUES ($1, $2, $3, $4, $5, 'pharmacist', true)
+         ON CONFLICT (tenant_id, name)
+         DO UPDATE SET start_time = $3, end_time = $4, crosses_midnight = $5,
+                       shift_type = 'pharmacist', is_active = true, updated_at = NOW()`,
+        [tenantId, s.name, s.start_time, s.end_time, crosses],
+      );
+    }
+
+    return { success: true, message: 'Shifts saved successfully' };
   }
 
   async upsertShift(tenantId: string, dto: any) {

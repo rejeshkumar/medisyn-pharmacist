@@ -18,8 +18,11 @@ export class HrController {
   }
 
   @Post('hr/shifts')
-  upsertShift(@Body() body: any, @Req() req: any) {
-    return this.hr.upsertShift(req.user.tenant_id, body);
+  saveShifts(@Body() body: any, @Req() req: any) {
+    if (!['owner', 'office_manager'].includes(req.user.role)) {
+      throw new Error('Only owner or office manager can configure shifts');
+    }
+    return this.hr.saveShifts(req.user.tenant_id, body);
   }
 
   // ── Roster ───────────────────────────────────────────────────
@@ -225,3 +228,5 @@ export class HrController {
   }
 
 }
+
+
