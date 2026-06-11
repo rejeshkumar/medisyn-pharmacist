@@ -237,28 +237,6 @@ export default function ReturnsPage() {
           >
             Patient returns
           </button>
-          <button
-            onClick={() => setTab('patient')}
-            className={`px-4 py-2 text-sm font-semibold border-b-2 whitespace-nowrap ${
-              tab === 'patient'
-                ? 'border-current'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
-            }`}
-            style={tab === 'patient' ? { color: BRAND } : {}}
-          >
-            Patient returns
-          </button>
-          <button
-            onClick={() => setTab('patient')}
-            className={`px-4 py-2 text-sm font-semibold border-b-2 whitespace-nowrap ${
-              tab === 'patient'
-                ? 'border-current'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
-            }`}
-            style={tab === 'patient' ? { color: BRAND } : {}}
-          >
-            Patient returns
-          </button>
         </div>
       </div>
 
@@ -682,10 +660,6 @@ export default function ReturnsPage() {
         </div>
       ) : (
         <ExpiryListTab onCreateReturn={() => setShowCreate(true)} token={token} />
-      ) : tab === 'patient' ? (
-        <PatientReturnTab token={token} />
-      ) : tab === 'patient' ? (
-        <PatientReturnTab token={token} />
       ) : tab === 'patient' ? (
         <PatientReturnTab token={token} />
       )}
@@ -1266,11 +1240,9 @@ function CreateReturnModal({
       </div>
     </div>
   );
+}
 
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Patient Return Tab — look up bill, validate batch, allow partial return
-// ─────────────────────────────────────────────────────────────────────────────
+// Patient Return Tab
 function PatientReturnTab({ token }: { token: string | null }) {
   const [billSearch, setBillSearch] = useState('');
   const [searching, setSearching] = useState(false);
@@ -1285,54 +1257,32 @@ function PatientReturnTab({ token }: { token: string | null }) {
 
   async function lookupBill() {
     if (!billSearch.trim()) return;
-    setSearching(true);
-    setBillError('');
-    setBill(null);
-    setReturnQtys({});
-    setSelectedItems({});
-    setSuccess('');
-    setError('');
+    setSearching(true); setBillError(''); setBill(null);
+    setReturnQtys({}); setSelectedItems({}); setSuccess(''); setError('');
     try {
       const res = await fetch(`${API}/sales/bill/${encodeURIComponent(billSearch.trim())}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        throw new Error(e.message || 'Bill not found');
-      }
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.message || 'Bill not found'); }
       const data = await res.json();
       setBill(data);
-      // Default qty to 0 for all items, reason to 'patient_return'
       const qtys: Record<string, number> = {};
       const reasons: Record<string, string> = {};
       const sel: Record<string, boolean> = {};
-      (data.items || []).forEach((it: any) => {
-        qtys[it.id] = 0;
-        reasons[it.id] = 'patient_return';
-        sel[it.id] = false;
-      });
-      setReturnQtys(qtys);
-      setReturnReasons(reasons);
-      setSelectedItems(sel);
-    } catch (e: any) {
-      setBillError(e.message || 'Error looking up bill');
-    } finally {
-      setSearching(false);
-    }
+      (data.items || []).forEach((it: any) => { qtys[it.id] = 0; reasons[it.id] = 'patient_return'; sel[it.id] = false; });
+      setReturnQtys(qtys); setReturnReasons(reasons); setSelectedItems(sel);
+    } catch (e: any) { setBillError(e.message || 'Error looking up bill'); }
+    finally { setSearching(false); }
   }
 
   const checkedItems = bill?.items?.filter((it: any) => selectedItems[it.id] && returnQtys[it.id] > 0) || [];
-  const totalRefund = checkedItems.reduce((s: number, it: any) => {
-    const unitPrice = Number(it.unit_price || 0);
-    return s + returnQtys[it.id] * unitPrice;
-  }, 0);
+  const totalRefund = checkedItems.reduce((s: number, it: any) => s + returnQtys[it.id] * Number(it.unit_price || 0), 0);
 
   async function submitReturn() {
     if (checkedItems.length === 0) { setError('Select at least one item with qty > 0'); return; }
-    setSubmitting(true);
-    setError('');
+    setSubmitting(true); setError('');
     try {
-      const res = await fetch(`${API}/returns/patient`, {
+      const res = await fetch(`${API}/return-requests/patient`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -1352,44 +1302,30 @@ function PatientReturnTab({ token }: { token: string | null }) {
           })),
         }),
       });
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        throw new Error(e.message || 'Failed to create return');
-      }
-      setSuccess(`Return processed. Refund amount: ₹${totalRefund.toFixed(2)}`);
-      setBill(null);
-      setBillSearch('');
-    } catch (e: any) {
-      setError(e.message || 'Error processing return');
-    } finally {
-      setSubmitting(false);
-    }
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.message || 'Failed to create return'); }
+      setSuccess(`Return processed. Refund: Rs.${totalRefund.toFixed(2)}`);
+      setBill(null); setBillSearch('');
+    } catch (e: any) { setError(e.message || 'Error processing return'); }
+    finally { setSubmitting(false); }
   }
 
   return (
     <div className="flex-1 p-4 max-w-3xl mx-auto w-full">
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-        {/* Bill lookup */}
         <div className="px-5 py-4 border-b border-slate-100">
           <h2 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
             <FileText className="w-4 h-4" style={{ color: BRAND }} />
             Look up bill to process patient return
           </h2>
           <div className="flex gap-2">
-            <input
-              type="text"
-              value={billSearch}
+            <input type="text" value={billSearch}
               onChange={e => setBillSearch(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && lookupBill()}
               placeholder="Enter bill number e.g. BL-20260611-0001"
-              className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00b8a0]"
-            />
-            <button
-              onClick={lookupBill}
-              disabled={searching}
+              className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00b8a0]" />
+            <button onClick={lookupBill} disabled={searching}
               className="px-4 py-2 text-white text-sm font-semibold rounded-lg flex items-center gap-2"
-              style={{ backgroundColor: BRAND }}
-            >
+              style={{ backgroundColor: BRAND }}>
               {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
               Search
             </button>
@@ -1397,44 +1333,36 @@ function PatientReturnTab({ token }: { token: string | null }) {
           {billError && <p className="text-xs text-red-500 mt-2">{billError}</p>}
         </div>
 
-        {/* Bill details */}
         {bill && (
           <>
             <div className="px-5 py-3 bg-slate-50 border-b border-slate-100 flex flex-wrap gap-4 text-xs text-slate-600">
               <span><span className="font-semibold">Bill:</span> {bill.bill_number}</span>
               <span><span className="font-semibold">Patient:</span> {bill.patient_name || '—'}</span>
               <span><span className="font-semibold">Date:</span> {new Date(bill.created_at).toLocaleDateString('en-IN')}</span>
-              <span><span className="font-semibold">Total:</span> ₹{Number(bill.total_amount || bill.grand_total || 0).toFixed(2)}</span>
+              <span><span className="font-semibold">Total:</span> Rs.{Number(bill.total_amount || bill.grand_total || 0).toFixed(2)}</span>
             </div>
-
             <div className="px-5 py-3">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
-                Select items to return
-              </p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Select items to return</p>
               <div className="space-y-3">
                 {(bill.items || []).map((it: any) => {
                   const maxQty = Number(it.qty || 0);
                   const isSelected = selectedItems[it.id];
                   return (
-                    <div key={it.id} className={`border rounded-xl p-3 transition-colors ${
-                      isSelected ? 'border-[#00b8a0] bg-[#00b8a0]/5' : 'border-slate-200'
-                    }`}>
+                    <div key={it.id} className={`border rounded-xl p-3 transition-colors ${isSelected ? 'border-[#00b8a0] bg-[#00b8a0]/5' : 'border-slate-200'}`}>
                       <div className="flex items-start gap-3">
                         <input type="checkbox" checked={!!isSelected}
                           onChange={e => {
                             setSelectedItems(prev => ({ ...prev, [it.id]: e.target.checked }));
-                            if (e.target.checked && returnQtys[it.id] === 0) {
+                            if (e.target.checked && returnQtys[it.id] === 0)
                               setReturnQtys(prev => ({ ...prev, [it.id]: maxQty }));
-                            }
                           }}
-                          className="mt-1 w-4 h-4 accent-[#00b8a0]"
-                        />
+                          className="mt-1 w-4 h-4 accent-[#00b8a0]" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-slate-800">{it.medicine?.brand_name || it.medicine_name || ''}</p>
                           <p className="text-xs text-slate-500">
-                            Batch: <span className="font-mono font-semibold">{it.batch?.batch_number || it.batch?.batch_number || it.batch_number || '—'}</span>
-                            &nbsp;· Sold qty: <span className="font-semibold">{maxQty}</span>
-                            &nbsp;· ₹{Number(it.unit_price || 0).toFixed(2)}/unit
+                            Batch: <span className="font-mono font-semibold">{it.batch?.batch_number || it.batch_number || '—'}</span>
+                            {' · '}Sold: <span className="font-semibold">{maxQty}</span>
+                            {' · '}Rs.{Number(it.unit_price || 0).toFixed(2)}/unit
                           </p>
                           {isSelected && (
                             <div className="mt-2 flex flex-wrap gap-3 items-center">
@@ -1442,12 +1370,8 @@ function PatientReturnTab({ token }: { token: string | null }) {
                                 <label className="text-xs text-slate-500">Return qty:</label>
                                 <input type="number" min={1} max={maxQty}
                                   value={returnQtys[it.id] || ''}
-                                  onChange={e => setReturnQtys(prev => ({
-                                    ...prev,
-                                    [it.id]: Math.max(1, Math.min(maxQty, Number(e.target.value)))
-                                  }))}
-                                  className="w-20 px-2 py-1 border border-slate-200 rounded-lg text-sm text-center focus:outline-none focus:border-[#00b8a0]"
-                                />
+                                  onChange={e => setReturnQtys(prev => ({ ...prev, [it.id]: Math.max(1, Math.min(maxQty, Number(e.target.value))) }))}
+                                  className="w-20 px-2 py-1 border border-slate-200 rounded-lg text-sm text-center focus:outline-none focus:border-[#00b8a0]" />
                                 <span className="text-xs text-slate-400">of {maxQty}</span>
                               </div>
                               <div className="flex items-center gap-2">
@@ -1463,7 +1387,7 @@ function PatientReturnTab({ token }: { token: string | null }) {
                                 </select>
                               </div>
                               <span className="text-xs font-semibold text-[#00b8a0]">
-                                Refund: ₹{(returnQtys[it.id] * Number(it.unit_price || 0)).toFixed(2)}
+                                Refund: Rs.{(returnQtys[it.id] * Number(it.unit_price || 0)).toFixed(2)}
                               </span>
                             </div>
                           )}
@@ -1474,543 +1398,31 @@ function PatientReturnTab({ token }: { token: string | null }) {
                 })}
               </div>
             </div>
-
-            {/* Summary & submit */}
             {checkedItems.length > 0 && (
               <div className="px-5 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-4 flex-wrap">
                 <div className="text-sm">
                   <span className="text-slate-500">{checkedItems.length} item(s) · </span>
-                  <span className="font-bold text-slate-800">Total refund: ₹{totalRefund.toFixed(2)}</span>
+                  <span className="font-bold text-slate-800">Total refund: Rs.{totalRefund.toFixed(2)}</span>
                 </div>
                 <button onClick={submitReturn} disabled={submitting}
                   className="px-5 py-2 text-white text-sm font-semibold rounded-lg flex items-center gap-2 disabled:opacity-60"
                   style={{ backgroundColor: BRAND }}>
                   {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                  {submitting ? 'Processing…' : 'Process return & refund'}
+                  {submitting ? 'Processing...' : 'Process return & refund'}
                 </button>
               </div>
             )}
           </>
         )}
-
         {!bill && !billError && (
           <div className="p-12 text-center text-slate-400">
             <FileText className="w-10 h-10 mx-auto mb-3 opacity-30" />
             <p className="text-sm">Enter a bill number above to look up the sale</p>
           </div>
         )}
-
-        {success && (
-          <div className="mx-5 my-4 p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700 font-semibold flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4" /> {success}
-          </div>
-        )}
-        {error && (
-          <div className="mx-5 my-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4" /> {error}
-          </div>
-        )}
+        {success && <div className="mx-5 my-4 p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700 font-semibold flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> {success}</div>}
+        {error && <div className="mx-5 my-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 flex items-center gap-2"><AlertTriangle className="w-4 h-4" /> {error}</div>}
       </div>
     </div>
   );
-}
-
-
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Patient Return Tab — look up bill, validate batch, allow partial return
-// ─────────────────────────────────────────────────────────────────────────────
-function PatientReturnTab({ token }: { token: string | null }) {
-  const [billSearch, setBillSearch] = useState('');
-  const [searching, setSearching] = useState(false);
-  const [bill, setBill] = useState<any>(null);
-  const [billError, setBillError] = useState('');
-  const [returnQtys, setReturnQtys] = useState<Record<string, number>>({});
-  const [returnReasons, setReturnReasons] = useState<Record<string, string>>({});
-  const [selectedItems, setSelectedItems] = useState<Record<string, boolean>>({});
-  const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState('');
-  const [error, setError] = useState('');
-
-  async function lookupBill() {
-    if (!billSearch.trim()) return;
-    setSearching(true);
-    setBillError('');
-    setBill(null);
-    setReturnQtys({});
-    setSelectedItems({});
-    setSuccess('');
-    setError('');
-    try {
-      const res = await fetch(`${API}/sales/bill/${encodeURIComponent(billSearch.trim())}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        throw new Error(e.message || 'Bill not found');
-      }
-      const data = await res.json();
-      setBill(data);
-      // Default qty to 0 for all items, reason to 'patient_return'
-      const qtys: Record<string, number> = {};
-      const reasons: Record<string, string> = {};
-      const sel: Record<string, boolean> = {};
-      (data.items || []).forEach((it: any) => {
-        qtys[it.id] = 0;
-        reasons[it.id] = 'patient_return';
-        sel[it.id] = false;
-      });
-      setReturnQtys(qtys);
-      setReturnReasons(reasons);
-      setSelectedItems(sel);
-    } catch (e: any) {
-      setBillError(e.message || 'Error looking up bill');
-    } finally {
-      setSearching(false);
-    }
-  }
-
-  const checkedItems = bill?.items?.filter((it: any) => selectedItems[it.id] && returnQtys[it.id] > 0) || [];
-  const totalRefund = checkedItems.reduce((s: number, it: any) => {
-    const unitPrice = Number(it.unit_price || 0);
-    return s + returnQtys[it.id] * unitPrice;
-  }, 0);
-
-  async function submitReturn() {
-    if (checkedItems.length === 0) { setError('Select at least one item with qty > 0'); return; }
-    setSubmitting(true);
-    setError('');
-    try {
-      const res = await fetch(`${API}/returns/patient`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          sale_id: bill.id,
-          bill_no: bill.bill_number,
-          patient_name: bill.patient_name,
-          items: checkedItems.map((it: any) => ({
-            sale_item_id: it.id,
-            medicine_id: it.medicine_id,
-            medicine_name: it.medicine?.brand_name || it.medicine_name || '',
-            batch_id: it.batch_id,
-            batch_number: it.batch?.batch_number || it.batch_number,
-            return_qty: returnQtys[it.id],
-            unit_price: Number(it.unit_price || 0),
-            return_value: returnQtys[it.id] * Number(it.unit_price || 0),
-            reason: returnReasons[it.id],
-          })),
-        }),
-      });
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        throw new Error(e.message || 'Failed to create return');
-      }
-      setSuccess(`Return processed. Refund amount: ₹${totalRefund.toFixed(2)}`);
-      setBill(null);
-      setBillSearch('');
-    } catch (e: any) {
-      setError(e.message || 'Error processing return');
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <div className="flex-1 p-4 max-w-3xl mx-auto w-full">
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-        {/* Bill lookup */}
-        <div className="px-5 py-4 border-b border-slate-100">
-          <h2 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
-            <FileText className="w-4 h-4" style={{ color: BRAND }} />
-            Look up bill to process patient return
-          </h2>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={billSearch}
-              onChange={e => setBillSearch(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && lookupBill()}
-              placeholder="Enter bill number e.g. BL-20260611-0001"
-              className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00b8a0]"
-            />
-            <button
-              onClick={lookupBill}
-              disabled={searching}
-              className="px-4 py-2 text-white text-sm font-semibold rounded-lg flex items-center gap-2"
-              style={{ backgroundColor: BRAND }}
-            >
-              {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-              Search
-            </button>
-          </div>
-          {billError && <p className="text-xs text-red-500 mt-2">{billError}</p>}
-        </div>
-
-        {/* Bill details */}
-        {bill && (
-          <>
-            <div className="px-5 py-3 bg-slate-50 border-b border-slate-100 flex flex-wrap gap-4 text-xs text-slate-600">
-              <span><span className="font-semibold">Bill:</span> {bill.bill_number}</span>
-              <span><span className="font-semibold">Patient:</span> {bill.patient_name || '—'}</span>
-              <span><span className="font-semibold">Date:</span> {new Date(bill.created_at).toLocaleDateString('en-IN')}</span>
-              <span><span className="font-semibold">Total:</span> ₹{Number(bill.total_amount || bill.grand_total || 0).toFixed(2)}</span>
-            </div>
-
-            <div className="px-5 py-3">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
-                Select items to return
-              </p>
-              <div className="space-y-3">
-                {(bill.items || []).map((it: any) => {
-                  const maxQty = Number(it.qty || 0);
-                  const isSelected = selectedItems[it.id];
-                  return (
-                    <div key={it.id} className={`border rounded-xl p-3 transition-colors ${
-                      isSelected ? 'border-[#00b8a0] bg-[#00b8a0]/5' : 'border-slate-200'
-                    }`}>
-                      <div className="flex items-start gap-3">
-                        <input type="checkbox" checked={!!isSelected}
-                          onChange={e => {
-                            setSelectedItems(prev => ({ ...prev, [it.id]: e.target.checked }));
-                            if (e.target.checked && returnQtys[it.id] === 0) {
-                              setReturnQtys(prev => ({ ...prev, [it.id]: maxQty }));
-                            }
-                          }}
-                          className="mt-1 w-4 h-4 accent-[#00b8a0]"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-slate-800">{it.medicine?.brand_name || it.medicine_name || ''}</p>
-                          <p className="text-xs text-slate-500">
-                            Batch: <span className="font-mono font-semibold">{it.batch?.batch_number || it.batch?.batch_number || it.batch_number || '—'}</span>
-                            &nbsp;· Sold qty: <span className="font-semibold">{maxQty}</span>
-                            &nbsp;· ₹{Number(it.unit_price || 0).toFixed(2)}/unit
-                          </p>
-                          {isSelected && (
-                            <div className="mt-2 flex flex-wrap gap-3 items-center">
-                              <div className="flex items-center gap-2">
-                                <label className="text-xs text-slate-500">Return qty:</label>
-                                <input type="number" min={1} max={maxQty}
-                                  value={returnQtys[it.id] || ''}
-                                  onChange={e => setReturnQtys(prev => ({
-                                    ...prev,
-                                    [it.id]: Math.max(1, Math.min(maxQty, Number(e.target.value)))
-                                  }))}
-                                  className="w-20 px-2 py-1 border border-slate-200 rounded-lg text-sm text-center focus:outline-none focus:border-[#00b8a0]"
-                                />
-                                <span className="text-xs text-slate-400">of {maxQty}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <label className="text-xs text-slate-500">Reason:</label>
-                                <select value={returnReasons[it.id] || 'patient_return'}
-                                  onChange={e => setReturnReasons(prev => ({ ...prev, [it.id]: e.target.value }))}
-                                  className="px-2 py-1 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-[#00b8a0]">
-                                  <option value="patient_return">Patient return</option>
-                                  <option value="wrong_medicine">Wrong medicine dispensed</option>
-                                  <option value="duplicate_bill">Duplicate bill</option>
-                                  <option value="doctor_change">Doctor changed prescription</option>
-                                  <option value="other">Other</option>
-                                </select>
-                              </div>
-                              <span className="text-xs font-semibold text-[#00b8a0]">
-                                Refund: ₹{(returnQtys[it.id] * Number(it.unit_price || 0)).toFixed(2)}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Summary & submit */}
-            {checkedItems.length > 0 && (
-              <div className="px-5 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-4 flex-wrap">
-                <div className="text-sm">
-                  <span className="text-slate-500">{checkedItems.length} item(s) · </span>
-                  <span className="font-bold text-slate-800">Total refund: ₹{totalRefund.toFixed(2)}</span>
-                </div>
-                <button onClick={submitReturn} disabled={submitting}
-                  className="px-5 py-2 text-white text-sm font-semibold rounded-lg flex items-center gap-2 disabled:opacity-60"
-                  style={{ backgroundColor: BRAND }}>
-                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                  {submitting ? 'Processing…' : 'Process return & refund'}
-                </button>
-              </div>
-            )}
-          </>
-        )}
-
-        {!bill && !billError && (
-          <div className="p-12 text-center text-slate-400">
-            <FileText className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">Enter a bill number above to look up the sale</p>
-          </div>
-        )}
-
-        {success && (
-          <div className="mx-5 my-4 p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700 font-semibold flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4" /> {success}
-          </div>
-        )}
-        {error && (
-          <div className="mx-5 my-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4" /> {error}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Patient Return Tab — look up bill, validate batch, allow partial return
-// ─────────────────────────────────────────────────────────────────────────────
-function PatientReturnTab({ token }: { token: string | null }) {
-  const [billSearch, setBillSearch] = useState('');
-  const [searching, setSearching] = useState(false);
-  const [bill, setBill] = useState<any>(null);
-  const [billError, setBillError] = useState('');
-  const [returnQtys, setReturnQtys] = useState<Record<string, number>>({});
-  const [returnReasons, setReturnReasons] = useState<Record<string, string>>({});
-  const [selectedItems, setSelectedItems] = useState<Record<string, boolean>>({});
-  const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState('');
-  const [error, setError] = useState('');
-
-  async function lookupBill() {
-    if (!billSearch.trim()) return;
-    setSearching(true);
-    setBillError('');
-    setBill(null);
-    setReturnQtys({});
-    setSelectedItems({});
-    setSuccess('');
-    setError('');
-    try {
-      const res = await fetch(`${API}/sales/bill/${encodeURIComponent(billSearch.trim())}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        throw new Error(e.message || 'Bill not found');
-      }
-      const data = await res.json();
-      setBill(data);
-      // Default qty to 0 for all items, reason to 'patient_return'
-      const qtys: Record<string, number> = {};
-      const reasons: Record<string, string> = {};
-      const sel: Record<string, boolean> = {};
-      (data.items || []).forEach((it: any) => {
-        qtys[it.id] = 0;
-        reasons[it.id] = 'patient_return';
-        sel[it.id] = false;
-      });
-      setReturnQtys(qtys);
-      setReturnReasons(reasons);
-      setSelectedItems(sel);
-    } catch (e: any) {
-      setBillError(e.message || 'Error looking up bill');
-    } finally {
-      setSearching(false);
-    }
-  }
-
-  const checkedItems = bill?.items?.filter((it: any) => selectedItems[it.id] && returnQtys[it.id] > 0) || [];
-  const totalRefund = checkedItems.reduce((s: number, it: any) => {
-    const unitPrice = Number(it.unit_price || 0);
-    return s + returnQtys[it.id] * unitPrice;
-  }, 0);
-
-  async function submitReturn() {
-    if (checkedItems.length === 0) { setError('Select at least one item with qty > 0'); return; }
-    setSubmitting(true);
-    setError('');
-    try {
-      const res = await fetch(`${API}/returns/patient`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          sale_id: bill.id,
-          bill_no: bill.bill_number,
-          patient_name: bill.patient_name,
-          items: checkedItems.map((it: any) => ({
-            sale_item_id: it.id,
-            medicine_id: it.medicine_id,
-            medicine_name: it.medicine?.brand_name || it.medicine_name || '',
-            batch_id: it.batch_id,
-            batch_number: it.batch?.batch_number || it.batch_number,
-            return_qty: returnQtys[it.id],
-            unit_price: Number(it.unit_price || 0),
-            return_value: returnQtys[it.id] * Number(it.unit_price || 0),
-            reason: returnReasons[it.id],
-          })),
-        }),
-      });
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        throw new Error(e.message || 'Failed to create return');
-      }
-      setSuccess(`Return processed. Refund amount: ₹${totalRefund.toFixed(2)}`);
-      setBill(null);
-      setBillSearch('');
-    } catch (e: any) {
-      setError(e.message || 'Error processing return');
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <div className="flex-1 p-4 max-w-3xl mx-auto w-full">
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-        {/* Bill lookup */}
-        <div className="px-5 py-4 border-b border-slate-100">
-          <h2 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
-            <FileText className="w-4 h-4" style={{ color: BRAND }} />
-            Look up bill to process patient return
-          </h2>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={billSearch}
-              onChange={e => setBillSearch(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && lookupBill()}
-              placeholder="Enter bill number e.g. BL-20260611-0001"
-              className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00b8a0]"
-            />
-            <button
-              onClick={lookupBill}
-              disabled={searching}
-              className="px-4 py-2 text-white text-sm font-semibold rounded-lg flex items-center gap-2"
-              style={{ backgroundColor: BRAND }}
-            >
-              {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-              Search
-            </button>
-          </div>
-          {billError && <p className="text-xs text-red-500 mt-2">{billError}</p>}
-        </div>
-
-        {/* Bill details */}
-        {bill && (
-          <>
-            <div className="px-5 py-3 bg-slate-50 border-b border-slate-100 flex flex-wrap gap-4 text-xs text-slate-600">
-              <span><span className="font-semibold">Bill:</span> {bill.bill_number}</span>
-              <span><span className="font-semibold">Patient:</span> {bill.patient_name || '—'}</span>
-              <span><span className="font-semibold">Date:</span> {new Date(bill.created_at).toLocaleDateString('en-IN')}</span>
-              <span><span className="font-semibold">Total:</span> ₹{Number(bill.total_amount || bill.grand_total || 0).toFixed(2)}</span>
-            </div>
-
-            <div className="px-5 py-3">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
-                Select items to return
-              </p>
-              <div className="space-y-3">
-                {(bill.items || []).map((it: any) => {
-                  const maxQty = Number(it.qty || 0);
-                  const isSelected = selectedItems[it.id];
-                  return (
-                    <div key={it.id} className={`border rounded-xl p-3 transition-colors ${
-                      isSelected ? 'border-[#00b8a0] bg-[#00b8a0]/5' : 'border-slate-200'
-                    }`}>
-                      <div className="flex items-start gap-3">
-                        <input type="checkbox" checked={!!isSelected}
-                          onChange={e => {
-                            setSelectedItems(prev => ({ ...prev, [it.id]: e.target.checked }));
-                            if (e.target.checked && returnQtys[it.id] === 0) {
-                              setReturnQtys(prev => ({ ...prev, [it.id]: maxQty }));
-                            }
-                          }}
-                          className="mt-1 w-4 h-4 accent-[#00b8a0]"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-slate-800">{it.medicine?.brand_name || it.medicine_name || ''}</p>
-                          <p className="text-xs text-slate-500">
-                            Batch: <span className="font-mono font-semibold">{it.batch?.batch_number || it.batch?.batch_number || it.batch_number || '—'}</span>
-                            &nbsp;· Sold qty: <span className="font-semibold">{maxQty}</span>
-                            &nbsp;· ₹{Number(it.unit_price || 0).toFixed(2)}/unit
-                          </p>
-                          {isSelected && (
-                            <div className="mt-2 flex flex-wrap gap-3 items-center">
-                              <div className="flex items-center gap-2">
-                                <label className="text-xs text-slate-500">Return qty:</label>
-                                <input type="number" min={1} max={maxQty}
-                                  value={returnQtys[it.id] || ''}
-                                  onChange={e => setReturnQtys(prev => ({
-                                    ...prev,
-                                    [it.id]: Math.max(1, Math.min(maxQty, Number(e.target.value)))
-                                  }))}
-                                  className="w-20 px-2 py-1 border border-slate-200 rounded-lg text-sm text-center focus:outline-none focus:border-[#00b8a0]"
-                                />
-                                <span className="text-xs text-slate-400">of {maxQty}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <label className="text-xs text-slate-500">Reason:</label>
-                                <select value={returnReasons[it.id] || 'patient_return'}
-                                  onChange={e => setReturnReasons(prev => ({ ...prev, [it.id]: e.target.value }))}
-                                  className="px-2 py-1 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-[#00b8a0]">
-                                  <option value="patient_return">Patient return</option>
-                                  <option value="wrong_medicine">Wrong medicine dispensed</option>
-                                  <option value="duplicate_bill">Duplicate bill</option>
-                                  <option value="doctor_change">Doctor changed prescription</option>
-                                  <option value="other">Other</option>
-                                </select>
-                              </div>
-                              <span className="text-xs font-semibold text-[#00b8a0]">
-                                Refund: ₹{(returnQtys[it.id] * Number(it.unit_price || 0)).toFixed(2)}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Summary & submit */}
-            {checkedItems.length > 0 && (
-              <div className="px-5 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-4 flex-wrap">
-                <div className="text-sm">
-                  <span className="text-slate-500">{checkedItems.length} item(s) · </span>
-                  <span className="font-bold text-slate-800">Total refund: ₹{totalRefund.toFixed(2)}</span>
-                </div>
-                <button onClick={submitReturn} disabled={submitting}
-                  className="px-5 py-2 text-white text-sm font-semibold rounded-lg flex items-center gap-2 disabled:opacity-60"
-                  style={{ backgroundColor: BRAND }}>
-                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                  {submitting ? 'Processing…' : 'Process return & refund'}
-                </button>
-              </div>
-            )}
-          </>
-        )}
-
-        {!bill && !billError && (
-          <div className="p-12 text-center text-slate-400">
-            <FileText className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">Enter a bill number above to look up the sale</p>
-          </div>
-        )}
-
-        {success && (
-          <div className="mx-5 my-4 p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700 font-semibold flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4" /> {success}
-          </div>
-        )}
-        {error && (
-          <div className="mx-5 my-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4" /> {error}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 }
