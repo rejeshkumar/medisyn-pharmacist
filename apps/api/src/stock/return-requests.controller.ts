@@ -352,6 +352,86 @@ export class ReturnRequestsController {
     }
   }
 
+  // ── POST /return-requests/patient ───────────────────────────────────────
+  @Post('patient')
+  async createPatientReturn(@Body() body: any, @Req() req: any) {
+    const { tenant_id: tenantId, sub: userId } = req.user;
+    const qr = this.ds.createQueryRunner();
+    await qr.connect();
+    await qr.startTransaction();
+    try {
+      // Validate sale belongs to tenant
+      const sales = await qr.query(
+        `SELECT id, bill_number, patient_name FROM sales WHERE id = $1 AND tenant_id = $2`,
+        [body.sale_id, tenantId]
+      );
+      if (!sales.length) throw new Error('Sale not found');
+
+      // Generate return number
+      const countRow = await qr.query(
+        `SELECT COUNT(*) as cnt FROM patient_returns WHERE tenant_id = $1`, [tenantId]
+      );
+      const num = String(Number(countRow[0].cnt) + 1).padStart(4, '0');
+      const returnNo = `PR-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${num}`;
+
+      // Create patient_return record
+      const ret = await qr.query(
+        `INSERT INTO patient_returns (tenant_id, return_number, sale_id, bill_number, patient_name, total_refund, created_by, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW()) RETURNING id`,
+        [tenantId, returnNo, body.sale_id, body.bill_no, body.patient_name || null,
+         body.items.reduce((s: number, i: any) => s + Number(i.return_value || 0), 0), userId]
+      );
+      const returnId = ret[0].id;
+
+      for (const item of body.items) {
+        // Validate batch belongs to this sale
+        const saleItem = await qr.query(
+          `SELECT id, qty FROM sale_items WHERE id = $1 AND sale_id = $2`,
+          [item.sale_item_id, body.sale_id]
+        );
+        if (!saleItem.length) throw new Error(`Item ${item.medicine_name} not found in this bill`);
+
+        // Check already returned qty
+        const alreadyReturned = await qr.query(
+          `SELECT COALESCE(SUM(pri.return_qty), 0) as total
+           FROM patient_return_items pri
+           JOIN patient_returns pr ON pr.id = pri.return_id
+           WHERE pri.sale_item_id = $1 AND pr.tenant_id = $2`,
+          [item.sale_item_id, tenantId]
+        );
+        const maxReturnable = Number(saleItem[0].qty) - Number(alreadyReturned[0].total);
+        if (item.return_qty > maxReturnable) {
+          throw new Error(`Cannot return ${item.return_qty} of ${item.medicine_name} — only ${maxReturnable} returnable`);
+        }
+
+        // Insert return item
+        await qr.query(
+          `INSERT INTO patient_return_items (return_id, sale_item_id, medicine_id, medicine_name, batch_id, batch_number, return_qty, unit_price, return_value, reason)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+          [returnId, item.sale_item_id, item.medicine_id, item.medicine_name,
+           item.batch_id, item.batch_number, item.return_qty,
+           item.unit_price, item.return_value, item.reason]
+        );
+
+        // Restore stock
+        if (item.batch_id) {
+          await qr.query(
+            `UPDATE stock_batches SET quantity = quantity + $1 WHERE id = $2 AND tenant_id = $3`,
+            [item.return_qty, item.batch_id, tenantId]
+          );
+        }
+      }
+
+      await qr.commitTransaction();
+      return { success: true, return_number: returnNo, return_id: returnId };
+    } catch (e: any) {
+      await qr.rollbackTransaction();
+      throw new BadRequestException(e.message || 'Failed to process patient return');
+    } finally {
+      await qr.release();
+    }
+  }
+
   // ── PATCH /return-requests/:id ────────────────────────────────────────────
   @Patch(':id')
   async update(@Param('id') id: string, @Body() body: any, @Req() req: any) {
