@@ -391,5 +391,14 @@ export class MedicinesService {
     });
   }
 
+  async getManufacturers(tenantId: string): Promise<string[]> {
+    const rows = await this.dataSource.query(
+      `SELECT DISTINCT manufacturer FROM medicines
+       WHERE tenant_id = $1 AND manufacturer IS NOT NULL AND manufacturer != ''
+       ORDER BY manufacturer ASC`,
+      [tenantId]
+    );
+    return rows.map((r: any) => r.manufacturer);
+  }
+
 }
-// force rebuild Sun Apr  5 20:06:04 IST 2026

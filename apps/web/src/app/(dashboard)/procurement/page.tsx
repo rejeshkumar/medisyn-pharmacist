@@ -748,6 +748,9 @@ function POTab({ initialMedicine }: { initialMedicine?: string }) {
   const [receiving, setReceiving] = useState(false);
   const [scannerIdx, setScannerIdx] = useState<number | null>(null);
   const [invoiceScanning, setInvoiceScanning] = useState(false);
+  const [mfgSuggestions, setMfgSuggestions] = useState<string[]>([]);
+  const [mfgDropdownIdx, setMfgDropdownIdx] = useState<number | null>(null);
+  const [allManufacturers, setAllManufacturers] = useState<string[]>([]);
   const invoiceFileRef = useRef<HTMLInputElement | null>(null);
   const [receiveItems, setReceiveItems] = useState<any[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(!!initialMedicine);
@@ -764,6 +767,26 @@ function POTab({ initialMedicine }: { initialMedicine?: string }) {
     } catch { toast.error('Failed to load POs'); }
     finally { setLoading(false); }
   }, [statusFilter]);
+
+  useEffect(() => {
+    api.get('/medicines/manufacturers').then(r => {
+      setAllManufacturers(r.data || []);
+    }).catch(() => {});
+  }, []);
+
+  const handleMfgInput = (val: string, idx: number) => {
+    setReceiveItems(prev => prev.map((x, i) => i === idx ? { ...x, manufacturer: val } : x));
+    setMfgDropdownIdx(idx);
+    if (val.trim().length < 1) { setMfgSuggestions([]); return; }
+    const filtered = allManufacturers.filter(m => m.toLowerCase().includes(val.toLowerCase())).slice(0, 8);
+    setMfgSuggestions(filtered);
+  };
+
+  const selectMfg = (name: string, idx: number) => {
+    setReceiveItems(prev => prev.map((x, i) => i === idx ? { ...x, manufacturer: name } : x));
+    setMfgSuggestions([]);
+    setMfgDropdownIdx(null);
+  };
 
   useEffect(() => { load(); }, [load]);
 
@@ -1115,15 +1138,32 @@ function POTab({ initialMedicine }: { initialMedicine?: string }) {
                             placeholder="e.g. 30049099"
                             className="w-full px-2 py-1 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#00b8a0]" />
                         </div>
-                        <div className="col-span-2">
+                        <div className="col-span-2 relative">
                           <label className="text-[10px] text-slate-400 block mb-1">Manufacturer <span className="text-amber-500 font-semibold">*</span></label>
                           <input type="text" value={ri.manufacturer || ''}
-                            onChange={e => setReceiveItems(prev => prev.map((x,i) =>
-                              i === idx ? { ...x, manufacturer: e.target.value } : x))}
+                            onChange={e => handleMfgInput(e.target.value, idx)}
+                            onFocus={() => { setMfgDropdownIdx(idx); if (ri.manufacturer) handleMfgInput(ri.manufacturer, idx); }}
+                            onBlur={() => setTimeout(() => { setMfgSuggestions([]); setMfgDropdownIdx(null); }, 150)}
                             placeholder="e.g. Sun Pharma, Cipla, Abbott"
                             className={`w-full px-2 py-1 border rounded-lg text-sm focus:outline-none focus:border-[#00b8a0] ${
                               !ri.manufacturer ? 'border-amber-300 bg-amber-50' : 'border-slate-200'
                             }`} />
+                          {mfgDropdownIdx === idx && mfgSuggestions.length > 0 && (
+                            <div className="absolute z-50 left-0 right-0 bg-white border border-slate-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                              {mfgSuggestions.map(m => (
+                                <div key={m} onMouseDown={() => selectMfg(m, idx)}
+                                  className="px-3 py-2 text-sm hover:bg-[#00b8a0]/10 cursor-pointer text-slate-700">
+                                  {m}
+                                </div>
+                              ))}
+                              {ri.manufacturer && !allManufacturers.some(m => m.toLowerCase() === ri.manufacturer.toLowerCase()) && (
+                                <div onMouseDown={() => selectMfg(ri.manufacturer, idx)}
+                                  className="px-3 py-2 text-sm hover:bg-emerald-50 cursor-pointer text-emerald-700 font-semibold border-t border-slate-100">
+                                  + Add &quot;{ri.manufacturer}&quot; as new manufacturer
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
