@@ -658,9 +658,9 @@ export default function ReturnsPage() {
             </div>
           )}
         </div>
-      ) : (
+      ) : tab === 'expiry' ? (
         <ExpiryListTab onCreateReturn={() => setShowCreate(true)} token={token} />
-      ) : tab === 'patient' ? (
+      ) : (
         <PatientReturnTab token={token} />
       )}
 
