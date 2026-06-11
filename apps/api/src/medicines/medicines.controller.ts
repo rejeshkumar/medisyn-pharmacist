@@ -75,6 +75,11 @@ export class MedicinesController {
     return this.medicinesService.lookupBarcode(decodeURIComponent(code), req.user.tenant_id);
   }
 
+  @Get('manufacturers')
+  async getManufacturers(@Req() req: any) {
+    return this.medicinesService.getManufacturers(req.user.tenant_id);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get medicine by ID' })
   findOne(@Param('id') id: string, @Request() req) {
