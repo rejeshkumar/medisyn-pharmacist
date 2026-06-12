@@ -50,6 +50,7 @@ function OwnerDashboard() {
   const { data: dash } = useQuery({ queryKey: ['dashboard'], queryFn: () => api.get('/reports/dashboard').then(r => r.data), refetchInterval: 60000 });
   const { data: lowStock } = useQuery({ queryKey: ['low-stock'], queryFn: () => api.get('/stock/alerts/low-stock').then(r => r.data) });
   const { data: nearExpiry } = useQuery({ queryKey: ['near-expiry'], queryFn: () => api.get('/stock/alerts/near-expiry?days=30').then(r => r.data) });
+  const { data: deadStock } = useQuery({ queryKey: ['dead-stock'], queryFn: () => api.get('/inventory-classification/dead-stock?dead_threshold_days=90&period_days=90').then(r => Array.isArray(r.data) ? r.data : r.data?.items || []).catch(() => []) });
 
   const fmt = (v: number) => `₹${Number(v || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   const totalSales = dash?.revenue_breakdown?.total ?? dash?.today_sales ?? 0;
@@ -285,6 +286,7 @@ function PharmacistDashboard() {
   const { data: dash } = useQuery({ queryKey: ['dashboard'], queryFn: () => api.get('/reports/dashboard').then(r => r.data), refetchInterval: 30000 });
   const { data: lowStock } = useQuery({ queryKey: ['low-stock'], queryFn: () => api.get('/stock/alerts/low-stock').then(r => r.data) });
   const { data: nearExpiry } = useQuery({ queryKey: ['near-expiry'], queryFn: () => api.get('/stock/alerts/near-expiry?days=30').then(r => r.data) });
+  const { data: deadStock } = useQuery({ queryKey: ['dead-stock'], queryFn: () => api.get('/inventory-classification/dead-stock?dead_threshold_days=90&period_days=90').then(r => Array.isArray(r.data) ? r.data : r.data?.items || []).catch(() => []) });
   const { data: rxQueue = [] } = useQuery({
     queryKey: ['rx-queue-home'],
     queryFn: () => api.get('/queue/today').then(r =>
@@ -388,6 +390,25 @@ function PharmacistDashboard() {
               <span className="text-xs text-amber-700 font-medium ml-2 shrink-0">{formatDate(b.expiry_date)} · {b.quantity} units</span>
             </div>
           ))}
+        </div>
+      )}
+
+      {deadStock?.length > 0 && (
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 cursor-pointer" onClick={() => router.push('/reports/inventory-classification')}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Package className="w-4 h-4 text-slate-500" />
+              <h3 className="font-bold text-slate-800">Dead Stock — Return to Supplier</h3>
+            </div>
+            <span className="bg-slate-600 text-white text-xs font-bold px-2.5 py-1 rounded-full">{deadStock.length}+ items</span>
+          </div>
+          {deadStock.slice(0,4).map((item: any, i: number) => (
+            <div key={i} className="flex justify-between py-1.5 border-b border-slate-200 last:border-0">
+              <span className="text-sm text-slate-700 font-medium truncate">{item.brand_name}</span>
+              <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded font-bold ml-2 shrink-0">₹{Number(item.purchase_value || 0).toFixed(0)} locked</span>
+            </div>
+          ))}
+          <p className="text-xs text-slate-400 mt-2">Tap to view full dead stock report → start supplier returns</p>
         </div>
       )}
 
