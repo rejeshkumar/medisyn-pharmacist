@@ -7,8 +7,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { APP_GUARD } from '@nestjs/core';
 import { ModuleRef } from '@nestjs/core';
-import { InventoryIntelligenceController } from './inventory/controllers/inventory-intelligence.controller';
-import { InventoryIntelligenceService } from './inventory/services/inventory-intelligence.service';
+import { SuperRxModule } from './superrx/superrx.module';
+
 // Guards
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { TenantGuard } from './common/guards/tenant.guard';
