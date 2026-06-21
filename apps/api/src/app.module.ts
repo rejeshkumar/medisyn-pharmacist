@@ -7,6 +7,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { APP_GUARD } from '@nestjs/core';
 import { ModuleRef } from '@nestjs/core';
+import { SuperRxModule } from './superrx/superrx.module';
 
 // Guards
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
