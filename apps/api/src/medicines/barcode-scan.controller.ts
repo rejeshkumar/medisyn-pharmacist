@@ -25,7 +25,7 @@
     const mapping = await this.dataSource.query(`
       SELECT m.* FROM medicines m
       JOIN barcode_mappings bm ON bm.medicine_id = m.id
-      WHERE bm.gtin = $1 AND m.tenant_id = $2
+      WHERE bm.barcode = $1 AND m.tenant_id = $2
       LIMIT 1
     `, [gtin, tenantId]).catch(() => []);
 
@@ -122,7 +122,7 @@ export class BarcodeScanController {
     },
     @Req() req: any,
   ) {
-    const tenantId = req.tenantId;
+    const tenantId = req.user.tenant_id;
     const gtin = dto.gtin13 ||
       (dto.gtin?.startsWith('0') ? dto.gtin.substring(1) : dto.gtin);
 
@@ -186,10 +186,10 @@ export class BarcodeScanController {
 
     // Step 3: Auto-learn GTIN mapping
     await this.ds.query(`
-      INSERT INTO barcode_mappings (gtin, medicine_id, tenant_id, source, created_at)
-      VALUES ($1, $2, $3, 'auto_scan', NOW())
-      ON CONFLICT (gtin, tenant_id) DO NOTHING
-    `, [gtin, medicine.id, tenantId]).catch(() => {});
+      INSERT INTO barcode_mappings (barcode, medicine_id, tenant_id, created_by, created_at)
+      VALUES ($1, $2, $3, $4, NOW())
+      ON CONFLICT (tenant_id, barcode) DO NOTHING
+    `, [gtin, medicine.id, tenantId, req.user.sub]).catch(() => {});
 
     return { medicine, batch, confidence, gtin };
   }
