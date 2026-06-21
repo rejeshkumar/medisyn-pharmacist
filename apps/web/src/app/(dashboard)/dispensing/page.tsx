@@ -138,6 +138,26 @@ function MedSearchDropdown({
         onChange={e => { onChange(e.target.value); }}
         onFocus={() => { if (results?.length) setOpen(true); }}
         onKeyDown={e => {
+          if ((e.key === 'Enter' || e.key === 'Tab') && /^\d{8,14}$/.test(value.trim())) {
+            e.preventDefault();
+            const code = value.trim();
+            (async () => {
+              try {
+                const { data } = await api.post('/medicines/scan-barcode', { gtin13: code, raw: code, barcode_type: 'EAN' });
+                if (data?.medicine) {
+                  onSelect(data.medicine);
+                  onChange('');
+                  setOpen(false);
+                  setHighlightedIdx(-1);
+                } else {
+                  toast.error(`Barcode ${code} not mapped to any medicine yet.`);
+                }
+              } catch {
+                toast.error('Barcode lookup failed. Try again or type the medicine name.');
+              }
+            })();
+            return;
+          }
           if (!open || !results?.length) return;
           if (e.key === 'ArrowDown') {
             e.preventDefault();
