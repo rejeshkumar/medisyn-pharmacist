@@ -119,4 +119,9 @@ export class CreateMedicineDto {
   @IsBoolean()
   @IsOptional()
   is_rx_required?: boolean;
+
+  @ApiPropertyOptional({ description: 'Barcode to map to this medicine (optional, scan or type at creation)' })
+  @IsString()
+  @IsOptional()
+  barcode?: string;
 }

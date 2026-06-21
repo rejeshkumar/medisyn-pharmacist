@@ -64,17 +64,22 @@ export class MedicinesService {
 
   async create(dto: CreateMedicineDto, user: UserContext) {
     const { id: userId, tenant_id: tenantId } = user;
+    const { barcode, ...medicineDto } = dto;
 
-    if (!dto.substitute_group_key) {
-      dto.substitute_group_key = `${dto.molecule?.toLowerCase().replace(/\s+/g, '_')}_${dto.strength?.toLowerCase().replace(/\s+/g, '')}_${dto.dosage_form?.toLowerCase()}`;
+    if (!medicineDto.substitute_group_key) {
+      medicineDto.substitute_group_key = `${medicineDto.molecule?.toLowerCase().replace(/\s+/g, '_')}_${medicineDto.strength?.toLowerCase().replace(/\s+/g, '')}_${medicineDto.dosage_form?.toLowerCase()}`;
     }
 
     const medicine = this.medicinesRepo.create({
-      ...dto,
+      ...medicineDto,
       tenant_id:  tenantId,
       created_by: userId,
     });
     const saved = await this.medicinesRepo.save(medicine);
+
+    if (barcode && String(barcode).trim()) {
+      await this.createBarcodeMapping({ barcode: String(barcode).trim(), medicine_id: saved.id }, user);
+    }
 
     await this.auditService.log({
       tenantId, userId,

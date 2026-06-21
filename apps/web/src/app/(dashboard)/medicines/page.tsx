@@ -44,7 +44,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 const EMPTY_FORM = {
-  brand_name:'', molecule:'', strength:'', dosage_form:'Tablet',
+  barcode:'', brand_name:'', molecule:'', strength:'', dosage_form:'Tablet',
   schedule_class:'OTC', gst_percent:12, mrp:'', sale_rate:'',
   category:'', composition:'', manufacturer:'', rx_units:'units',
   stock_group:'', treatment_for:'', description:'', discount_percent:0,
@@ -366,6 +366,12 @@ export default function MedicinesPage() {
                     <label className="label">Brand Name *</label>
                     <input className="input" value={form.brand_name} onChange={e => set('brand_name', e.target.value)} placeholder="e.g. DOLO 650" />
                   </div>
+                  {!editMed && (
+                    <div className="sm:col-span-2">
+                      <label className="label">Barcode <span className="text-gray-400 font-normal">(scan with USB scanner or type, optional)</span></label>
+                      <input className="input" value={form.barcode} onChange={e => set('barcode', e.target.value)} placeholder="Scan strip barcode or leave blank" />
+                    </div>
+                  )}
                   <div>
                     <label className="label">Generic Name *</label>
                     <input className="input" value={form.molecule} onChange={e => set('molecule', e.target.value)} placeholder="e.g. Paracetamol" />
