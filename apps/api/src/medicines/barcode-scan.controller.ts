@@ -194,3 +194,4 @@ export class BarcodeScanController {
     return { medicine, batch, confidence, gtin };
   }
 }
+// force rebuild Sun Jun 21 11:43:48 IST 2026
