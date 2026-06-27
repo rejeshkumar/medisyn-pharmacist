@@ -45,14 +45,12 @@ import { SuperAdminModule } from './super-admin/super-admin.module';
 import { DemandLogModule } from './demand/demand-log.module';
 import { ImportMedicinesController } from './import-medicines.controller';
 import { ClearDataController } from './clear-data.controller';
-import { ImportStockController } from './import-stock.controller';
 import { ScheduleClassifierController } from './schedule-classifier.controller';
 import { MoleculeClassifierController } from './molecule-classifier.controller';
 import { ScanLabelController } from './scan-label.controller';
 import { WhatsAppTemplateService } from './common/whatsapp-template.service';
 import { WhatsAppTemplateController } from './common/whatsapp-template.controller';
 import { SetReorderController } from './set-reorder.controller';
-import { KaggleImportController } from './kaggle-import.controller';
 import { PatientHealthModule } from './patient-health/patient-health.module';
 import { InventoryClassificationController } from './inventory-classification/inventory-classification.controller';
 import { SalesAgentsModule } from './sales-agents/sales-agents.module';
@@ -122,13 +120,11 @@ import { InventoryIntelligenceService } from './inventory/services/inventory-int
   controllers: [
     ImportMedicinesController, 
     ClearDataController, 
-    ImportStockController, 
     ScheduleClassifierController, 
     MoleculeClassifierController,
     ScanLabelController,
     WhatsAppTemplateController, 
     SetReorderController, 
-    KaggleImportController, 
     InventoryClassificationController,
     InventoryIntelligenceController,
   ],
