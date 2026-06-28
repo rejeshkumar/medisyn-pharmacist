@@ -115,7 +115,8 @@ import { InventoryIntelligenceService } from './inventory/services/inventory-int
     FinancialModule,
     SuperAdminModule,
     DemandLogModule,
-    OwnerDashboardModule,
+OwnerDashboardModule,
+SuperRxModule,
   ],
   controllers: [
     ImportMedicinesController, 
