@@ -76,7 +76,7 @@ export default function BookAppointmentPage() {
   const [selSpecialty, setSelSpecialty]             = useState('All');
   const [selectedDoctor, setSelectedDoctor]         = useState<any>(null);
   const [selectedSlot, setSelectedSlot]             = useState<string|null>(null);
-  const [bookedSlots, setBookedSlots]               = useState<string[]>([]);
+  const [bookedSlotsMap, setBookedSlotsMap]         = useState<Record<string, string[]>>({});
   const [loadingSlots, setLoadingSlots]             = useState(false);
   const [doctorSlots, setDoctorSlots]               = useState<string[]>([]);
   const [doctorUnavailable, setDoctorUnavailable]   = useState<string|null>(null);
@@ -150,21 +150,29 @@ export default function BookAppointmentPage() {
       .finally(() => setLoadingDoctorSlots(false));
   }, [selectedDoctor, cursor]);
 
+  // Fetch booked slots for ALL doctors whenever the date or doctor list changes
   useEffect(() => {
-    if (!selectedDoctor) { setBookedSlots([]); return; }
+    if (allDoctors.length === 0) return;
     setLoadingSlots(true);
     const dateStr = `${cursor.getFullYear()}-${pad(cursor.getMonth()+1)}-${pad(cursor.getDate())}`;
-    api.get(`/queue?doctor_id=${selectedDoctor.id}&date=${dateStr}&limit=100`)
-      .then(r => {
-        const entries = r.data?.data || r.data || [];
-        const taken = entries
-          .filter((e: any) => e.scheduled_time && e.status !== 'cancelled' && e.status !== 'no_show')
-          .map((e: any) => e.scheduled_time?.slice(11,16) ?? '');
-        setBookedSlots(taken.filter(Boolean));
-      })
-      .catch(() => setBookedSlots([]))
-      .finally(() => setLoadingSlots(false));
-  }, [selectedDoctor, cursor]);
+    Promise.all(
+      allDoctors.map((doc: any) =>
+        api.get(`/queue?doctor_id=${doc.id}&date=${dateStr}&limit=100`)
+          .then(r => {
+            const entries = r.data?.data || r.data || [];
+            const taken = entries
+              .filter((e: any) => e.scheduled_time && e.status !== 'cancelled' && e.status !== 'no_show')
+              .map((e: any) => e.scheduled_time?.slice(11, 16) ?? '');
+            return { id: doc.id, slots: taken.filter(Boolean) };
+          })
+          .catch(() => ({ id: doc.id, slots: [] }))
+      )
+    ).then(results => {
+      const map: Record<string, string[]> = {};
+      results.forEach(r => { map[r.id] = r.slots; });
+      setBookedSlotsMap(map);
+    }).finally(() => setLoadingSlots(false));
+  }, [allDoctors, cursor]);
 
   const navDate = (delta: number) => {
     const d = new Date(cursor);
@@ -467,7 +475,7 @@ export default function BookAppointmentPage() {
                       <td key={slot} className="border-r border-slate-100 bg-slate-50 text-center text-slate-200 text-base">—</td>
                     );
                     const isPast = isPastSlot(cursor, slot);
-                    const isBooked = selectedDoctor?.id === doc.id && bookedSlots.includes(slot);
+                    const isBooked = (bookedSlotsMap[doc.id] || []).includes(slot);
                     const isOff = !doc._any && selectedDoctor?.id === doc.id && doctorSlots.length > 0 && !doctorSlots.includes(slot) && !isPast;
                     const isSel = isSelectedDoc && selectedSlot === slot;
                     let cellClass = '';
