@@ -98,7 +98,7 @@ export default function BookAppointmentPage() {
         const dateStr = new Date().toISOString().split('T')[0];
         Promise.all(
           docs.map((d: any) =>
-            api.get(`/queue?doctor_id=${d.id}&date=${dateStr}&limit=100`)
+            api.get(`/queue/today?doctor_id=${d.id}`)
               .then(r2 => {
                 const entries = r2.data?.data || r2.data || [];
                 const active = entries.filter((e: any) => !['cancelled','no_show','completed','dispensed'].includes(e.status));
@@ -157,12 +157,18 @@ export default function BookAppointmentPage() {
     const dateStr = `${cursor.getFullYear()}-${pad(cursor.getMonth()+1)}-${pad(cursor.getDate())}`;
     Promise.all(
       allDoctors.map((doc: any) =>
-        api.get(`/queue?doctor_id=${doc.id}&date=${dateStr}&limit=100`)
+        api.get(`/queue/today?doctor_id=${doc.id}`)
           .then(r => {
             const entries = r.data?.data || r.data || [];
             const taken = entries
               .filter((e: any) => e.scheduled_time && e.status !== 'cancelled' && e.status !== 'no_show')
-              .map((e: any) => e.scheduled_time?.slice(11, 16) ?? '');
+              .map((e: any) => {
+                const t = e.scheduled_time;
+                if (!t) return '';
+                // Handle both "HH:MM:SS" and full ISO "2026-06-28T14:20:00..."
+                const s = typeof t === 'string' ? t : new Date(t).toISOString();
+                return s.includes('T') ? s.slice(11, 16) : s.slice(0, 5);
+              });
             return { id: doc.id, slots: taken.filter(Boolean) };
           })
           .catch(() => ({ id: doc.id, slots: [] }))
