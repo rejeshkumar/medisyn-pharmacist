@@ -1,6 +1,6 @@
 import {
   Entity, PrimaryGeneratedColumn, Column,
-  CreateDateColumn, UpdateDateColumn, OneToMany,
+  CreateDateColumn, UpdateDateColumn,
 } from 'typeorm';
 import { ServiceCategory } from './service-rate.entity';
 
@@ -61,8 +61,7 @@ export class ClinicBill {
 
   @Column({ type: 'uuid', nullable: true }) created_by: string;
 
-  @OneToMany(() => ClinicBillItem, item => item.bill_id, { cascade: true, eager: true })
-  items: ClinicBillItem[];
+  // items loaded separately via itemRepo.find({ where: { bill_id: id } })
 
   @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
   @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
