@@ -1,74 +1,90 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  Post,
-  Req,
-  BadRequestException,
-} from '@nestjs/common';
-import { SuperRxService } from './superrx.service';
+import { Injectable, Logger, NotFoundException, InternalServerErrorException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import axios, { AxiosInstance } from 'axios';
 
 type OrderLine = { name: string; qty: number };
 
-/**
- * Endpoints SimpliRx's browser calls.
- *
- * Your app applies JwtAuthGuard + TenantGuard GLOBALLY, so these routes are
- * already behind the pharmacist login. We read the pharmacist's tenant_id off
- * the request (set by your guards) and pass it down so the order is placed as
- * the right SuperRx pharmacy.
- *
- * No global path prefix, so the full paths are:
- *   POST /procurement/superrx/compare
- *   POST /procurement/superrx/order
- *   GET  /procurement/superrx/order/:id
- */
-@Controller('procurement/superrx')
-export class SuperRxController {
-  constructor(private readonly superrx: SuperRxService) {}
+@Injectable()
+export class SuperRxService {
+  private readonly logger = new Logger(SuperRxService.name);
+  private readonly http: AxiosInstance;
+  private readonly pharmacyMap: Record<string, string>;
 
-  @Post('compare')
-  async compare(@Req() req: any, @Body() body: { lines: OrderLine[] }) {
-    const tenantId = tenantOf(req);
-    const lines = cleanLines(body?.lines);
-    if (lines.length === 0) {
-      throw new BadRequestException('Add at least one medicine to compare.');
+  constructor(private config: ConfigService) {
+    const baseURL = config.get<string>('SUPERRX_API_URL', 'https://superrx-backend-production.up.railway.app');
+    const apiKey  = config.get<string>('SUPERRX_API_KEY', '');
+
+    this.http = axios.create({
+      baseURL,
+      headers: { 'x-api-key': apiKey },
+      timeout: 10_000,
+    });
+
+    // JSON map of SimpliRx tenantId → SuperRx pharmacyId
+    // e.g. {"00000000-0000-0000-0000-000000000001":"cmpy94aup007ez6hytr6li0sy"}
+    const raw = config.get<string>('SUPERRX_PHARMACY_MAP', '{}');
+    try {
+      this.pharmacyMap = JSON.parse(raw);
+    } catch {
+      this.logger.error('SUPERRX_PHARMACY_MAP is not valid JSON — using empty map');
+      this.pharmacyMap = {};
     }
-    return this.superrx.compare(tenantId, lines);
   }
 
-  @Post('order')
-  async order(
-    @Req() req: any,
-    @Body() body: { dealerId: string; lines: OrderLine[] },
-  ) {
-    const tenantId = tenantOf(req);
-    if (!body?.dealerId) {
-      throw new BadRequestException('Choose a dealer before placing the order.');
+  /** Resolve SimpliRx tenantId → SuperRx pharmacyId */
+  private resolvePharmacyId(tenantId: string): string {
+    const id = this.pharmacyMap[tenantId];
+    if (!id) {
+      throw new NotFoundException(
+        `No SuperRx pharmacy mapped for tenant ${tenantId}. ` +
+        `Add it to SUPERRX_PHARMACY_MAP.`,
+      );
     }
-    const lines = cleanLines(body?.lines);
-    if (lines.length === 0) {
-      throw new BadRequestException('Add at least one medicine to order.');
-    }
-    return this.superrx.createOrder(tenantId, body.dealerId, lines);
+    return id;
   }
 
-  @Get('order/:id')
-  async status(@Param('id') id: string) {
-    return this.superrx.getOrder(id);
+  /** POST /integration/compare — returns dealer prices for a list of medicines */
+  async compare(tenantId: string, lines: OrderLine[]) {
+    const pharmacyId = this.resolvePharmacyId(tenantId);
+    try {
+      const { data } = await this.http.post('/integration/compare', {
+        pharmacyId,
+        lines,
+      });
+      return data;
+    } catch (err: any) {
+      this.logger.error('SuperRx compare failed', err?.response?.data ?? err.message);
+      throw new InternalServerErrorException('Could not fetch dealer prices. Try again.');
+    }
   }
-}
 
-/** Read the tenant id your guards attach (handles either field name). */
-function tenantOf(req: any): string | undefined {
-  return req?.user?.tenant_id ?? req?.user?.tenantId;
-}
+  /** POST /integration/orders — place an order on SuperRx */
+  async createOrder(tenantId: string, dealerId: string, lines: OrderLine[]) {
+    const pharmacyId = this.resolvePharmacyId(tenantId);
+    try {
+      const { data } = await this.http.post('/integration/orders', {
+        pharmacyId,
+        dealerId,
+        lines,
+      });
+      return data;
+    } catch (err: any) {
+      this.logger.error('SuperRx createOrder failed', err?.response?.data ?? err.message);
+      throw new InternalServerErrorException('Could not place order. Try again.');
+    }
+  }
 
-/** Drop blank lines and bad quantities so we never send junk to SuperRx. */
-function cleanLines(lines?: OrderLine[]): OrderLine[] {
-  if (!Array.isArray(lines)) return [];
-  return lines
-    .map((l) => ({ name: (l?.name ?? '').trim(), qty: Number(l?.qty) }))
-    .filter((l) => l.name.length > 0 && Number.isFinite(l.qty) && l.qty > 0);
+  /** GET /integration/orders/:id — fetch order status */
+  async getOrder(id: string) {
+    try {
+      const { data } = await this.http.get(`/integration/orders/${id}`);
+      return data;
+    } catch (err: any) {
+      if (err?.response?.status === 404) {
+        throw new NotFoundException(`Order ${id} not found.`);
+      }
+      this.logger.error('SuperRx getOrder failed', err?.response?.data ?? err.message);
+      throw new InternalServerErrorException('Could not fetch order status.');
+    }
+  }
 }
