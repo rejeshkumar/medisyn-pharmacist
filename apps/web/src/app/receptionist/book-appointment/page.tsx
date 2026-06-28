@@ -488,19 +488,23 @@ export default function BookAppointmentPage() {
                     let label = 'Free';
                     let clickable = true;
                     if (isSel) {
-                      cellClass = 'bg-[#00b8a0] text-white font-semibold border-[#00b8a0]';
+                      cellClass = 'bg-[#00b8a0] text-white font-semibold shadow-sm';
                       label = slot;
                       clickable = false;
-                    } else if (isPast || isBooked) {
-                      cellClass = 'bg-slate-50 text-slate-200 line-through cursor-not-allowed';
-                      label = 'x';
+                    } else if (isPast) {
+                      cellClass = 'bg-transparent text-slate-200 cursor-not-allowed';
+                      label = '—';
+                      clickable = false;
+                    } else if (isBooked) {
+                      cellClass = 'bg-amber-50 text-amber-600 font-semibold cursor-not-allowed border border-amber-200';
+                      label = slot;
                       clickable = false;
                     } else if (isOff) {
-                      cellClass = 'text-slate-200 cursor-default';
-                      label = '-';
+                      cellClass = 'bg-transparent text-slate-200 cursor-default';
+                      label = '—';
                       clickable = false;
                     } else {
-                      cellClass = 'border border-slate-200 text-slate-400 hover:border-[#00b8a0] hover:text-[#00b8a0] hover:bg-teal-50 cursor-pointer';
+                      cellClass = 'bg-green-50 text-green-700 font-medium border border-green-200 hover:bg-green-500 hover:text-white hover:border-green-500 cursor-pointer';
                     }
                     return (
                       <td key={slot} className="border-r border-slate-100 px-1 py-1.5 text-center">
@@ -530,10 +534,10 @@ export default function BookAppointmentPage() {
           </tbody>
         </table>
         <div className="flex items-center gap-5 px-4 py-2 bg-slate-50 border-t border-slate-100 text-[10px] text-slate-400">
+          <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded bg-green-100 border border-green-300"></span>Free</span>
+          <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded bg-amber-50 border border-amber-200"></span>Booked</span>
           <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded bg-[#00b8a0]"></span>Selected</span>
-          <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded bg-slate-100 border border-slate-200"></span>Booked / past</span>
-          <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded border border-slate-200"></span>Free</span>
-          <span className="flex items-center gap-1.5 text-slate-300">— Not available</span>
+          <span className="flex items-center gap-1.5 text-slate-300">— Past / unavailable</span>
         </div>
       </div>
 
