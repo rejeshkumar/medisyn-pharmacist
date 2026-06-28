@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
+import ConsolidatedBillDocument, { type ConsolidatedBillData } from '@/components/billing/ConsolidatedBillDocument';
 import {
   Search, Plus, Minus, Trash2, CheckCircle2, Loader2,
   Stethoscope, FlaskConical, Pill, Wrench, Star,
@@ -165,6 +166,8 @@ export default function ReceptionistBillingPage() {
   const [notes, setNotes]                     = useState('');
   const [submitting, setSubmitting]           = useState(false);
   const [doneBill, setDoneBill]               = useState<any>(null);
+  const [showConsolidated, setShowConsolidated] = useState(false);
+  const [consolidatedData, setConsolidatedData] = useState<ConsolidatedBillData | null>(null);
 
   // ── Patient search ──────────────────────────────────────────
   const searchPatients = useCallback(async (q: string) => {
@@ -244,6 +247,56 @@ export default function ReceptionistBillingPage() {
   const total    = Math.max(0, subtotal + gstAmt - vipDiscAmt - extraAmt);
 
   // ── Submit ──────────────────────────────────────────────────
+  // Build consolidated bill data from encounter + pharmacy bills
+  const buildConsolidatedData = (bill: any): ConsolidatedBillData => {
+    const pharmBills = encounterDetail?.pharmacy_bills || [];
+    const pharmBill  = pharmBills[0];
+    const pharmItems = pharmBill?.items?.map((it: any) => ({
+      medicineName:  it.medicine?.brand_name || it.medicine_name || '',
+      batchNumber:   it.batch?.batch_number  || it.batch_number  || '',
+      expiryDate:    it.batch?.expiry_date   || '',
+      qty:           Number(it.qty),
+      rate:          Number(it.rate),
+      itemTotal:     Number(it.item_total || (it.qty * it.rate)),
+      isSubstituted: it.is_substituted,
+    })) || [];
+
+    const clinicSub  = Number(bill.subtotal  || 0);
+    const pharmSub   = Number(pharmBill?.total_amount || encounterDetail?.pharmacy_total || 0);
+    const discount   = Number(bill.extra_discount_amt || 0);
+    const gross      = clinicSub + pharmSub;
+    const total      = gross - discount;
+
+    return {
+      billNumber:          bill.bill_number,
+      date:                bill.created_at,
+      patientName:         bill.patient_name || (selectedPatient?.first_name
+                             ? `${selectedPatient.first_name} ${selectedPatient.last_name || ''}`.trim()
+                             : selectedPatient?.full_name),
+      doctorName:          encounterDetail?.queue?.doctor_name || '',
+      tokenNumber:         encounterDetail?.queue?.token_number,
+      visitType:           encounterDetail?.queue?.visit_type || 'new',
+      paymentMode:         bill.payment_mode || paymentMode,
+      clinicItems:         items.map(it => ({
+        category:    it.category,
+        name:        it.name,
+        qty:         it.qty,
+        unit_rate:   it.unit_rate,
+        gst_percent: it.gst_percent,
+      })),
+      clinicSubtotal:      clinicSub,
+      pharmacyBillNumber:  pharmBill?.bill_number,
+      pharmacyItems:       pharmItems,
+      pharmacySubtotal:    pharmSub,
+      hasScheduledDrugs:   pharmBill?.has_scheduled_drugs || false,
+      grossTotal:          gross,
+      discountAmount:      discount,
+      discountNote:        bill.extra_discount_note,
+      totalAmount:         total,
+      amountPaid:          total,
+    };
+  };
+
   const handleSubmit = async () => {
     if (!selectedPatient) { toast.error('Select a patient'); return; }
     if (items.length === 0) { toast.error('Add at least one service'); return; }
@@ -256,7 +309,15 @@ export default function ReceptionistBillingPage() {
         notes: notes || undefined,
       });
       setDoneBill(res.data);
-      setView('done');
+      // If this came from an encounter (has pharmacy bills or clinic items),
+      // show consolidated view; otherwise fall back to simple done screen
+      if (selectedEncounter) {
+        const cd = buildConsolidatedData(res.data);
+        setConsolidatedData(cd);
+        setShowConsolidated(true);
+      } else {
+        setView('done');
+      }
       toast.success(`Bill ${res.data.bill_number} created`);
     } catch (e: any) {
       toast.error(e.response?.data?.message || 'Failed to create bill');
@@ -605,6 +666,14 @@ export default function ReceptionistBillingPage() {
       )}
 
       {showAddModal && <AddServiceModal onAdd={addItem} onClose={() => setShowAddModal(false)} />}
+
+      {showConsolidated && consolidatedData && (
+        <ConsolidatedBillDocument
+          data={consolidatedData}
+          mode="print"
+          onClose={() => { setShowConsolidated(false); setView('done'); }}
+        />
+      )}
     </div>
   );
 }
