@@ -5,6 +5,8 @@ import { SalesController } from './sales.controller';
 import { SalesService } from './sales.service';
 import { CreditNoteController } from './credit-note.controller';
 import { CreditNoteService } from './credit-note.service';
+import { PendingReceptionController } from './pending-reception.controller';
+import { PendingReceptionService } from './pending-reception.service';
 import { Sale } from '../database/entities/sale.entity';
 import { SaleItem } from '../database/entities/sale-item.entity';
 import { StockBatch } from '../database/entities/stock-batch.entity';
@@ -21,8 +23,8 @@ import { WhatsAppTemplateService } from '../common/whatsapp-template.service';
     AuditModule,
     DispensingModule,
   ],
-  controllers: [SalesController, CreditNoteController],
-  providers: [SalesService, CreditNoteService, AutoCarePlanService, WhatsAppTemplateService],
+  controllers: [SalesController, CreditNoteController, PendingReceptionController],
+  providers: [SalesService, CreditNoteService, PendingReceptionService, AutoCarePlanService, WhatsAppTemplateService],
   exports: [SalesService],
 })
 export class SalesModule {}
